@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Ani-ren",
+    "slug": "ani-ren",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "aniren",
+    "userInterfaceStyle": "dark",
+    "icon": "./assets/mascota.png",
+    "ios": { "supportsTablet": false },
+    "android": { "predictiveBackGestureEnabled": true },
+    "web": { "bundler": "metro", "output": "single", "favicon": "./assets/mascota.png" },
+    "plugins": [
+      "expo-router",
+      ["expo-splash-screen", { "image": "./assets/mascota.png", "imageWidth": 180, "resizeMode": "contain", "backgroundColor": "#0D0D12" }]
+    ]
+  }
+}
