@@ -28,6 +28,68 @@ import { theme } from './theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
+const rankLooks: Record<string, { icon: IconName; color: string }> = {
+  Novato: { icon: 'compass-outline', color: '#6EE7B7' },
+  Aprendiz: { icon: 'school-outline', color: '#60A5FA' },
+  Experto: { icon: 'flame-outline', color: theme.colors.accentSoft },
+  Maestro: { icon: 'diamond-outline', color: '#FBBF24' },
+  Leyenda: { icon: 'trophy-outline', color: '#C084FC' },
+};
+
+export function RankInsignia({ rank, size = 34 }: { rank: string; size?: number }) {
+  const look = rankLooks[rank] ?? rankLooks.Novato;
+  return (
+    <View
+      accessibilityLabel={`Insignia ${rank}`}
+      style={[
+        styles.rankInsignia,
+        { width: size, height: size, borderRadius: size / 2, borderColor: look.color },
+      ]}
+    >
+      <Ionicons name={look.icon} size={size * 0.55} color={look.color} />
+    </View>
+  );
+}
+
+export function StarRating({
+  value,
+  onChange,
+  size = 34,
+}: {
+  value?: number;
+  onChange: (value: number | undefined) => void;
+  size?: number;
+}) {
+  const selected = value ?? 0;
+  const hitSize = size + 10;
+  return (
+    <View style={styles.starRating} accessibilityRole="adjustable">
+      {Array.from({ length: 5 }, (_, index) => {
+        const fullValue = index + 1;
+        const halfValue = index + 0.5;
+        const icon =
+          selected >= fullValue ? 'star' : selected >= halfValue ? 'star-half' : 'star-outline';
+        return (
+          <View key={fullValue} style={[styles.starHit, { width: hitSize, height: hitSize }]}>
+            <Ionicons name={icon} size={size} color={theme.colors.primarySoft} />
+            <View style={styles.starTouchAreas}>
+              {[halfValue, fullValue].map((next) => (
+                <Pressable
+                  key={next}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Puntuar ${next} de 5`}
+                  onPress={() => onChange(selected === next ? undefined : next)}
+                  style={styles.starHalf}
+                />
+              ))}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 // Elementos que se repiten de verdad en las pantallas: contenedor, búsqueda, cards y controles.
 export function Avatar({
   user = currentUser,
@@ -641,4 +703,21 @@ const styles = StyleSheet.create({
   fill: { height: '100%', backgroundColor: theme.colors.primary, borderRadius: 4 },
   meta: { color: theme.colors.textSecondary, fontSize: 11 },
   imageFallback: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 6 },
+  rankInsignia: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    backgroundColor: theme.colors.surfaceLight,
+  },
+  starRating: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  starHit: { alignItems: 'center', justifyContent: 'center' },
+  starTouchAreas: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    flexDirection: 'row',
+  },
+  starHalf: { flex: 1 },
 });

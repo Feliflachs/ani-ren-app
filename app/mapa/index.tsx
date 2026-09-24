@@ -1,8 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Action, AnimeCard, Chips, Screen, Section } from '../../src/components';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Action, AnimeCard, Chips, Screen, SearchBar, Section } from '../../src/components';
 import {
   anime,
   countries,
@@ -23,19 +23,23 @@ export default function MapScreen() {
     pais?: string | string[];
   }>();
   const incomingMetric = getParam(params.metric);
+  const initialAnime = findAnime(getParam(params.animeId)) ?? anime[0];
   const [metric, setMetric] = useState(
     getMapMetric(incomingMetric, getParam(params.animeId) ? 'anime' : 'reviews'),
   );
-  const [selectedAnimeId, setSelectedAnimeId] = useState(
-    findAnime(getParam(params.animeId))?.id ?? anime[0].id,
-  );
+  const [selectedAnimeId, setSelectedAnimeId] = useState(initialAnime.id);
+  const [animeQuery, setAnimeQuery] = useState(initialAnime.title);
   const [selectedCountryId, setSelectedCountryId] = useState(
     countries.find((item) => item.id === getParam(params.pais))?.id ?? countries[0].id,
   );
   const selectedCountry = countries.find((item) => item.id === selectedCountryId) ?? countries[0];
-  const selectedAnime = findAnime(selectedAnimeId) ?? anime[0];
+  const selectedAnime = findAnime(selectedAnimeId);
+  const searchedTitle = selectedAnime?.title ?? (animeQuery.trim() || 'Anime');
+  const animeMatches = anime
+    .filter((item) => item.title.toLowerCase().includes(animeQuery.trim().toLowerCase()))
+    .slice(0, 4);
   const metricValue = (country: (typeof countries)[number]) =>
-    getCountryMetric(country, metric, selectedAnime.id);
+    getCountryMetric(country, metric, selectedAnime?.id);
   const sorted = countries.slice().sort((a, b) => metricValue(b) - metricValue(a));
   const countryTop = getCountryTop(selectedCountry, metric);
   const valueLabel =
@@ -61,15 +65,40 @@ export default function MapScreen() {
       />
       {metric === 'anime' && (
         <>
-          <Section title="Anime seleccionado" />
-          <Chips
-            options={anime.map((item) => item.title)}
-            value={selectedAnime.title}
-            onChange={(title) =>
-              setSelectedAnimeId(anime.find((item) => item.title === title)?.id ?? anime[0].id)
-            }
+          <Section title="Buscar un anime" />
+          <SearchBar
+            value={animeQuery}
+            onChangeText={(value) => {
+              setAnimeQuery(value);
+              const exact = anime.find(
+                (item) => item.title.toLowerCase() === value.trim().toLowerCase(),
+              );
+              setSelectedAnimeId(exact?.id ?? '');
+            }}
+            placeholder="Escribí el nombre del anime"
           />
-          <Text style={styles.meta}>Comparando vistos de {selectedAnime.title} por país.</Text>
+          {animeQuery.trim() !== '' && !selectedAnime && animeMatches.length > 0 && (
+            <View style={styles.suggestions}>
+              {animeMatches.map((item) => (
+                <Pressable
+                  key={item.id}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setAnimeQuery(item.title);
+                    setSelectedAnimeId(item.id);
+                  }}
+                  style={styles.suggestion}
+                >
+                  <Text style={styles.suggestionText}>{item.title}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+          <Text style={styles.meta}>
+            {selectedAnime
+              ? `Comparando vistos de ${selectedAnime.title} por país.`
+              : `Podés buscar “${searchedTitle}”. Sus estadísticas aparecerán cuando el catálogo esté conectado al backend.`}
+          </Text>
         </>
       )}
       {getParam(params.animeId) && !findAnime(getParam(params.animeId)) && (
@@ -82,7 +111,7 @@ export default function MapScreen() {
           selectedId={selectedCountryId}
           onSelect={setSelectedCountryId}
           metric={metric}
-          animeId={selectedAnimeId}
+          animeId={selectedAnime?.id}
         />
         <View style={styles.legend}>
           <Text style={styles.meta}>Menos actividad</Text>
@@ -112,20 +141,19 @@ export default function MapScreen() {
           {metricValue(selectedCountry).toLocaleString('es-AR')}{' '}
           <Text style={styles.body}>{valueLabel}</Text>
         </Text>
-        <Text style={styles.body}>
-          {metric === 'anime' ? selectedAnime.title : mapMetrics[metric]}
-        </Text>
+        <Text style={styles.body}>{metric === 'anime' ? searchedTitle : mapMetrics[metric]}</Text>
         <Action
           label="Explorar este país"
           primary
           icon="location-outline"
+          disabled={metric === 'anime' && !selectedAnime}
           onPress={() =>
             router.push({
               pathname: '/mapa/[pais]',
               params: {
                 pais: selectedCountry.id,
                 metric,
-                animeId: selectedAnime.id,
+                animeId: selectedAnime?.id ?? '',
                 origin: 'mapa',
               },
             })
@@ -133,7 +161,7 @@ export default function MapScreen() {
         />
       </View>
       <Section
-        title={metric === 'anime' ? `${selectedAnime.title} por país` : 'Comparación entre países'}
+        title={metric === 'anime' ? `${searchedTitle} por país` : 'Comparación entre países'}
       />
       {sorted.map((country, index) => (
         <View key={country.id} style={styles.countryRow}>
@@ -211,4 +239,13 @@ const styles = StyleSheet.create({
   countryName: { flex: 1, color: theme.colors.text, fontSize: 13 },
   count: { color: theme.colors.primarySoft, fontSize: 13, fontWeight: '600' },
   horizontal: { gap: 8 },
+  suggestions: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.surface,
+  },
+  suggestion: { paddingHorizontal: 13, paddingVertical: 11 },
+  suggestionText: { color: theme.colors.text, fontSize: 13 },
 });

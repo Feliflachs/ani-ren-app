@@ -2,11 +2,13 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Action, AnimeCard, Avatar, EmptyState, Screen, Section } from '../../src/components';
+import { useAppState } from '../../src/AppState';
 import { currentUser, findAnime, findUser, getParam, lists } from '../../src/mock';
 import { theme } from '../../src/theme';
 
 export default function ListaScreen() {
   const params = useLocalSearchParams();
+  const { activities } = useAppState();
   // TODO BACKEND [LISTA-DETALLE]: consultar lista por id, autor, pertenencia y orden de animeIds.
   const list = lists.find((item) => item.id === getParam(params.id));
   const [liked, setLiked] = useState(false);
@@ -22,8 +24,13 @@ export default function ListaScreen() {
       </Screen>
     );
   const author = findUser(list.userId);
-  const items = list.animeIds.map(findAnime).filter((item) => item !== undefined);
   const own = list.userId === currentUser.id;
+  const animeIds = own
+    ? Object.entries(activities)
+        .filter(([, activity]) => activity.listIds.includes(list.id))
+        .map(([animeId]) => animeId)
+    : list.animeIds;
+  const items = animeIds.map(findAnime).filter((item) => item !== undefined);
   const toggleLike = () => {
     // TODO BACKEND [LISTA-LIKE]: hoy cambia un contador local; guardar like de currentUser.id a list.id.
     setLiked((value) => !value);

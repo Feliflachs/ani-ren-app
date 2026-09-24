@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AppStateProvider } from '../src/AppState';
 import { theme } from '../src/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -18,20 +19,22 @@ export default function RootLayout() {
   if (!loaded && !error) return null;
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
-      <View style={styles.background}>
-        {/* El mismo contenedor limita pantallas y tabs en ventanas grandes. */}
-        <View style={styles.app}>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: theme.colors.background },
-            }}
-          >
-            <Stack.Screen name="(tabs)" />
-          </Stack>
+      <AppStateProvider>
+        <StatusBar style="light" />
+        <View style={styles.background}>
+          {/* El mismo contenedor limita pantallas y tabs en ventanas grandes. */}
+          <View style={styles.app}>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: theme.colors.background },
+              }}
+            >
+              <Stack.Screen name="(tabs)" />
+            </Stack>
+          </View>
         </View>
-      </View>
+      </AppStateProvider>
     </SafeAreaProvider>
   );
 }

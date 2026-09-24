@@ -21,17 +21,46 @@ const genreIcons: ComponentProps<typeof Ionicons>['name'][] = [
   'happy-outline',
   'sparkles-outline',
   'heart-outline',
-  'grid-outline',
+  'compass-outline',
+  'book-outline',
+  'football-outline',
+];
+
+const seasonImages = [
+  require('../../assets/seasons/primavera.jpg'),
+  require('../../assets/seasons/verano.jpg'),
+  require('../../assets/seasons/otono.jpg'),
+  require('../../assets/seasons/invierno.jpg'),
 ];
 
 export default function Explorar() {
   const [query, setQuery] = useState('');
+  const [showAllGenres, setShowAllGenres] = useState(false);
   const { width: windowWidth } = useWindowDimensions();
   const width = Math.min(windowWidth, theme.layout.maxWidth);
   // TODO BACKEND [EXPLORAR]: consultar tendencias, géneros y temporadas; por ahora catálogo local.
   const trendWidth = Math.max(82, Math.min(110, (width - 56) / 4));
-  const genreLabels = [...genres.slice(0, 4), 'Ver todos'];
+  const genreLabels = showAllGenres ? genres : genres.slice(0, 4);
   const search = () => router.push({ pathname: '/busqueda', params: { q: query } });
+  const genreCards = genreLabels.map((genre, index) => (
+    <Pressable
+      accessibilityRole="button"
+      key={genre}
+      onPress={() => router.push({ pathname: '/busqueda', params: { genre } })}
+      style={styles.genre}
+    >
+      <ImageBackground
+        source={anime[[1, 7, 0, 7, 4, 5, 2][index]].image}
+        style={styles.genreImage}
+        imageStyle={styles.imageRadius}
+      >
+        <View style={styles.genreShade}>
+          <Ionicons name={genreIcons[index]} size={24} color={theme.colors.primarySoft} />
+          <Text style={styles.genreText}>{genre}</Text>
+        </View>
+      </ImageBackground>
+    </Pressable>
+  ));
 
   return (
     <Screen title="Explorar" subtitle="Descubrí anime, tendencias y estadísticas del mundo.">
@@ -41,38 +70,23 @@ export default function Explorar() {
         onSubmit={search}
         placeholder="Buscar anime, género, usuario..."
       />
-      <Section title="Explorar por género" onPress={() => router.push('/busqueda')} />
-      <ScrollView
-        horizontal
-        style={{ flexGrow: 0 }}
-        showsHorizontalScrollIndicator={Platform.OS === 'web'}
-        contentContainerStyle={styles.row}
-      >
-        {genreLabels.map((genre, index) => (
-          <Pressable
-            accessibilityRole="button"
-            key={genre}
-            onPress={() =>
-              router.push({
-                pathname: '/busqueda',
-                params: { genre: genre === 'Ver todos' ? '' : genre },
-              })
-            }
-            style={styles.genre}
-          >
-            <ImageBackground
-              source={anime[[1, 7, 0, 7, 4][index]].image}
-              style={styles.genreImage}
-              imageStyle={styles.imageRadius}
-            >
-              <View style={styles.genreShade}>
-                <Ionicons name={genreIcons[index]} size={24} color={theme.colors.primarySoft} />
-                <Text style={styles.genreText}>{genre}</Text>
-              </View>
-            </ImageBackground>
-          </Pressable>
-        ))}
-      </ScrollView>
+      <Section
+        title="Explorar por género"
+        action={showAllGenres ? 'Ver menos' : 'Ver todos'}
+        onPress={() => setShowAllGenres((visible) => !visible)}
+      />
+      {showAllGenres ? (
+        <View style={styles.genreGrid}>{genreCards}</View>
+      ) : (
+        <ScrollView
+          horizontal
+          style={{ flexGrow: 0 }}
+          showsHorizontalScrollIndicator={Platform.OS === 'web'}
+          contentContainerStyle={styles.row}
+        >
+          {genreCards}
+        </ScrollView>
+      )}
       <View style={styles.mapCard}>
         <View style={styles.mapHeader}>
           <Text style={styles.mapTitle}>Mapa anime mundial</Text>
@@ -113,7 +127,7 @@ export default function Explorar() {
             style={styles.season}
           >
             <ImageBackground
-              source={anime[[0, 5, 3, 1][index]].image}
+              source={seasonImages[index]}
               style={styles.seasonImage}
               imageStyle={styles.imageRadius}
             >
@@ -139,6 +153,7 @@ export default function Explorar() {
 
 const styles = StyleSheet.create({
   row: { gap: 8 },
+  genreGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   genre: {
     width: 68,
     borderWidth: 1,

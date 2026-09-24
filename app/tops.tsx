@@ -59,7 +59,7 @@ export default function TopsScreen() {
             <Text style={styles.title}>{item.title}</Text>
             <Text style={styles.meta}>{item.genres.slice(0, 2).join(' · ')}</Text>
             <Text style={styles.rating}>
-              ★ {item.rating.toFixed(1)} <Text style={styles.meta}>/ 10</Text>
+              ★ {item.rating.toFixed(1)} <Text style={styles.meta}>/ 5</Text>
             </Text>
             <Text style={styles.meta}>{item.watched.toLocaleString('es-AR')} vistos</Text>
             {criterion === 'Más populares' && (

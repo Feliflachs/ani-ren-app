@@ -10,11 +10,13 @@ import {
   Dialog,
   EmptyState,
   Progress,
+  RankInsignia,
   ListCard,
   ReviewCard,
   Screen,
   Section,
 } from '../../src/components';
+import { useAppState } from '../../src/AppState';
 import {
   currentLikedReviewIds,
   currentUser,
@@ -30,12 +32,13 @@ export default function PerfilScreen() {
   const [historyFilter, setHistoryFilter] = useState('Todo');
   const [width, setWidth] = useState(300);
   const [sharing, setSharing] = useState(false);
+  const { likedIds, watchedCount, watchedIds } = useAppState();
   // TODO BACKEND [PERFIL-CONSULTAR]: consultar currentUser.id, sus favoritos, actividad, reviews, listas y likes; hoy son datos compartidos de ejemplo.
   const myReviews = reviews.filter((item) => item.userId === currentUser.id);
   const myLists = lists.filter((item) => item.userId === currentUser.id);
   const likedReviews = reviews.filter((item) => currentLikedReviewIds.includes(item.id));
   const shownReviews = view === 'Likes' ? likedReviews : myReviews;
-  const rankProgress = getRankProgress(currentUser.watched);
+  const rankProgress = getRankProgress(watchedCount);
   const openConnections = (tab: string) => router.push({ pathname: '/comunidad', params: { tab } });
 
   return (
@@ -113,12 +116,12 @@ export default function PerfilScreen() {
         accessibilityRole="button"
         accessibilityLabel="Ver tu rango Aura"
       >
-        <Ionicons name="shield-outline" color={theme.colors.primarySoft} size={28} />
+        <RankInsignia rank={rankProgress.rank} size={36} />
         <View style={styles.rankBody}>
           <Text style={styles.meta}>
             Rango: <Text style={styles.purple}>{rankProgress.rank}</Text>
           </Text>
-          <Progress value={currentUser.watched} total={rankProgress.total} label="Animes vistos" />
+          <Progress value={watchedCount} total={rankProgress.total} label="Animes vistos" />
         </View>
         <Ionicons name="chevron-forward" color={theme.colors.primarySoft} size={16} />
       </Pressable>
@@ -127,7 +130,7 @@ export default function PerfilScreen() {
         onPress={() => router.push({ pathname: '/biblioteca', params: { tab: 'Favoritos' } })}
       />
       <View style={styles.grid} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
-        {currentUser.favorites.map((id, index) => {
+        {likedIds.slice(0, 4).map((id, index) => {
           const item = findAnime(id);
           return item ? (
             <AnimeCard key={id} item={item} width={(width - 10) / 2} landscape rank={index + 1} />
@@ -181,7 +184,7 @@ export default function PerfilScreen() {
               <Text style={styles.meta}>{currentUser.name}-kun escribió una review</Text>
               <Text style={styles.muted}>Hace 2 h · Frieren</Text>
             </View>
-            <Text style={styles.purple}>★ 9.6</Text>
+            <Text style={styles.purple}>★ 5.0</Text>
           </Pressable>
         </View>
         <View style={styles.activity}>
@@ -285,19 +288,22 @@ export default function PerfilScreen() {
               </Pressable>
             ))}
           {historyFilter !== 'Reviews' &&
-            currentUser.favorites.slice(0, 3).map((id, index) => (
-              <Pressable
-                key={id}
-                style={styles.panel}
-                onPress={() => router.push({ pathname: '/anime/[id]', params: { id } })}
-                accessibilityRole="button"
-              >
-                <Text style={styles.rowTitle}>Marcaste {findAnime(id)?.title} como visto</Text>
-                <Text style={styles.muted}>
-                  {index === 0 ? 'Ayer' : `Hace ${index + 2} días`} · Actividad de ejemplo
-                </Text>
-              </Pressable>
-            ))}
+            watchedIds
+              .slice(-3)
+              .reverse()
+              .map((id, index) => (
+                <Pressable
+                  key={id}
+                  style={styles.panel}
+                  onPress={() => router.push({ pathname: '/anime/[id]', params: { id } })}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.rowTitle}>Marcaste {findAnime(id)?.title} como visto</Text>
+                  <Text style={styles.muted}>
+                    {index === 0 ? 'Ayer' : `Hace ${index + 2} días`} · Actividad de ejemplo
+                  </Text>
+                </Pressable>
+              ))}
         </>
       )}
       <View style={styles.bottomActions}>

@@ -2,7 +2,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Action, Avatar, Chips, Dialog, Screen, Section } from '../../src/components';
+import { Action, Avatar, Chips, Dialog, RankInsignia, Screen, Section } from '../../src/components';
+import { useAppState } from '../../src/AppState';
 import { currentUser, getParam, getRankProgress, ranks } from '../../src/mock';
 import { theme } from '../../src/theme';
 
@@ -26,9 +27,16 @@ const decorators = [
   { id: 'sin-titulo', type: 'Títulos', label: 'Sin título', value: '', locked: false },
   { id: 'kun', type: 'Sufijos', label: '-kun', value: '-kun', locked: false },
   { id: 'chan', type: 'Sufijos', label: '-chan', value: '-chan', locked: false },
+  { id: 'san', type: 'Sufijos', label: '-san', value: '-san', locked: false },
+  { id: 'senpai', type: 'Sufijos', label: '-senpai', value: '-senpai', locked: true },
+  { id: 'sensei', type: 'Sufijos', label: '-sensei', value: '-sensei', locked: true },
   { id: 'sama', type: 'Sufijos', label: '-sama', value: '-sama', locked: true },
   { id: 'sin-sufijo', type: 'Sufijos', label: 'Sin sufijo', value: '', locked: false },
+  { id: 'badge-novato', type: 'Insignias', label: 'Novato', value: 'Novato', locked: false },
   { id: 'badge-aprendiz', type: 'Insignias', label: 'Aprendiz', value: 'Aprendiz', locked: false },
+  { id: 'badge-experto', type: 'Insignias', label: 'Experto', value: 'Experto', locked: true },
+  { id: 'badge-maestro', type: 'Insignias', label: 'Maestro', value: 'Maestro', locked: true },
+  { id: 'badge-leyenda', type: 'Insignias', label: 'Leyenda', value: 'Leyenda', locked: true },
   {
     id: 'badge-primer',
     type: 'Insignias',
@@ -50,10 +58,10 @@ const decorators = [
 
 const suggestedTitles = ['Sanji', 'Viajero', 'Espíritu shonen'];
 const tabs = ['Rangos', 'Títulos', 'Sufijos', 'Insignias', 'Avatar'];
-const rankProgress = getRankProgress(currentUser.watched);
-const currentRankIndex = ranks.indexOf(rankProgress.rank);
-
 export default function RanksScreen() {
+  const { watchedCount } = useAppState();
+  const rankProgress = getRankProgress(watchedCount);
+  const currentRankIndex = ranks.indexOf(rankProgress.rank);
   const params = useLocalSearchParams<{ titulo?: string | string[] }>();
   const suggested = getParam(params.titulo);
   const exampleTitle = suggested && suggestedTitles.includes(suggested) ? suggested : undefined;
@@ -101,11 +109,11 @@ export default function RanksScreen() {
         >
           <Avatar size={72} />
           <View style={styles.badge}>
-            <Ionicons
-              name={badge === rankProgress.rank ? 'shield' : 'ribbon'}
-              size={21}
-              color={theme.colors.primarySoft}
-            />
+            {ranks.includes(badge) ? (
+              <RankInsignia rank={badge} size={30} />
+            ) : (
+              <Ionicons name="ribbon" size={21} color={theme.colors.primarySoft} />
+            )}
           </View>
         </View>
         <View style={styles.flex}>
@@ -147,11 +155,9 @@ export default function RanksScreen() {
                   }
                   style={[styles.rank, isCurrent && styles.selected]}
                 >
-                  <Ionicons
-                    name={isLocked ? 'lock-closed-outline' : 'shield-outline'}
-                    size={42}
-                    color={theme.colors.primarySoft}
-                  />
+                  <View style={isLocked && styles.locked}>
+                    <RankInsignia rank={rank} size={48} />
+                  </View>
                   <Text style={styles.rankTitle}>{rank}</Text>
                   <Text style={styles.meta}>{state}</Text>
                 </Pressable>
@@ -159,7 +165,7 @@ export default function RanksScreen() {
             })}
           </ScrollView>
           <View style={styles.explanation}>
-            <Text style={styles.cardTitle}>{currentUser.watched} animes vistos</Text>
+            <Text style={styles.cardTitle}>{watchedCount} animes vistos</Text>
             <Text style={styles.body}>
               {rankProgress.nextRank
                 ? `Tu siguiente referencia visual es ${rankProgress.nextRank}, con ${rankProgress.total} vistos de ejemplo.`
@@ -247,12 +253,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: -1,
     bottom: 0,
-    borderWidth: 1,
-    borderColor: theme.colors.primarySoft,
-    borderRadius: 15,
-    padding: 4,
+    borderRadius: 18,
     backgroundColor: theme.colors.background,
   },
+  locked: { opacity: 0.45 },
   name: { color: theme.colors.text, fontSize: 21, fontWeight: '700' },
   handle: { color: theme.colors.primarySoft, fontSize: 12, marginTop: 4 },
   title: { color: theme.colors.text, fontSize: 13, marginVertical: 6 },

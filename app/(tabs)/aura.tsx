@@ -2,22 +2,32 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Action, Avatar, Dialog, Progress, Screen, Section } from '../../src/components';
+import {
+  Action,
+  Avatar,
+  Dialog,
+  Progress,
+  RankInsignia,
+  Screen,
+  Section,
+} from '../../src/components';
+import { useAppState } from '../../src/AppState';
 import { auraMissions, currentUser, getRankProgress, ranks } from '../../src/mock';
 import { theme } from '../../src/theme';
 
 // TODO BACKEND [AURA]: consultar rango, progreso, beneficios y misiones mediante el id del usuario.
 const featuredMissions = auraMissions.filter((mission) => mission.state === 'En curso').slice(0, 3);
-const rankProgress = getRankProgress(currentUser.watched);
-const currentRankIndex = ranks.indexOf(rankProgress.rank);
-const stats = [
-  { label: 'Animes vistos', value: currentUser.watched, icon: 'eye-outline' as const },
-  { label: 'Favoritos', value: currentUser.favorites.length, icon: 'star-outline' as const },
-  { label: 'Reviews', value: currentUser.reviews, icon: 'chatbox-outline' as const },
-  { label: 'Watchlist', value: currentUser.watchlist, icon: 'bookmark-outline' as const },
-];
 
 export default function AuraScreen() {
+  const { likedIds, watchedCount, watchlistIds } = useAppState();
+  const rankProgress = getRankProgress(watchedCount);
+  const currentRankIndex = ranks.indexOf(rankProgress.rank);
+  const stats = [
+    { label: 'Animes vistos', value: watchedCount, icon: 'eye-outline' as const },
+    { label: 'Favoritos', value: likedIds.length, icon: 'star-outline' as const },
+    { label: 'Reviews', value: currentUser.reviews, icon: 'chatbox-outline' as const },
+    { label: 'Watchlist', value: watchlistIds.length, icon: 'bookmark-outline' as const },
+  ];
   const [selectedMission, setSelectedMission] = useState<(typeof auraMissions)[number] | null>(
     null,
   );
@@ -32,17 +42,14 @@ export default function AuraScreen() {
       <View style={styles.rankCard}>
         <View style={styles.rankSide}>
           <View style={styles.rankIdentity}>
-            <View style={styles.shield}>
-              <Ionicons name="shield" size={64} color={theme.colors.primary} />
-              <Ionicons name="star" size={27} color={theme.colors.text} style={styles.shieldStar} />
-            </View>
+            <RankInsignia rank={rankProgress.rank} size={64} />
             <View style={styles.flex}>
               <Text style={styles.meta}>Rango actual</Text>
               <Text style={styles.rankName}>{rankProgress.rank}</Text>
               <Text style={styles.pill}>{rankProgress.rank}-kun</Text>
             </View>
           </View>
-          <Progress value={currentUser.watched} total={rankProgress.total} label="Animes vistos" />
+          <Progress value={watchedCount} total={rankProgress.total} label="Animes vistos" />
           <Text style={styles.meta}>
             {rankProgress.nextRank
               ? `Próximo rango: ${rankProgress.nextRank} · umbral de ejemplo`
@@ -79,11 +86,9 @@ export default function AuraScreen() {
               accessibilityLabel={`Ver rango ${rank}`}
               style={[styles.rankTile, isCurrent && styles.selected]}
             >
-              <Ionicons
-                name={isLocked ? 'lock-closed-outline' : 'shield-outline'}
-                size={42}
-                color={isLocked ? theme.colors.textSecondary : theme.colors.primarySoft}
-              />
+              <View style={isLocked && styles.locked}>
+                <RankInsignia rank={rank} size={46} />
+              </View>
               <Text style={styles.tileTitle}>{rank}</Text>
               <Text style={styles.meta}>
                 {isCurrent ? 'Actual' : isLocked ? 'Por descubrir' : 'Disponible'}
@@ -198,8 +203,7 @@ const styles = StyleSheet.create({
   },
   rankSide: { flex: 1.5, minWidth: 155, gap: 10 },
   rankIdentity: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  shield: { width: 64, height: 68, justifyContent: 'center', alignItems: 'center' },
-  shieldStar: { position: 'absolute', top: 21 },
+  locked: { opacity: 0.45 },
   rankName: { color: theme.colors.primarySoft, fontSize: 17, fontWeight: '700' },
   pill: {
     color: theme.colors.primarySoft,

@@ -14,7 +14,6 @@ import {
 } from '../src/components';
 import {
   anime,
-  currentLibrary,
   currentLikedReviewIds,
   currentUser,
   findAnime,
@@ -22,6 +21,7 @@ import {
   lists,
   reviews,
 } from '../src/mock';
+import { useAppState } from '../src/AppState';
 import { theme } from '../src/theme';
 
 export default function BibliotecaScreen() {
@@ -33,20 +33,15 @@ export default function BibliotecaScreen() {
     options.find((option) => option.toLowerCase() === requested.toLowerCase()) ?? 'Watchlist',
   );
   const [query, setQuery] = useState('');
-  const [removed, setRemoved] = useState<Record<string, string[]>>({});
+  const { likedIds, updateActivity, watchedIds, watchlistIds } = useAppState();
   const { width: windowWidth } = useWindowDimensions();
   const width = Math.min(windowWidth, theme.layout.maxWidth);
   // TODO BACKEND [BIBLIOTECA]: consultar colecciones y likes de currentUser.id según el selector y texto.
   const collectionIds =
-    tab === 'Watchlist'
-      ? currentLibrary.Watchlist
-      : tab === 'Vistos'
-        ? currentLibrary.Vistos
-        : currentUser.favorites;
+    tab === 'Watchlist' ? watchlistIds : tab === 'Vistos' ? watchedIds : likedIds;
   const results = anime.filter(
     (item) =>
       collectionIds.includes(item.id) &&
-      !(removed[tab] ?? []).includes(item.id) &&
       item.title.toLowerCase().includes(query.toLowerCase().trim()),
   );
   const ownLists = lists.filter(
@@ -64,8 +59,10 @@ export default function BibliotecaScreen() {
   const count =
     tab === 'Listas' ? ownLists.length : tab === 'Likes' ? likedReviews.length : results.length;
   const removeAnime = (animeId: string) => {
-    // TODO BACKEND [COLECCION-QUITAR]: hoy se oculta localmente; guardar eliminación para currentUser.id, animeId y tab.
-    setRemoved((previous) => ({ ...previous, [tab]: [...(previous[tab] ?? []), animeId] }));
+    // TODO BACKEND [COLECCION-QUITAR]: reemplazar esta actualización local por la operación correspondiente.
+    if (tab === 'Watchlist') updateActivity(animeId, { watchlist: false });
+    if (tab === 'Vistos') updateActivity(animeId, { watched: false });
+    if (tab === 'Favoritos') updateActivity(animeId, { liked: false });
   };
 
   return (

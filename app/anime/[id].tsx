@@ -13,16 +13,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Action, Avatar, Dialog, EmptyState, Screen, Section } from '../../src/components';
-import {
-  currentFriendIds,
-  currentLibrary,
-  currentUser,
-  findAnime,
-  findUser,
-  getParam,
-  lists,
-  reviews,
-} from '../../src/mock';
+import { currentFriendIds, findAnime, findUser, getParam, reviews } from '../../src/mock';
 import { theme } from '../../src/theme';
 
 // TODO BACKEND [RATINGS-DISTRIBUCION]: recuperar conteos reales por anime; estos porcentajes son ejemplos.
@@ -36,31 +27,65 @@ const distributions: Record<string, number[]> = {
   'demon-slayer': [58, 25, 9, 5, 3],
   'spy-family': [54, 28, 9, 7, 2],
 };
-const characters: Record<string, string[]> = {
-  frieren: ['Frieren', 'Fern', 'Stark'],
-  'solo-leveling': ['Sung Jinwoo', 'Cha Hae-in', 'Yoo Jinho'],
-  'blue-lock': ['Yoichi Isagi', 'Meguru Bachira', 'Rin Itoshi'],
-  'vinland-saga': ['Thorfinn', 'Askeladd', 'Canute'],
-  'mob-psycho': ['Shigeo Kageyama', 'Arataka Reigen', 'Ritsu Kageyama'],
-  haikyuu: ['Shoyo Hinata', 'Tobio Kageyama', 'Daichi Sawamura'],
-  'demon-slayer': ['Tanjiro Kamado', 'Nezuko Kamado', 'Zenitsu Agatsuma'],
-  'spy-family': ['Loid Forger', 'Anya Forger', 'Yor Forger'],
+const voiceCast: Record<string, { actor: string; character: string }[]> = {
+  frieren: [
+    { actor: 'Atsumi Tanezaki', character: 'Frieren' },
+    { actor: 'Kana Ichinose', character: 'Fern' },
+    { actor: 'Chiaki Kobayashi', character: 'Stark' },
+  ],
+  'solo-leveling': [
+    { actor: 'Taito Ban', character: 'Sung Jinwoo' },
+    { actor: 'Reina Ueda', character: 'Cha Hae-in' },
+    { actor: 'Genta Nakamura', character: 'Yoo Jinho' },
+  ],
+  'blue-lock': [
+    { actor: 'Kazuki Ura', character: 'Yoichi Isagi' },
+    { actor: 'Tasuku Kaito', character: 'Meguru Bachira' },
+    { actor: 'Koki Uchiyama', character: 'Rin Itoshi' },
+  ],
+  'vinland-saga': [
+    { actor: 'Yuto Uemura', character: 'Thorfinn' },
+    { actor: 'Naoya Uchida', character: 'Askeladd' },
+    { actor: 'Kensho Ono', character: 'Canute' },
+  ],
+  'mob-psycho': [
+    { actor: 'Setsuo Ito', character: 'Shigeo Kageyama' },
+    { actor: 'Takahiro Sakurai', character: 'Arataka Reigen' },
+    { actor: 'Miyu Irino', character: 'Ritsu Kageyama' },
+  ],
+  haikyuu: [
+    { actor: 'Ayumu Murase', character: 'Shoyo Hinata' },
+    { actor: 'Kaito Ishikawa', character: 'Tobio Kageyama' },
+    { actor: 'Satoshi Hino', character: 'Daichi Sawamura' },
+  ],
+  'demon-slayer': [
+    { actor: 'Natsuki Hanae', character: 'Tanjiro Kamado' },
+    { actor: 'Akari Kito', character: 'Nezuko Kamado' },
+    { actor: 'Hiro Shimono', character: 'Zenitsu Agatsuma' },
+  ],
+  'spy-family': [
+    { actor: 'Takuya Eguchi', character: 'Loid Forger' },
+    { actor: 'Atsumi Tanezaki', character: 'Anya Forger' },
+    { actor: 'Saori Hayami', character: 'Yor Forger' },
+  ],
 };
+const ratingVotes = 13700;
+const streamingPlatforms = [
+  {
+    name: 'Crunchyroll',
+    url: 'https://www.crunchyroll.com/',
+    icon: 'play-circle-outline' as const,
+  },
+  { name: 'Netflix', url: 'https://www.netflix.com/', icon: 'film-outline' as const },
+  { name: 'Prime Video', url: 'https://www.primevideo.com/', icon: 'tv-outline' as const },
+];
 
 export default function DetalleAnime() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const { width: windowWidth } = useWindowDimensions();
   const width = Math.min(windowWidth, theme.layout.maxWidth);
   const id = getParam(params.id) ?? '';
-  const [score, setScore] = useState(
-    (reviews.find((review) => review.animeId === id && review.userId === currentUser.id)?.rating ??
-      0) / 2,
-  );
-  const [watchlist, setWatchlist] = useState(currentLibrary.Watchlist.includes(id));
-  const [seen, setSeen] = useState(currentLibrary.Vistos.includes(id));
-  const [favorite, setFavorite] = useState(currentUser.favorites.includes(id));
   const [message, setMessage] = useState('');
-  const [listPicker, setListPicker] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   // TODO BACKEND [ANIME-DETALLE]: consultar anime y su elenco por id; manejar carga, error y no encontrado.
   const item = findAnime(id);
@@ -80,24 +105,31 @@ export default function DetalleAnime() {
   );
   const animeReviews = reviews.filter((review) => review.animeId === item.id);
   const distribution = distributions[item.id];
-  const votes = 13700;
-  const rating = item.rating / 2;
-  const cast = characters[item.id];
+  const rating = item.rating;
+  const cast = voiceCast[item.id] ?? [];
+  const title = item.id === 'frieren' ? 'Frieren: Beyond Journey’s End' : item.title;
+  const metadata = [
+    'TV',
+    String(item.year),
+    `${item.episodes} eps`,
+    `${item.duration} min`,
+    'Finalizado',
+  ];
+  const infoRows = [
+    ['Géneros', item.genres.join(', ')],
+    ['Estudio', item.studio],
+    ['Temporada', item.season],
+    ['Duración', `${item.duration} min / episodio`],
+    ['Episodios', String(item.episodes)],
+    ['Estado', 'Finalizado'],
+  ];
 
-  // TODO BACKEND [PUNTUACION-GUARDAR]: guardar animeId y puntuación; hoy solo cambia el selector local.
-  const rate = (value: number) => setScore(value);
-  // TODO BACKEND [COLECCION-ACTUALIZAR]: guardar pertenencia del usuario al animeId; estados locales de ejemplo.
-  const toggleCollection = (collection: 'watchlist' | 'seen' | 'favorite') => {
-    if (collection === 'watchlist') setWatchlist(!watchlist);
-    if (collection === 'seen') setSeen(!seen);
-    if (collection === 'favorite') setFavorite(!favorite);
-  };
-  // TODO BACKEND [LISTA-AGREGAR]: enviar listaId y animeId y confirmar la respuesta real.
-  const addToList = (listId: string) => {
-    const list = lists.find((entry) => entry.id === listId);
-    if (!list) return;
-    setListPicker(false);
-    setMessage(`Agregado a «${list.title}» en esta vista previa. Simulación local.`);
+  const writeReview = () =>
+    router.push({ pathname: '/review/escribir', params: { animeId: item.id } });
+  const openStreamingPlatform = (url: string) => {
+    Linking.openURL(url).catch(() =>
+      setMessage('No se pudo abrir el enlace. Probá desde tu navegador.'),
+    );
   };
 
   return (
@@ -120,7 +152,7 @@ export default function DetalleAnime() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Opciones del anime"
-            onPress={() => setListPicker(true)}
+            onPress={writeReview}
           >
             <Ionicons name="ellipsis-horizontal" size={23} color={theme.colors.textSecondary} />
           </Pressable>
@@ -139,18 +171,10 @@ export default function DetalleAnime() {
           )}
         </View>
         <View style={styles.heroInfo}>
-          <Text style={styles.title}>
-            {item.id === 'frieren' ? 'Frieren: Beyond Journey’s End' : item.title}
-          </Text>
+          <Text style={styles.title}>{title}</Text>
           <Text style={styles.japanese}>{item.japanese}</Text>
           <View style={styles.metadata}>
-            {[
-              'TV',
-              String(item.year),
-              `${item.episodes} eps`,
-              `${item.duration} min`,
-              'Finalizado',
-            ].map((tag) => (
+            {metadata.map((tag) => (
               <Text key={tag} style={styles.tag}>
                 {tag}
               </Text>
@@ -160,7 +184,7 @@ export default function DetalleAnime() {
             {rating.toFixed(1)}
             <Text style={styles.small}> / 5</Text> <Text style={styles.stars}>★★★★★</Text>
           </Text>
-          <Text style={styles.meta}>{votes.toLocaleString('es-AR')} votos de ejemplo</Text>
+          <Text style={styles.meta}>{ratingVotes.toLocaleString('es-AR')} votos de ejemplo</Text>
           <View style={styles.distribution}>
             {distribution.map((percent, index) => (
               <View key={index} style={styles.barRow}>
@@ -169,97 +193,27 @@ export default function DetalleAnime() {
                   <View style={[styles.bar, { width: `${percent}%` }]} />
                 </View>
                 <Text style={styles.barCount}>
-                  {Math.round((votes * percent) / 100).toLocaleString('es-AR')}
+                  {Math.round((ratingVotes * percent) / 100).toLocaleString('es-AR')}
                 </Text>
               </View>
             ))}
           </View>
         </View>
       </View>
-      <View style={styles.scoreHeader}>
-        <Text style={styles.body}>Tu puntuación</Text>
-        <Text style={styles.meta}>
-          {score ? `${score.toFixed(1)} / 5 · local` : 'Tocá para calificar'}
-        </Text>
-      </View>
-      <ScrollView
-        horizontal
-        style={{ flexGrow: 0 }}
-        showsHorizontalScrollIndicator={Platform.OS === 'web'}
-        contentContainerStyle={styles.scoreRow}
-      >
-        {Array.from({ length: 10 }, (_, index) => (index + 1) / 2).map((value) => (
-          <Pressable
-            key={value}
-            accessibilityRole="button"
-            accessibilityLabel={`Puntuar ${value} de 5`}
-            accessibilityState={{ selected: score === value }}
-            onPress={() => rate(value)}
-            style={styles.scoreButton}
-          >
-            <Ionicons
-              name={score >= value ? 'star' : 'star-outline'}
-              size={21}
-              color={theme.colors.primarySoft}
-            />
-            <Text style={styles.meta}>{value.toFixed(1)}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-      <View style={styles.actions}>
-        <Action
-          label="Escribir review"
-          icon="star"
-          primary
-          onPress={() =>
-            router.push({ pathname: '/review/escribir', params: { animeId: item.id } })
-          }
-        />
-        <Action
-          label="Watchlist"
-          icon={watchlist ? 'bookmark' : 'bookmark-outline'}
-          active={watchlist}
-          onPress={() => toggleCollection('watchlist')}
-        />
-        <Action
-          label="Visto"
-          icon="checkmark"
-          active={seen}
-          onPress={() => toggleCollection('seen')}
-        />
-        <Action
-          label="Favorito"
-          icon={favorite ? 'heart' : 'heart-outline'}
-          active={favorite}
-          onPress={() => toggleCollection('favorite')}
-        />
-        <Action label="Agregar a lista" icon="add-outline" onPress={() => setListPicker(true)} />
-      </View>
-      <Section title="Dónde verlo legalmente" />
+      <Action label="Review" icon="add-circle-outline" primary onPress={writeReview} />
+      <Section title="Dónde ver" />
       <ScrollView
         horizontal
         style={{ flexGrow: 0 }}
         showsHorizontalScrollIndicator={Platform.OS === 'web'}
         contentContainerStyle={styles.platforms}
       >
-        {[
-          {
-            name: 'Crunchyroll',
-            url: 'https://www.crunchyroll.com/',
-            icon: 'play-circle-outline' as const,
-          },
-          { name: 'Netflix', url: 'https://www.netflix.com/', icon: 'film-outline' as const },
-          { name: 'Prime Video', url: 'https://www.primevideo.com/', icon: 'tv-outline' as const },
-        ].map((platform) => (
+        {streamingPlatforms.map((platform) => (
           <Pressable
             key={platform.name}
             accessibilityRole="link"
             accessibilityLabel={`Abrir ${platform.name}`}
-            onPress={() =>
-              Linking.openURL(platform.url).catch(() =>
-                setMessage('No se pudo abrir el enlace. Probá desde tu navegador.'),
-              )
-            }
+            onPress={() => openStreamingPlatform(platform.url)}
             style={styles.platform}
           >
             <Ionicons name={platform.icon} size={25} color={theme.colors.accentSoft} />
@@ -278,14 +232,7 @@ export default function DetalleAnime() {
         </View>
         <View style={[styles.infoCard, width >= 360 && styles.infoColumn]}>
           <Text style={styles.cardTitle}>Información</Text>
-          {[
-            ['Géneros', item.genres.join(', ')],
-            ['Estudio', item.studio],
-            ['Temporada', item.season],
-            ['Duración', `${item.duration} min / episodio`],
-            ['Episodios', String(item.episodes)],
-            ['Estado', 'Finalizado'],
-          ].map(([label, value]) => (
+          {infoRows.map(([label, value]) => (
             <View key={label} style={styles.infoLine}>
               <Text style={styles.meta}>{label}</Text>
               <Text style={styles.infoValue}>{value}</Text>
@@ -293,47 +240,23 @@ export default function DetalleAnime() {
           ))}
         </View>
       </View>
-      <Section title="Personajes principales" />
-      <ScrollView
-        horizontal
-        style={{ flexGrow: 0 }}
-        showsHorizontalScrollIndicator={Platform.OS === 'web'}
-        contentContainerStyle={styles.platforms}
-      >
-        {cast.map((name, index) => (
-          <Pressable
-            key={name}
-            accessibilityRole="button"
-            onPress={() =>
-              setMessage(
-                `${name} · personaje de ${item.title}. Esta ficha breve es una vista previa; imagen ilustrativa del anime.`,
-              )
-            }
-            style={styles.character}
-          >
-            <Image source={item.image} style={styles.characterImage} />
-            <Text style={styles.body}>{name}</Text>
-            <Text style={styles.meta}>{index === 0 ? 'Protagonista' : 'Personaje principal'}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
       <Section title="Actores de voz" />
       <View style={styles.infoCard}>
-        {cast.map((name, index) => (
+        {cast.map(({ actor, character }) => (
           <Pressable
-            key={name}
+            key={character}
             accessibilityRole="button"
             onPress={() =>
               setMessage(
-                `Ficha de voz para ${name}. El elenco definitivo se reemplazará al conectar los datos del anime.`,
+                `${actor} interpreta a ${character} en la versión japonesa de ${item.title}.`,
               )
             }
             style={styles.voice}
           >
             <Ionicons name="mic-outline" size={20} color={theme.colors.primarySoft} />
             <View style={styles.flex}>
-              <Text style={styles.body}>Actor de voz {index + 1} · ejemplo</Text>
-              <Text style={styles.meta}>{name} · Japonés</Text>
+              <Text style={styles.body}>{character}</Text>
+              <Text style={styles.meta}>{actor} · Japonés</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
           </Pressable>
@@ -360,7 +283,7 @@ export default function DetalleAnime() {
                   }
                 />
                 <Text style={styles.meta}>{author.name}</Text>
-                <Text style={styles.friendScore}>★ {((review.rating ?? 0) / 2).toFixed(1)}</Text>
+                <Text style={styles.friendScore}>★ {(review.rating ?? 0).toFixed(1)}</Text>
               </View>
             );
           })}
@@ -393,7 +316,7 @@ export default function DetalleAnime() {
                   <Text style={styles.username}>{author.name}</Text>
                   <Text style={styles.meta}>{review.time}</Text>
                 </View>
-                <Text style={styles.friendScore}>★ {((review.rating ?? 0) / 2).toFixed(1)}</Text>
+                <Text style={styles.friendScore}>★ {(review.rating ?? 0).toFixed(1)}</Text>
               </View>
               <Text numberOfLines={3} style={styles.synopsis}>
                 {review.spoiler ? 'Esta review contiene spoilers. Tocá para verla.' : review.text}
@@ -409,9 +332,7 @@ export default function DetalleAnime() {
           title="La primera review puede ser tuya"
           text="Contanos qué te pareció este anime."
           action="Escribir review"
-          onPress={() =>
-            router.push({ pathname: '/review/escribir', params: { animeId: item.id } })
-          }
+          onPress={writeReview}
         />
       )}
       <Section title="Noticias y novedades" />
@@ -438,26 +359,6 @@ export default function DetalleAnime() {
           router.push({ pathname: '/mapa', params: { metric: 'anime', animeId: item.id } })
         }
       />
-      <Dialog
-        visible={listPicker}
-        title="Agregar a una lista"
-        text="Elegí una de tus colecciones de ejemplo."
-        onClose={() => setListPicker(false)}
-      >
-        {lists
-          .filter((list) => list.userId === currentUser.id)
-          .map((list) => (
-            <Action key={list.id} label={list.title} onPress={() => addToList(list.id)} />
-          ))}
-        <Action
-          label="Crear una lista"
-          icon="add"
-          onPress={() => {
-            setListPicker(false);
-            router.push({ pathname: '/lista/editar', params: { animeId: item.id } });
-          }}
-        />
-      </Dialog>
       <Dialog
         visible={message.length > 0}
         title="Vista previa"
@@ -501,10 +402,6 @@ const styles = StyleSheet.create({
   barTrack: { flex: 1, height: 4, backgroundColor: theme.colors.surfaceLight, borderRadius: 3 },
   bar: { height: '100%', backgroundColor: theme.colors.primary, borderRadius: 3 },
   barCount: { width: 34, color: theme.colors.textSecondary, fontSize: 8, textAlign: 'right' },
-  scoreHeader: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  scoreRow: { gap: 10 },
-  scoreButton: { alignItems: 'center', gap: 3, minWidth: 24, paddingVertical: 5 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   platforms: { gap: 10 },
   platform: {
     backgroundColor: theme.colors.surface,
@@ -533,8 +430,6 @@ const styles = StyleSheet.create({
   synopsis: { color: theme.colors.textSecondary, fontSize: 12, lineHeight: 18 },
   infoLine: { gap: 2 },
   infoValue: { color: theme.colors.text, fontSize: 11, lineHeight: 16 },
-  character: { width: 108, gap: 6 },
-  characterImage: { width: 108, height: 86, borderRadius: 10 },
   body: { color: theme.colors.text, fontSize: 12, lineHeight: 18 },
   voice: { flexDirection: 'row', gap: 10, alignItems: 'center', paddingVertical: 6 },
   flex: { flex: 1, minWidth: 0 },
