@@ -6,7 +6,7 @@ Revisión del 20/09/2026: se simplificó el código y se unificaron componentes 
 
 Adaptación a computadora: todas las pantallas comparten una columna centrada de hasta 480 px, con barra inferior y diálogos ajustados. En ventanas angostas se usa el ancho disponible. La navegación y los formularios se pueden usar con mouse y teclado; los carruseles muestran su barra de desplazamiento en web.
 
-Este archivo pertenece a frontend/. Los archivos de app/, src/ y assets/ son relativos a esa carpeta. La carpeta hermana backend/ está vacía y reservada para una etapa posterior. Para retomar, leer [INICIO_FRONTEND.md](INICIO_FRONTEND.md); los comandos de ejecución están en [README.md](README.md).
+Este archivo pertenece a ani-ren-app/. Los archivos de app/, src/ y assets/ son relativos a esa carpeta. La carpeta hermana backend/ está vacía y reservada para una etapa posterior. Para retomar, leer [INICIO_FRONTEND.md](INICIO_FRONTEND.md); los comandos de ejecución están en [README.md](README.md).
 
 Este documento toma como referencia los seis mockups entregados, la guía de programación de los TPs y el boceto inicial de una aplicación de anime con reviews, colecciones, comunidad, Aura y estadísticas mundiales. El usuario confirmó incorporar todas las pantallas, incluidas las complementarias y las extensiones de Perfil.
 
@@ -14,7 +14,7 @@ La etapa actual comprende interfaz, navegación y estados visuales con datos de 
 
 ## Inventario completo
 
-El mapa comprende 24 pantallas navegables y una vista de apertura. Las rutas de esta tabla corresponden a los archivos TSX implementados dentro de frontend/.
+El mapa comprende 24 pantallas navegables y una vista de apertura. Las rutas de esta tabla corresponden a los archivos TSX implementados dentro de ani-ren-app/.
 
 | N.º | Vista | Archivo implementado |
 | --- | --- | --- |
@@ -544,6 +544,6 @@ Orden de construcción seguido:
 
 Todas las vistas están en el alcance visual. El orden permite revisar identidad y navegación en grupos manejables, conservando una pantalla importante por archivo y funciones simples.
 
-Verificación inicial: TypeScript, lint, versiones compatibles con Expo y exportación Android/iOS/web. En navegador se comprobaron las 24 rutas a 320, 390 y 430 px, controles Volver, estados vacíos y seleccionados, IDs inválidos y validaciones de formularios. Las capturas y resultados están en frontend/artifacts/. Queda revisar teclado, Safe Area y apertura en un teléfono físico; generar bundles no sustituye esa revisión.
+Verificación inicial: TypeScript, lint, versiones compatibles con Expo y exportación Android/iOS/web. En navegador se comprobaron las 24 rutas a 320, 390 y 430 px, controles Volver, estados vacíos y seleccionados, IDs inválidos y validaciones de formularios. Las capturas y resultados están en ani-ren-app/artifacts/. Queda revisar teclado, Safe Area y apertura en un teléfono físico; generar bundles no sustituye esa revisión.
 
 El trabajo actual implementa la interfaz y sus respuestas locales. Este mapa no incorpora autenticación, backend, APIs, persistencia, chat ni notificaciones reales. Las fórmulas de ranking, los umbrales de rangos, los criterios de IA, la disponibilidad de plataformas y las métricas por país siguen siendo ejemplos. Las colecciones y relaciones iniciales se comparten desde src/mock.ts para conservar coherencia sin sincronizar las modificaciones locales.

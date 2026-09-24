@@ -7,11 +7,11 @@ Prototipo visual con Expo SDK 57, React Native y TypeScript. Incluye las 24 pant
 Las dependencias ya están instaladas en esta computadora. Desde la raíz Ani-ren:
 
 ```powershell
-cd frontend
+cd ani-ren-app
 npm start
 ```
 
-Abrir el QR en Expo Go compatible con SDK 57. Pulsar `w` para el navegador. También se puede ejecutar `npm run web`. Si se copia el proyecto a otra computadora, ejecutar primero `npm ci` dentro de `frontend/`. iOS en simulador requiere macOS; desde Windows se puede usar un iPhone físico con Expo Go.
+Abrir el QR en Expo Go compatible con SDK 57. Pulsar `w` para el navegador. También se puede ejecutar `npm run web`. Si se copia el proyecto a otra computadora, ejecutar primero `npm ci` dentro de `ani-ren-app/`. iOS en simulador requiere macOS; desde Windows se puede usar un iPhone físico con Expo Go.
 
 En computadora la app queda centrada en una columna de hasta 480 px, con espacio a los costados. En ventanas más angostas ocupa el ancho disponible. La barra inferior permanece dentro de la columna; los diálogos también tienen un ancho limitado. Los carruseles muestran barras de desplazamiento en web para poder recorrerlos con mouse.
 

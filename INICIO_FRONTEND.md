@@ -6,7 +6,7 @@ El 17 de septiembre de 2026 se inició la implementación autorizada por el usua
 
 El 20 de septiembre se revisó y simplificó el frontend: cards compartidas, una sola fuente para misiones/rangos/métricas, menos estados en formularios, eliminación de estilos sin uso y formato legible. Se mantienen 24 pantallas, dos layouts y solo cuatro archivos compartidos; no agregar capas ni fragmentar archivos sin una repetición concreta que lo justifique.
 
-- frontend/ contiene el proyecto Expo, esta guía, [PANTALLAS.md](PANTALLAS.md) y [README.md](README.md) con ejecución y límites del prototipo.
+- ani-ren-app/ contiene el proyecto Expo, esta guía, [PANTALLAS.md](PANTALLAS.md) y [README.md](README.md) con ejecución y límites del prototipo.
 - backend/ existe como carpeta hermana y está vacía.
 - Expo SDK 57, React Native, TypeScript y Expo Router están configurados; las dependencias están instaladas y tienen package-lock.json.
 - Las cinco tabs y las 19 pantallas secundarias usan IDs estables, mocks compartidos y estados locales. Los puntos para la API y el dispositivo tienen comentarios buscables.
@@ -16,7 +16,7 @@ Estructura actual:
 
 ```text
 Ani-ren/
-  frontend/
+  ani-ren-app/
     app/
       (tabs)/
       anime/
@@ -195,10 +195,10 @@ Los contratos de respuesta deben acordarse a partir de los datos que necesitan l
 
 ## Preparación inicial del proyecto — completada
 
-1. Inspeccionar frontend/, leer ambos documentos y comprobar si el usuario agregó archivos o cambios.
+1. Inspeccionar ani-ren-app/, leer ambos documentos y comprobar si el usuario agregó archivos o cambios.
 2. Revisar los mockups y los ejemplos de clase necesarios para el bloque a implementar.
 3. Comprobar Node.js, npm y documentación vigente de Expo. Elegir una plantilla con TypeScript y Expo Router; usar las versiones compatibles de esa base.
-4. Inicializar el proyecto dentro de frontend/, preservando estos documentos. Como la carpeta ya contiene archivos, si el generador exige una carpeta vacía, crear la plantilla en una carpeta temporal verificada dentro de Ani-ren y trasladar sus archivos sin sobrescribir la documentación. No inicializar Expo en la raíz que también contiene backend/.
+4. Inicializar el proyecto dentro de ani-ren-app/, preservando estos documentos. Como la carpeta ya contiene archivos, si el generador exige una carpeta vacía, crear la plantilla en una carpeta temporal verificada dentro de Ani-ren y trasladar sus archivos sin sobrescribir la documentación. No inicializar Expo en la raíz que también contiene backend/.
 5. Revisar package.json, rutas y dependencias antes de instalar extras. Si la plantilla usa src/app en lugar de app, elegir una sola ubicación de rutas y actualizar el inventario del plan para reflejarla.
 6. Configurar src/theme.ts, el Stack principal y las cinco tabs con Safe Area.
 7. Validar en teléfono o emulador y continuar con los bloques siguientes.
@@ -235,10 +235,10 @@ Usar placeholders o imágenes temporales cuando falten assets independientes. An
 - TypeScript, lint si está configurado e imports sin uso.
 - Revisión visual contra los mockups en teléfono o emulador; los checks de código no sustituyen esa revisión.
 
-Cuando exista el proyecto, arrancar desde frontend/:
+Cuando exista el proyecto, arrancar desde ani-ren-app/:
 
 ```powershell
-cd C:\Users\flach\Desktop\Ani-ren\frontend
+cd C:\Users\flach\Documents\GitHub\ani-ren-app
 npx expo start
 ```
 
@@ -248,8 +248,8 @@ Al entregar un bloque, resumir cambios, dependencias agregadas, comprobaciones r
 
 ```text
 Retomá el frontend visual de Ani-ren ya implementado.
-Leé frontend/INICIO_FRONTEND.md y frontend/PANTALLAS.md, y revisá los mockups indicados.
-Trabajá dentro de frontend/ con Expo, React Native, TypeScript y Expo Router.
+Leé ani-ren-app/INICIO_FRONTEND.md y ani-ren-app/PANTALLAS.md, y revisá los mockups indicados.
+Trabajá dentro de ani-ren-app/ con Expo, React Native, TypeScript y Expo Router.
 Ejecutá el proyecto y revisá las 24 pantallas con los mockups en un teléfono,
 prestando atención al teclado, Safe Area, scroll y apertura estática.
 Corregí los detalles visuales y de interacción que encontremos.
