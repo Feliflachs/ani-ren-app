@@ -2,14 +2,14 @@
 
 ## Estado de entrega
 
-El 17 de septiembre de 2026 se inició la implementación autorizada por el usuario. Ya existe un frontend Expo ejecutable con las 24 pantallas del mapa y una apertura estática configurada.
+El 17 de septiembre de 2026 se inició la implementación autorizada por el usuario. Ya existe un frontend Expo ejecutable con 21 pantallas navegables y una apertura estática configurada.
 
-El 20 de septiembre se revisó y simplificó el frontend: cards compartidas, una sola fuente para misiones/rangos/métricas, menos estados en formularios, eliminación de estilos sin uso y formato legible. Se mantienen 24 pantallas, dos layouts y solo cuatro archivos compartidos; no agregar capas ni fragmentar archivos sin una repetición concreta que lo justifique.
+El frontend fue revisado y simplificado: cards compartidas, una sola fuente para misiones/rangos/métricas, menos estados en formularios y eliminación de rutas y estilos sin uso.
 
 - ani-ren-app/ contiene el proyecto Expo, esta guía, [PANTALLAS.md](PANTALLAS.md) y [README.md](README.md) con ejecución y límites del prototipo.
 - backend/ existe como carpeta hermana y está vacía.
 - Expo SDK 57, React Native, TypeScript y Expo Router están configurados; las dependencias están instaladas y tienen package-lock.json.
-- Las cinco tabs y las 19 pantallas secundarias usan IDs estables, mocks compartidos y estados locales. Los puntos para la API y el dispositivo tienen comentarios buscables.
+- Las cinco tabs y las pantallas secundarias usan IDs estables, mocks compartidos y estado común para actividad y seguimientos. Los puntos para la API y el dispositivo tienen comentarios buscables.
 - TypeScript, lint, compatibilidad de dependencias y exportación Android/iOS/web fueron comprobados. Se revisaron las rutas en navegador entre 320 y 430 px; falta la revisión nativa en teléfono del teclado, Safe Area y apertura.
 
 Estructura actual:
@@ -43,9 +43,9 @@ Ani-ren/
 
 ## Alcance acordado
 
-Crear la parte visual de Ani-ren con Expo, React Native, TypeScript y Expo Router. El mapa aprobado comprende 24 pantallas navegables y una apertura estática; sus contenidos y conexiones están en PANTALLAS.md.
+Crear la parte visual de Ani-ren con Expo, React Native, TypeScript y Expo Router. El estado actual comprende 21 pantallas navegables y una apertura estática.
 
-La barra inferior tiene exactamente cinco opciones, siempre en este orden: Inicio, Explorar, Social, Aura y Perfil. Las pantallas secundarias se abren sobre esa navegación y permiten volver al origen. Detalle de anime no es una sexta tab.
+La barra inferior tiene exactamente cinco opciones, siempre en este orden: Inicio, Explorar, Crear, Aura y Perfil. Las pantallas secundarias se abren sobre esa navegación y permiten volver al origen. Detalle de anime no es una sexta tab.
 
 Usuarios, anime, reviews, publicaciones, listas, amigos, estadísticas, misiones, decoradores y países utilizan datos de ejemplo. Las acciones muestran respuestas locales y las confirmaciones simuladas se identifican como tales.
 
@@ -161,23 +161,21 @@ Puntos de integración que deben quedar marcados cuando se construya cada funci�
 | --- | --- | --- |
 | Consultar anime, personajes, voces y puntuaciones | Ficha, Inicio y tops | Obtener datos y conteos reales por id |
 | Buscar anime, reviews, usuarios y listas | Resultados de búsqueda | Consultar resultados con texto y filtros |
-| Consultar publicaciones y reviews | Social y detalle de review | Cargar feed, contenido y comentarios |
+| Reconocer anime desde una imagen | Explorar | Obtener una foto de cámara o galería y consultar un servicio de reconocimiento |
+| Consultar publicaciones y reviews | Inicio y detalle de review | Cargar feed, contenido y comentarios |
 | Publicar o editar una review | Escribir o editar review | Guardar puntuación, texto, fecha y spoilers |
-| Dar like o comentar | Detalle de review y Social | Guardar la interacción y recuperar el resultado |
+| Dar like o comentar | Detalle de review e Inicio | Guardar la interacción y recuperar el resultado |
 | Cambiar watchlist, visto o favorito | Ficha y biblioteca | Guardar pertenencia a la colección del usuario |
 | Crear o editar listas | Formulario y detalle de lista | Guardar datos, animeIds y orden |
 | Consultar o editar perfil | Perfiles y Editar perfil | Recuperar o guardar información y favoritos |
 | Subir avatar | Editar perfil | Enviar la imagen seleccionada al servidor |
-| Seguir o gestionar amistad | Comunidad y perfiles | Guardar relaciones y solicitudes |
+| Seguir usuarios | Inicio, Comunidad y perfiles | Guardar seguimientos; la amistad se deriva cuando son mutuos |
 | Consultar historial y estadísticas | Perfil y Aura | Recuperar actividad y conteos reales |
 | Consultar misiones, rangos y decoradores | Aura y sus pantallas | Recuperar progreso y elementos desbloqueados |
 | Aplicar un decorador | Personalización Aura | Guardar la selección validada |
 | Consultar ranking | Ranking de usuarios | Obtener posiciones por cantidad vista |
-| Analizar gustos con IA | Tu perfil anime | Sustituir el ejemplo por un resultado del backend |
 | Consultar métricas y top 5 por país | Mapa y Detalle de país | Recuperar valores según métrica y anime |
 | Consultar plataformas y novedades | Ficha de anime | Obtener información actualizada |
-| Guardar preferencias de perfil | Ajustes | Guardar las opciones que requieran persistencia remota |
-| Solicitar un anime | Formulario de solicitud | Enviar solicitud y mostrar la respuesta real |
 
 Los filtros locales, textos controlados, abrir o cerrar modales, navegación, estilos y cálculos de presentación son lógica de interfaz. No marcar cada una de esas funciones con TODO BACKEND.
 
@@ -216,11 +214,11 @@ Todo el mapa sigue dentro del alcance. El orden organiza el trabajo y permite re
 
 1. Base: tema, Stack y cinco tabs; completar Inicio como referencia visual común.
 2. Primer recorrido: búsqueda, ficha de anime, escribir review, biblioteca y volver al origen.
-3. Social y Perfil completos; lectura de reviews, perfiles ajenos y amigos/conexiones.
+3. Inicio social y Perfil completos; lectura de reviews, perfiles ajenos y conexiones.
 4. Tops de anime, detalle de lista y crear o editar lista.
-5. Aura, misiones y logros, rangos y personalización, ranking y ejemplo de análisis.
+5. Aura, misiones y logros, rangos, personalización y ranking.
 6. Mapa mundial y detalle de país con métricas y datos simulados.
-7. Editar perfil, ajustes, solicitud de anime y apertura estática.
+7. Editar perfil y apertura estática.
 
 Usar placeholders o imágenes temporales cuando falten assets independientes. Anotar su procedencia y dejar su reemplazo sencillo. No cambiar la paleta para compensar imágenes faltantes.
 
@@ -250,7 +248,7 @@ Al entregar un bloque, resumir cambios, dependencias agregadas, comprobaciones r
 Retomá el frontend visual de Ani-ren ya implementado.
 Leé ani-ren-app/INICIO_FRONTEND.md y ani-ren-app/PANTALLAS.md, y revisá los mockups indicados.
 Trabajá dentro de ani-ren-app/ con Expo, React Native, TypeScript y Expo Router.
-Ejecutá el proyecto y revisá las 24 pantallas con los mockups en un teléfono,
+Ejecutá el proyecto y revisá las 21 pantallas con los mockups en un teléfono,
 prestando atención al teclado, Safe Area, scroll y apertura estática.
 Corregí los detalles visuales y de interacción que encontremos.
 Mantené el estilo simple de los TPs, los datos mock y los comentarios TODO BACKEND

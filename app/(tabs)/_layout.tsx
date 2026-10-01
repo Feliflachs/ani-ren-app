@@ -2,6 +2,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../src/theme';
+import { Image } from 'react-native';
+import { currentUser } from '../../src/mock';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -20,7 +22,9 @@ export default function TabLayout() {
         },
         tabBarLabelStyle: { fontSize: 11, lineHeight: 14 },
         tabBarLabelPosition: 'below-icon',
-        sceneStyle: { backgroundColor: theme.colors.background },
+        sceneStyle: {
+          backgroundColor: theme.colors.background,
+        },
       }}
     >
       <Tabs.Screen
@@ -42,11 +46,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="social"
+        name="crear"
         options={{
-          title: 'Social',
+          title: 'Crear',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people-outline" size={size} color={color} />
+            <Ionicons name="add" size={size} color={color} />
           ),
         }}
       />
@@ -55,7 +59,7 @@ export default function TabLayout() {
         options={{
           title: 'Aura',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="sparkles-outline" size={size} color={color} />
+            <Ionicons name="flame-outline" size={size} color={color} />
           ),
         }}
       />
@@ -63,8 +67,16 @@ export default function TabLayout() {
         name="perfil"
         options={{
           title: 'Perfil',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+          tabBarIcon: ({ focused, size }) => (
+            <Image
+              source={currentUser.image}
+              style={{
+                width: size + 2,
+                height: size + 2,
+                borderRadius: (size + 2) / 2,
+                opacity: focused ? 1 : 0.65,
+              }}
+            />
           ),
         }}
       />

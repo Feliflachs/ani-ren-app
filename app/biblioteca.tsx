@@ -71,7 +71,7 @@ export default function BibliotecaScreen() {
       subtitle="Las historias que viste, guardaste y querés recordar."
       back
     >
-      <Chips options={options} value={tab} onChange={setTab} />
+      <Chips options={options} value={tab} onChange={setTab} variant="underline" />
       <SearchBar
         value={query}
         onChangeText={setQuery}

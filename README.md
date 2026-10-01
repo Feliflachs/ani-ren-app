@@ -1,6 +1,6 @@
 # Ani-ren — Frontend
 
-Prototipo visual con Expo SDK 57, React Native y TypeScript. Incluye las 24 pantallas de [PANTALLAS.md](PANTALLAS.md), cinco tabs y una apertura estática. La carpeta hermana `backend/` sigue vacía.
+Prototipo visual con Expo SDK 57, React Native y TypeScript. Incluye 21 pantallas navegables, cinco tabs y una apertura estática. La carpeta hermana `backend/` sigue vacía.
 
 ## Ejecutar
 
@@ -18,7 +18,7 @@ En computadora la app queda centrada en una columna de hasta 480 px, con espacio
 ## Estructura
 
 - `app/_layout.tsx`: Stack, Safe Area, carga de iconos y apertura.
-- `app/(tabs)/`: Inicio, Explorar, Social, Aura y Perfil, en ese orden.
+- `app/(tabs)/`: Inicio, Explorar, Crear, Aura y Perfil, en ese orden.
 - El resto de `app/`: pantallas secundarias y formularios, con vuelta al origen.
 - `src/theme.ts`: paleta común tomada de los mockups.
 - `src/components.tsx`: controles y cards que se repiten.
@@ -28,7 +28,7 @@ En computadora la app queda centrada en una columna de hasta 480 px, con espacio
 
 Cada pantalla contiene su JSX, estado local, funciones y `StyleSheet.create`. La navegación usa identificadores y la puntuación base es sobre 10; la ficha convierte a 5 estrellas.
 
-Son 30 archivos de código propios: 24 pantallas, dos layouts y cuatro archivos compartidos. Expo Router obtiene las rutas de los archivos, por eso se conserva uno por pantalla. `node_modules/`, `.expo/`, `dist/` y `artifacts/` son dependencias o resultados generados; no forman parte del código que hay que mantener.
+Expo Router obtiene las rutas de los archivos, por eso se conserva uno por pantalla. `node_modules/`, `.expo/`, `dist/` y `artifacts/` son dependencias o resultados generados; no forman parte del código que hay que mantener.
 
 Las cards de reviews y listas se reutilizan desde `components.tsx`. Misiones, rangos y métricas del mapa se definen una sola vez en `mock.ts`. El mapa prepara su geometría estática fuera del componente y dibuja siete trazados SVG, conservando las siluetas y los seis países seleccionables.
 
@@ -36,9 +36,9 @@ El ancho máximo está definido en `theme.layout.maxWidth` y se aplica al Stack 
 
 ## Qué se puede recorrer
 
-Búsqueda de anime, reviews, usuarios y listas; ficha con puntuación, sinopsis, información, personajes, voces de ejemplo, plataformas, amigos y reviews; biblioteca; crear/editar reviews y listas; feed y comentarios; perfiles, edición y comunidad; Aura con misiones, rangos, ranking y análisis predeterminado; mapa y detalle de país; ajustes y solicitud de anime.
+Búsqueda de anime, reviews, usuarios y listas; reconocimiento visual simulado desde cámara o galería; ficha con puntuación, sinopsis, información, personajes, voces de ejemplo, plataformas, amigos y reviews; biblioteca; creación y edición de reviews y listas; feed y comentarios; perfiles, edición y comunidad; Aura con misiones, rangos y ranking; mapa y detalle de país.
 
-Likes, colecciones, seguimiento, solicitudes, comentarios, filtros y previews responden en la pantalla. Los formularios validan campos y muestran confirmaciones identificadas como simulaciones. Los cambios no se sincronizan entre pantallas ni persisten al salir; no hay cuentas, base de datos ni API.
+Likes, colecciones, seguimiento, comentarios, filtros y previews responden en la pantalla. Las amistades se derivan del seguimiento mutuo. Los formularios validan campos y muestran confirmaciones identificadas como simulaciones. El estado compartido sincroniza varias interacciones durante la sesión, pero no persiste al salir; no hay cuentas, base de datos ni API.
 
 La cámara y la galería muestran un selector simulado. La IA presenta tres ejemplos fijos. Las cifras, umbrales, fechas de temporada, actores de voz y disponibilidad de plataformas son datos ilustrativos. Los enlaces de plataformas abren sus sitios oficiales para comprobar disponibilidad.
 
@@ -56,4 +56,4 @@ npx expo export --platform all
 
 `npm run format` ordena automáticamente el código de `app/` y `src/`. Prettier está configurado en `package.json`, sin otro archivo de configuración.
 
-La revisión inicial incluye estados vacíos, IDs inválidos y recorridos de interacción. La revisión de escritorio cubre las 24 pantallas a 320, 390, 480, 768, 1366 y 1920 px, además de navegación, scroll con mouse, búsqueda con teclado, formularios, diálogos y redimensionado sin recargar. Las capturas y resultados están en `artifacts/`, ignorada por Git. La exportación comprueba los bundles Android/iOS/web; queda la revisión en un teléfono físico del teclado, Safe Area y apertura nativa. Expo Go no reproduce exactamente la apertura de una app compilada.
+La revisión inicial incluye estados vacíos, IDs inválidos y recorridos de interacción. La revisión de escritorio cubre las rutas principales a distintos anchos, además de navegación, scroll con mouse, búsqueda con teclado, formularios, diálogos y redimensionado sin recargar. Las capturas y resultados están en `artifacts/`, ignorada por Git. La exportación comprueba los bundles Android/iOS/web; queda la revisión en un teléfono físico del teclado, Safe Area y apertura nativa. Expo Go no reproduce exactamente la apertura de una app compilada.

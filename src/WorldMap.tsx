@@ -99,7 +99,21 @@ export function WorldMap({
             <View
               style={[styles.dot, value === 0 && styles.dotEmpty, selected && styles.dotActive]}
             />
-            {selected && <Text style={styles.countryLabel}>{country.name}</Text>}
+            {selected && (
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.countryLabel,
+                  country.id === 'islandia'
+                    ? styles.countryLabelBelow
+                    : country.id === 'argentina'
+                      ? styles.countryLabelLeft
+                      : styles.countryLabelAbove,
+                ]}
+              >
+                {country.name}
+              </Text>
+            )}
           </Pressable>
         );
       })}
@@ -150,13 +164,29 @@ const styles = StyleSheet.create({
   dotEmpty: { backgroundColor: theme.colors.textSecondary },
   countryLabel: {
     position: 'absolute',
-    bottom: 27,
+    width: 110,
     color: theme.colors.text,
     fontSize: 10,
+    textAlign: 'center',
     backgroundColor: theme.colors.surface,
     paddingHorizontal: 5,
     paddingVertical: 3,
     borderRadius: 5,
+  },
+  countryLabelAbove: {
+    bottom: 27,
+    left: '50%',
+    transform: [{ translateX: -55 }],
+  },
+  countryLabelBelow: {
+    top: 27,
+    left: '50%',
+    transform: [{ translateX: -55 }],
+  },
+  countryLabelLeft: {
+    right: 30,
+    top: '50%',
+    transform: [{ translateY: -12 }],
   },
   caption: {
     position: 'absolute',

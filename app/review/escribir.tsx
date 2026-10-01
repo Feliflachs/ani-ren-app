@@ -1,13 +1,11 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState, type ComponentProps } from 'react';
-import { Image, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { useState } from 'react';
+import { Image, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { Action, Dialog, EmptyState, Screen, StarRating } from '../../src/components';
 import { useAppState } from '../../src/AppState';
-import { currentUser, findAnime, getParam, lists, reviews } from '../../src/mock';
+import { currentUser, findAnime, getParam, reviews } from '../../src/mock';
 import { theme } from '../../src/theme';
 
-type IconName = ComponentProps<typeof Ionicons>['name'];
 type ReviewDialog = 'confirmed' | 'discard' | null;
 
 const formatDate = (date: Date) =>
@@ -25,37 +23,6 @@ const isValidSeenDate = (value: string, today: Date) => {
   );
 };
 
-function ActivityButton({
-  label,
-  icon,
-  active,
-  onPress,
-  activeColor = theme.colors.primarySoft,
-}: {
-  label: string;
-  icon: IconName;
-  active: boolean;
-  onPress: () => void;
-  activeColor?: string;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={[styles.activityButton, active && { borderColor: activeColor }]}
-    >
-      <Ionicons
-        name={active ? (icon.replace('-outline', '') as IconName) : icon}
-        size={31}
-        color={active ? activeColor : theme.colors.textSecondary}
-      />
-      <Text style={[styles.activityLabel, active && { color: activeColor }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 export default function EscribirReviewScreen() {
   const params = useLocalSearchParams();
   const reviewId = getParam(params.id) ?? getParam(params.reviewId);
@@ -65,16 +32,18 @@ export default function EscribirReviewScreen() {
   const saved = getActivity(item?.id ?? '');
   const today = new Date();
 
-  const [watched, setWatched] = useState(saved.watched);
-  const [liked, setLiked] = useState(saved.liked);
-  const [watchlist, setWatchlist] = useState(saved.watchlist);
+  const watched = saved.watched;
+  const liked = saved.liked;
+  const watchlist = saved.watchlist;
   const [rating, setRating] = useState<number | undefined>(existing?.rating ?? saved.rating);
   const [reviewOpen, setReviewOpen] = useState(Boolean(existing || saved.reviewText));
+  const [title, setTitle] = useState(
+    existing?.title ?? saved.reviewTitle ?? '',
+  );
   const [text, setText] = useState(existing?.text ?? saved.reviewText ?? '');
   const [date, setDate] = useState(saved.date ?? formatDate(today));
   const [spoiler, setSpoiler] = useState(existing?.spoiler ?? saved.spoiler);
-  const [listIds, setListIds] = useState(saved.listIds);
-  const [listPicker, setListPicker] = useState(false);
+  const listIds = saved.listIds;
   const [dialog, setDialog] = useState<ReviewDialog>(null);
   const [touched, setTouched] = useState(false);
 
@@ -83,18 +52,10 @@ export default function EscribirReviewScreen() {
   const validText = text.trim().length === 0 || text.trim().length >= 10;
   const hasActivity = createsLog || liked || watchlist || listIds.length > 0;
   const valid = hasActivity && validDate && validText;
-  const ownLists = lists.filter((list) => list.userId === currentUser.id);
-
   const goBack = () =>
     router.canGoBack()
       ? router.back()
       : router.replace({ pathname: '/anime/[id]', params: { id: item?.id ?? 'frieren' } });
-
-  const toggleList = (listId: string) => {
-    setListIds((current) =>
-      current.includes(listId) ? current.filter((id) => id !== listId) : [...current, listId],
-    );
-  };
 
   const save = () => {
     setTouched(true);
@@ -106,10 +67,15 @@ export default function EscribirReviewScreen() {
       watchlist,
       rating,
       date: createsLog ? date : undefined,
+      reviewTitle:
+        reviewOpen && title.trim()
+          ? title.trim()
+          : undefined,
       reviewText: reviewOpen && text.trim() ? text.trim() : undefined,
       spoiler: reviewOpen && spoiler,
       listIds,
       logged: reviewOpen,
+
     });
     setDialog('confirmed');
   };
@@ -158,29 +124,6 @@ export default function EscribirReviewScreen() {
       </View>
 
       <View style={styles.activityPanel}>
-        <View style={styles.activityRow}>
-          <ActivityButton
-            label="Visto"
-            icon="eye-outline"
-            active={watched}
-            onPress={() => setWatched((value) => !value)}
-          />
-          <ActivityButton
-            label="Me gusta"
-            icon="heart-outline"
-            active={liked}
-            activeColor={theme.colors.accentSoft}
-            onPress={() => setLiked((value) => !value)}
-          />
-          <ActivityButton
-            label="Watchlist"
-            icon="bookmark-outline"
-            active={watchlist}
-            onPress={() => setWatchlist((value) => !value)}
-          />
-        </View>
-
-        <View style={styles.divider} />
         <Text style={styles.centerLabel}>Tu puntuación</Text>
         <StarRating value={rating} onChange={setRating} size={38} />
         <Text style={styles.scoreText}>
@@ -197,6 +140,20 @@ export default function EscribirReviewScreen() {
 
         {reviewOpen && (
           <View style={styles.editor}>
+            <Text style={styles.label}>Título</Text>
+            <TextInput
+              accessibilityLabel="Título de la review"
+              value={title}
+              onChangeText={setTitle}
+              maxLength={100}
+              placeholder="Poné un título a tu review"
+              placeholderTextColor={theme.colors.textSecondary}
+              style={styles.input}
+            />
+            <Text style={styles.meta}>
+              {title.length} / 100 · El título es opcional.
+            </Text>
+            <Text style={styles.label}>Review</Text>
             <TextInput
               accessibilityLabel="Texto opcional de tu review"
               value={text}
@@ -248,40 +205,10 @@ export default function EscribirReviewScreen() {
           </View>
         )}
 
-        <Action
-          label={listIds.length ? `Agregar a lista · ${listIds.length}` : 'Agregar a lista'}
-          icon="albums-outline"
-          onPress={() => setListPicker(true)}
-        />
       </View>
 
       <Action label="Listo" icon="checkmark" primary disabled={!valid} onPress={save} />
       <Action label="Cancelar" onPress={() => setDialog('discard')} />
-
-      <Dialog
-        visible={listPicker}
-        title="Agregar a lista"
-        text="Podés elegir más de una."
-        onClose={() => setListPicker(false)}
-      >
-        {ownLists.map((list) => (
-          <Action
-            key={list.id}
-            label={list.title}
-            icon={listIds.includes(list.id) ? 'checkmark-circle' : 'ellipse-outline'}
-            active={listIds.includes(list.id)}
-            onPress={() => toggleList(list.id)}
-          />
-        ))}
-        <Action
-          label="Crear una lista"
-          icon="add-outline"
-          onPress={() => {
-            setListPicker(false);
-            router.push({ pathname: '/lista/editar', params: { animeId: item.id } });
-          }}
-        />
-      </Dialog>
 
       <Dialog
         visible={dialog === 'confirmed'}
@@ -328,17 +255,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: theme.colors.surface,
   },
-  activityRow: { flexDirection: 'row', alignItems: 'stretch' },
-  activityButton: {
-    flex: 1,
-    minHeight: 80,
-    gap: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  activityLabel: { color: theme.colors.textSecondary, fontSize: 11 },
   divider: { height: 1, backgroundColor: theme.colors.border },
   centerLabel: { color: theme.colors.textSecondary, fontSize: 12, textAlign: 'center' },
   scoreText: { color: theme.colors.primarySoft, fontSize: 12, textAlign: 'center' },

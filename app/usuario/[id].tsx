@@ -14,13 +14,14 @@ import {
   Screen,
   Section,
 } from '../../src/components';
+import { useAppState } from '../../src/AppState';
 import {
   currentFollowingIds,
-  currentFriendIds,
   currentLikedReviewIds,
   currentUser,
   findAnime,
   findUser,
+  followingByUser,
   getRankProgress,
   getParam,
   lists,
@@ -29,13 +30,10 @@ import {
 import { theme } from '../../src/theme';
 
 export default function UsuarioScreen() {
+  const { followingIds, toggleFollowing } = useAppState();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = getParam(params.id);
   const initiallyFollowing = currentFollowingIds.includes(id ?? '');
-  const [following, setFollowing] = useState(initiallyFollowing);
-  const [friendship, setFriendship] = useState(
-    currentFriendIds.includes(id ?? '') ? 'Amigos' : 'Agregar amigo',
-  );
   const [view, setView] = useState('Reviews');
   const [historyFilter, setHistoryFilter] = useState('Todo');
   const [width, setWidth] = useState(300);
@@ -48,6 +46,9 @@ export default function UsuarioScreen() {
       </Screen>
     );
   const isOwnProfile = user.id === currentUser.id;
+  const following = followingIds.includes(user.id);
+  const followsCurrentUser = (followingByUser[user.id] ?? []).includes(currentUser.id);
+  const isFriend = following && followsCurrentUser;
   const rankProgress = getRankProgress(user.watched);
   const userReviews = reviews.filter((item) => item.userId === user.id);
   const userLists = lists.filter((item) => item.userId === user.id);
@@ -57,17 +58,6 @@ export default function UsuarioScreen() {
   const showReviews = view === 'Likes' ? userLikes : userReviews;
   const connections = (tab: string) =>
     router.push({ pathname: '/comunidad', params: { id: user.id, tab } });
-  const toggleFollow = () => {
-    // TODO BACKEND [USUARIO-SEGUIR]: crear o quitar la relación currentUser.id → user.id y usar el estado confirmado.
-    setFollowing((previous) => !previous);
-  };
-  const changeFriendship = () => {
-    // TODO BACKEND [USUARIO-AMISTAD]: enviar o cancelar solicitud entre currentUser.id y user.id; si son amigos, permitir quitar la relación.
-    setFriendship((previous) =>
-      previous === 'Agregar amigo' ? 'Solicitud pendiente' : 'Agregar amigo',
-    );
-  };
-
   return (
     <Screen title={isOwnProfile ? 'Tu perfil público' : 'Perfil de usuario'} back>
       <View style={styles.identity}>
@@ -86,21 +76,13 @@ export default function UsuarioScreen() {
           <Action
             label={following ? 'Siguiendo' : 'Seguir'}
             active={following}
-            onPress={toggleFollow}
+            onPress={() => toggleFollowing(user.id)}
             icon={following ? 'checkmark-outline' : 'add-outline'}
-          />
-          <Action
-            label={friendship}
-            active={friendship !== 'Agregar amigo'}
-            onPress={changeFriendship}
-            icon="people-outline"
           />
         </View>
       )}
-      {!isOwnProfile && friendship === 'Solicitud pendiente' && (
-        <Text style={styles.notice}>
-          Solicitud simulada enviada. Tocá el botón para cancelarla.
-        </Text>
+      {!isOwnProfile && isFriend && (
+        <Text style={styles.notice}>Amigos · Se siguen mutuamente.</Text>
       )}
       <View style={styles.stats}>
         {[
@@ -248,12 +230,6 @@ export default function UsuarioScreen() {
           )}
         </>
       )}
-      <Action
-        label="Amigos y conexiones públicas"
-        icon="people-outline"
-        onPress={() => connections('Amigos')}
-      />
-      <Text style={styles.notice}>Relaciones y cambios locales de ejemplo.</Text>
     </Screen>
   );
 }

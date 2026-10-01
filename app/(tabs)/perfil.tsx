@@ -46,22 +46,18 @@ export default function PerfilScreen() {
       title="Perfil"
       avatar={false}
       actions={
-        <View style={styles.headerActions}>
-          <Pressable
-            onPress={() => setSharing(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Compartir perfil"
-          >
-            <Ionicons name="share-outline" size={22} color={theme.colors.textSecondary} />
-          </Pressable>
-          <Pressable
-            onPress={() => router.push('/ajustes')}
-            accessibilityRole="button"
-            accessibilityLabel="Abrir ajustes"
-          >
-            <Ionicons name="settings-outline" size={22} color={theme.colors.textSecondary} />
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={() => setSharing(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Compartir perfil"
+          hitSlop={10}
+        >
+          <Ionicons
+            name="share-outline"
+            size={22}
+            color={theme.colors.textSecondary}
+          />
+        </Pressable>
       }
     >
       <View style={styles.identity}>
@@ -70,15 +66,15 @@ export default function PerfilScreen() {
           <Text style={styles.name}>{currentUser.name}-kun</Text>
           <Text style={styles.handle}>@{currentUser.handle}</Text>
           <Text style={styles.bio}>{currentUser.bio}</Text>
-          <Pressable
-            onPress={() => router.push('/aura/rangos')}
-            accessibilityRole="button"
-            style={styles.badge}
-          >
-            <Ionicons name="sparkles-outline" size={11} color={theme.colors.primarySoft} />
-            <Text style={styles.badgeText}>Decorador de ejemplo: Novato-kun</Text>
-          </Pressable>
         </View>
+      </View>
+      <View style={styles.bottomActions}>
+        <Action
+          label="Editar perfil"
+          icon="create-outline"
+          onPress={() => router.push('/editar-perfil')}
+        />
+        <Action label="Amigos" icon="people-outline" onPress={() => openConnections('Amigos')} />
       </View>
       <View style={styles.stats}>
         {[
@@ -167,7 +163,7 @@ export default function PerfilScreen() {
         ))}
       </View>
       <Section title="Actividad reciente" action="Ver todo" onPress={() => setView('Historial')} />
-      <View style={styles.panel}>
+      <View style={styles.activityPanel}>
         <View style={styles.activity}>
           <Avatar size={27} />
           <Pressable
@@ -224,16 +220,8 @@ export default function PerfilScreen() {
         options={['Reviews', 'Listas', 'Historial', 'Likes']}
         value={view}
         onChange={setView}
+        variant="underline"
       />
-      {view === 'Reviews' && myReviews.length > 0 && (
-        <Action
-          label="Editar mi review"
-          icon="create-outline"
-          onPress={() =>
-            router.push({ pathname: '/review/escribir', params: { id: myReviews[0].id } })
-          }
-        />
-      )}
       {(view === 'Reviews' || view === 'Likes') && (
         <>
           {shownReviews.map((item) => (
@@ -243,13 +231,6 @@ export default function PerfilScreen() {
             <EmptyState
               title="Todavía no hay actividad"
               text="Tus reviews y likes aparecerán acá."
-            />
-          )}
-          {view === 'Reviews' && (
-            <Action
-              label="Escribir una review"
-              icon="create-outline"
-              onPress={() => router.push('/review/escribir')}
             />
           )}
         </>
@@ -306,14 +287,6 @@ export default function PerfilScreen() {
               ))}
         </>
       )}
-      <View style={styles.bottomActions}>
-        <Action
-          label="Editar perfil"
-          icon="create-outline"
-          onPress={() => router.push('/editar-perfil')}
-        />
-        <Action label="Amigos" icon="people-outline" onPress={() => openConnections('Amigos')} />
-      </View>
       <Dialog
         visible={sharing}
         title="Compartir perfil"
@@ -326,28 +299,17 @@ export default function PerfilScreen() {
 
 const styles = StyleSheet.create({
   activityLink: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 9 },
-  headerActions: { flexDirection: 'row', gap: 19 },
   identity: { flexDirection: 'row', gap: 13, alignItems: 'center' },
   identityText: { flex: 1, minWidth: 0, gap: 4 },
   name: { color: theme.colors.text, fontSize: 22, fontWeight: '700' },
   handle: { color: theme.colors.primarySoft, fontSize: 12, fontWeight: '600' },
   bio: { color: theme.colors.textSecondary, fontSize: 11, lineHeight: 17 },
-  badge: {
-    flexDirection: 'row',
-    alignSelf: 'flex-start',
-    alignItems: 'center',
-    gap: 4,
-    borderRadius: 12,
-    backgroundColor: theme.colors.surfaceLight,
-    padding: 5,
-  },
-  badgeText: { color: theme.colors.primarySoft, fontSize: 9 },
   stats: {
     flexDirection: 'row',
-    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: 11,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: 'transparent',
   },
   stat: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: 11 },
   statLabel: { color: theme.colors.primarySoft, fontSize: 10 },
@@ -411,4 +373,13 @@ const styles = StyleSheet.create({
   },
   rowTitle: { color: theme.colors.text, fontSize: 12, fontWeight: '600' },
   bottomActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  activityPanel: {
+    gap: 7,
+    paddingVertical: 8,
+    paddingHorizontal: 2,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: 'transparent',
+  },
 });
