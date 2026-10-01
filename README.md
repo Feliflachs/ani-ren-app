@@ -40,9 +40,9 @@ Búsqueda de anime, reviews, usuarios y listas; reconocimiento visual simulado d
 
 Likes, colecciones, seguimiento, comentarios, filtros y previews responden en la pantalla. Las amistades se derivan del seguimiento mutuo. Los formularios validan campos y muestran confirmaciones identificadas como simulaciones. El estado compartido sincroniza varias interacciones durante la sesión, pero no persiste al salir; no hay cuentas, base de datos ni API.
 
-La cámara y la galería muestran un selector simulado. La IA presenta tres ejemplos fijos. Las cifras, umbrales, fechas de temporada, actores de voz y disponibilidad de plataformas son datos ilustrativos. Los enlaces de plataformas abren sus sitios oficiales para comprobar disponibilidad.
+En Explorar, «Reconocer anime» permite tomar una foto con permiso de cámara o elegir una imagen con el selector del sistema, y muestra la imagen real. El reconocimiento está pendiente y se informa al pulsar «Reconocer anime». Para comprobarlo en un teléfono, probar cámara, permiso rechazado, galería y cancelación. El selector de avatar de Editar perfil sigue simulado. Las cifras, umbrales, fechas de temporada, actores de voz y disponibilidad de plataformas son datos ilustrativos. Los enlaces de plataformas abren sus sitios oficiales para comprobar disponibilidad.
 
-Los puntos para conectar el servidor están marcados con `TODO BACKEND [OPERACIÓN]`, junto a datos y acciones concretas. La integración de cámara/galería está marcada con `TODO DISPOSITIVO`. No se fijaron endpoints ni tecnología de backend.
+Los puntos para conectar el servidor están marcados con `TODO BACKEND [OPERACIÓN]`, junto a datos y acciones concretas. La integración pendiente de cámara/galería para el avatar está marcada con `TODO DISPOSITIVO`. No se fijaron endpoints ni tecnología de backend.
 
 ## Comprobar
 

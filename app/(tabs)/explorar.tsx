@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { useState, type ComponentProps } from 'react';
 import {
   Platform,
@@ -37,9 +38,37 @@ const seasonImages = [
 export default function Explorar() {
   const [query, setQuery] = useState('');
   const [showAllGenres, setShowAllGenres] = useState(false);
-  const [recognitionSource, setRecognitionSource] = useState<'gallery' | 'camera' | null>(null);
-  const [recognized, setRecognized] = useState(false);
-  // TODO DISPOSITIVO [RECONOCER-IMAGEN]: obtener una foto real desde cámara o galería.
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [pickingImage, setPickingImage] = useState(false);
+  const [notice, setNotice] = useState('');
+  const selectImage = async (source: 'gallery' | 'camera') => {
+    if (pickingImage) return;
+    setPickingImage(true);
+    try {
+      if (source === 'camera' && Platform.OS !== 'web') {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          setNotice(
+            permission.canAskAgain
+              ? 'Necesitamos permiso para usar la cámara. Podés volver a intentarlo.'
+              : 'Activá el permiso de cámara desde los ajustes del teléfono.',
+          );
+          return;
+        }
+      }
+      // El selector del sistema permite elegir una foto sin acceso a toda la fototeca.
+      const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.8 };
+      const result =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync(options)
+          : await ImagePicker.launchImageLibraryAsync(options);
+      if (!result.canceled && result.assets[0]) setImageUri(result.assets[0].uri);
+    } catch {
+      setNotice('No pudimos abrir la cámara o la galería. Volvé a intentarlo.');
+    } finally {
+      setPickingImage(false);
+    }
+  };
   // TODO BACKEND [RECONOCER-ANIME]: enviar la imagen al servicio de reconocimiento y mostrar coincidencias reales.
   const { width: windowWidth } = useWindowDimensions();
   const width = Math.min(windowWidth, theme.layout.maxWidth);
@@ -68,7 +97,11 @@ export default function Explorar() {
   ));
 
   return (
-    <Screen title="Explorar" subtitle="Descubrí anime, tendencias y estadísticas del mundo." avatar={false}>
+    <Screen
+      title="Explorar"
+      subtitle="Descubrí anime, tendencias y estadísticas del mundo."
+      avatar={false}
+    >
       <SearchBar
         value={query}
         onChangeText={setQuery}
@@ -112,57 +145,57 @@ export default function Explorar() {
           <Text style={styles.new}>DEMO</Text>
         </View>
         <Text style={styles.description}>
-          Subí una captura o sacá una foto para descubrir de qué anime es.
+          Elegí una imagen o sacá una foto. El reconocimiento estará disponible más adelante.
         </Text>
-        {recognized ? (
-          <View style={styles.recognitionResult}>
-            <View style={styles.resultImageWrap}>
-              <Image source={anime[0].image} style={styles.resultImage} resizeMode="contain" />
-            </View>
-            <View style={styles.resultBody}>
-              <Text style={styles.resultEyebrow}>COINCIDENCIA DE EJEMPLO · 94%</Text>
-              <Text style={styles.resultTitle}>{anime[0].title}</Text>
-              <Text style={styles.description} numberOfLines={2}>
-                La imagen parece pertenecer a este anime.
-              </Text>
-            </View>
-          </View>
+        {imageUri ? (
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.selectedImage}
+            resizeMode="contain"
+            accessibilityLabel="Imagen seleccionada"
+          />
         ) : (
           <View style={styles.recognitionPreview}>
             <Ionicons name="scan-outline" size={38} color={theme.colors.primarySoft} />
             <Text style={styles.previewTitle}>Elegí una imagen para analizar</Text>
-            <Text style={styles.previewText}>JPG o PNG · reconocimiento simulado</Text>
+            <Text style={styles.previewText}>Desde tu cámara o galería</Text>
           </View>
         )}
-        {recognized ? (
+        {imageUri ? (
           <View style={styles.recognitionActions}>
             <View style={styles.actionItem}>
               <Action
-                label="Ver anime"
-                icon="play-circle-outline"
+                label="Reconocer anime"
+                icon="scan-outline"
                 primary
-                onPress={() => router.push({ pathname: '/anime/[id]', params: { id: anime[0].id } })}
+                onPress={() =>
+                  setNotice(
+                    'El reconocimiento todavía no está disponible. Esta función se conectará en una próxima etapa.',
+                  )
+                }
               />
             </View>
             <View style={styles.actionItem}>
-              <Action label="Probar otra" onPress={() => setRecognized(false)} />
+              <Action label="Probar otra" onPress={() => setImageUri(null)} />
             </View>
           </View>
         ) : (
           <View style={styles.recognitionActions}>
             <View style={styles.actionItem}>
               <Action
-                label="Subir imagen"
+                label="Elegir imagen"
                 icon="image-outline"
                 primary
-                onPress={() => setRecognitionSource('gallery')}
+                disabled={pickingImage}
+                onPress={() => selectImage('gallery')}
               />
             </View>
             <View style={styles.actionItem}>
               <Action
                 label="Sacar foto"
                 icon="camera-outline"
-                onPress={() => setRecognitionSource('camera')}
+                disabled={pickingImage}
+                onPress={() => selectImage('camera')}
               />
             </View>
           </View>
@@ -215,21 +248,11 @@ export default function Explorar() {
         ))}
       </ScrollView>
       <Dialog
-        visible={recognitionSource !== null}
-        title={recognitionSource === 'camera' ? 'Sacar una foto' : 'Subir una imagen'}
-        text="Esta es una demostración del recorrido visual. Todavía no se accede a la cámara, la galería ni a un servicio de reconocimiento."
-        onClose={() => setRecognitionSource(null)}
-      >
-        <Action
-          label="Usar imagen de ejemplo"
-          icon="scan-outline"
-          primary
-          onPress={() => {
-            setRecognitionSource(null);
-            setRecognized(true);
-          }}
-        />
-      </Dialog>
+        visible={notice !== ''}
+        title="Reconocer anime"
+        text={notice}
+        onClose={() => setNotice('')}
+      />
     </Screen>
   );
 }
@@ -297,27 +320,12 @@ const styles = StyleSheet.create({
   previewText: { color: theme.colors.textSecondary, fontSize: 10 },
   recognitionActions: { flexDirection: 'row', gap: 8 },
   actionItem: { flex: 1 },
-  recognitionResult: {
-    flexDirection: 'row',
-    minHeight: 120,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
+  selectedImage: {
+    width: '100%',
+    height: 220,
     borderRadius: 12,
     backgroundColor: theme.colors.background,
   },
-  resultImageWrap: {
-    width: 104,
-    height: 132,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 6,
-    backgroundColor: theme.colors.surfaceLight,
-  },
-  resultImage: { width: '100%', height: '100%', borderRadius: 7 },
-  resultBody: { flex: 1, justifyContent: 'center', gap: 6, padding: 12 },
-  resultEyebrow: { color: theme.colors.primarySoft, fontSize: 9, fontWeight: '700' },
-  resultTitle: { color: theme.colors.text, fontSize: 16, fontWeight: '700' },
   season: {
     width: 83,
     borderRadius: 10,
