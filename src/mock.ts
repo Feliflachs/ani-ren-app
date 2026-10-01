@@ -33,6 +33,7 @@ export type User = {
 export type Review = {
   id: string;
   userId: string;
+  title?: string;
   animeId?: string;
   rating?: number;
   text: string;
@@ -279,6 +280,7 @@ export const reviews: Review[] = [
     userId: 'sofi',
     animeId: 'frieren',
     rating: 4.5,
+    title: 'El tiempo también puede ser una aventura',
     text: 'Acabo de terminar Frieren y no tengo palabras... Una obra maestra. La voy a extrañar mucho. 💜✨ La forma en que habla del tiempo y de las personas que nos acompañan me llegó muchísimo.',
     time: 'Hace 2 h',
     likes: 128,
@@ -290,6 +292,7 @@ export const reviews: Review[] = [
     userId: 'nico',
     animeId: 'vinland-saga',
     rating: 4.5,
+    title: 'La verdadera fuerza de Vinland Saga',
     text: 'La segunda temporada es cine. Una historia que se toma su tiempo y encuentra algo enorme en los momentos más pequeños.',
     time: 'Hace 4 h',
     likes: 96,
@@ -301,6 +304,7 @@ export const reviews: Review[] = [
     userId: 'felipe',
     animeId: 'frieren',
     rating: 5,
+    title: 'Una historia que se queda con vos',
     text: 'Una obra maestra. La forma en que habla del paso del tiempo, de la amistad y de los recuerdos hace que cada capítulo valga la pena. Me quedo con su calma y con todo lo que transmite sin decirlo.',
     time: 'Hace 2 h',
     likes: 42,
@@ -310,6 +314,7 @@ export const reviews: Review[] = [
   {
     id: 'post-luli',
     userId: 'luli',
+    title: 'Busco recomendaciones de misterio',
     text: 'Recomienden animes de misterio o psicológicos 🙏 Quiero armar una lista para este fin de semana.',
     time: 'Hace 6 h',
     likes: 34,
@@ -321,6 +326,7 @@ export const reviews: Review[] = [
     userId: 'shonen',
     animeId: 'blue-lock',
     rating: 4.5,
+    title: 'Ego, fútbol y adrenalina',
     text: 'Blue Lock es otro nivel de hype. ¡Equipo Z para siempre! ⚽',
     time: 'Ayer',
     likes: 87,
@@ -522,15 +528,22 @@ export function getCountryTop(country: Country, metric: MapMetric) {
   if (metric === 'vistos') items.sort((a, b) => b.watched - a.watched);
   return items.slice(0, 5);
 }
-// TODO BACKEND [RELACIONES-USUARIO]: obtener colecciones, likes, amigos y seguidos de currentUser.id.
+// TODO BACKEND [RELACIONES-USUARIO]: obtener colecciones, likes y seguimientos de currentUser.id.
 // Son muestras del historial; los totales del perfil representan un historial de ejemplo más amplio.
 export const currentLibrary = {
   Watchlist: ['solo-leveling', 'demon-slayer', 'haikyuu', 'spy-family'],
   Vistos: ['frieren', 'vinland-saga', 'blue-lock', 'mob-psycho'],
 };
 export const currentLikedReviewIds = ['review-sofi', 'post-luli', 'review-nico'];
-export const currentFriendIds = ['sofi', 'nico'];
-export const currentFollowingIds = ['sofi', 'nico'];
+// La amistad no se guarda como una relación separada: existe cuando el seguimiento es mutuo.
+export const followingByUser: Record<string, string[]> = {
+  felipe: ['sofi', 'nico'],
+  sofi: ['felipe', 'luli'],
+  nico: ['felipe', 'sofi', 'shonen'],
+  luli: ['sofi'],
+  shonen: ['nico'],
+};
+export const currentFollowingIds = followingByUser[currentUser.id] ?? [];
 export const genres = ['Acción', 'Comedia', 'Fantasía', 'Romance', 'Aventura', 'Drama', 'Deportes'];
 export const seasons = ['Primavera 2026', 'Verano 2026', 'Otoño 2026', 'Invierno 2026'];
 

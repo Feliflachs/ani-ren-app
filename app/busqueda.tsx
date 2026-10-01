@@ -3,7 +3,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import {
-  Action,
   AnimeCard,
   Avatar,
   Chips,
@@ -111,6 +110,7 @@ export default function BusquedaScreen() {
         options={['Anime', 'Reviews', 'Usuarios', 'Listas']}
         value={category}
         onChange={setCategory}
+        variant="underline"
       />
       {category !== 'Usuarios' && (
         <>
@@ -140,12 +140,8 @@ export default function BusquedaScreen() {
         />
       ) : count === 0 ? (
         <EmptyState
-          action={category === 'Anime' ? 'Solicitar un anime' : 'Limpiar búsqueda'}
-          onPress={() =>
-            category === 'Anime'
-              ? router.push({ pathname: '/solicitar-anime', params: { title: query } })
-              : clearSearch()
-          }
+          action="Limpiar búsqueda"
+          onPress={clearSearch}
         />
       ) : (
         <>
@@ -182,13 +178,6 @@ export default function BusquedaScreen() {
           {category === 'Listas' &&
             matchingLists.map((item) => <ListCard key={item.id} list={item} />)}
         </>
-      )}
-      {category === 'Anime' && count > 0 && (
-        <Action
-          label="¿Falta un anime? Solicitá agregarlo"
-          icon="add-circle-outline"
-          onPress={() => router.push({ pathname: '/solicitar-anime', params: { title: query } })}
-        />
       )}
     </Screen>
   );

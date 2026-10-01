@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   Action,
-  Avatar,
   Dialog,
   Progress,
   RankInsignia,
@@ -38,7 +37,26 @@ export default function AuraScreen() {
   };
 
   return (
-    <Screen title="Aura" subtitle="Mirá tu progreso, descubrí rangos y desbloqueá tu estilo.">
+    <Screen
+      title="Aura🔥"
+      subtitle="Mirá tu progreso, descubrí rangos y desbloqueá tu estilo."
+      avatar={false}
+      actions={
+        <Pressable
+          onPress={() => router.push('/aura/ranking')}
+          accessibilityRole="button"
+          accessibilityLabel="Ver ranking de usuarios"
+          style={styles.rankingButton}
+        >
+          <Ionicons
+            name="podium-outline"
+            size={17}
+            color={theme.colors.primarySoft}
+          />
+          <Text style={styles.rankingButtonText}>Ranking</Text>
+        </Pressable>
+      }
+    >
       <View style={styles.rankCard}>
         <View style={styles.rankSide}>
           <View style={styles.rankIdentity}>
@@ -137,41 +155,6 @@ export default function AuraScreen() {
         </Pressable>
       ))}
 
-      <Pressable
-        onPress={() => router.push('/aura/rangos')}
-        accessibilityRole="button"
-        accessibilityLabel="Personalizar sufijo"
-        style={styles.suffix}
-      >
-        <Ionicons name="sparkles" size={29} color={theme.colors.primarySoft} />
-        <View style={styles.flex}>
-          <Text style={styles.meta}>Tu sufijo actual</Text>
-          <Text style={styles.rankName}>-kun</Text>
-          <Text style={styles.meta}>Se muestra junto al nombre visible.</Text>
-        </View>
-        <Avatar size={32} />
-        <Text style={styles.preview}>{currentUser.name}-kun</Text>
-      </Pressable>
-
-      <Section title="Más de tu Aura" />
-      <View style={styles.actions}>
-        <View style={styles.flex}>
-          <Action
-            label="Ranking de usuarios"
-            icon="podium-outline"
-            onPress={() => router.push('/aura/ranking')}
-          />
-        </View>
-        <View style={styles.flex}>
-          <Action
-            label="Tu perfil anime"
-            icon="sparkles-outline"
-            onPress={() => router.push('/aura/analisis')}
-          />
-        </View>
-      </View>
-      <Text style={styles.notice}>Progreso, beneficios y misiones de ejemplo.</Text>
-
       <Dialog
         visible={selectedMission !== null}
         title={selectedMission?.title ?? ''}
@@ -195,11 +178,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 14,
-    padding: 14,
-    borderWidth: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 2,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: 14,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: 'transparent',
   },
   rankSide: { flex: 1.5, minWidth: 155, gap: 10 },
   rankIdentity: { flexDirection: 'row', alignItems: 'center', gap: 9 },
@@ -242,11 +226,11 @@ const styles = StyleSheet.create({
   tileTitle: { color: theme.colors.primarySoft, fontSize: 11, fontWeight: '600' },
   stats: {
     flexDirection: 'row',
-    paddingVertical: 13,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: theme.colors.border,
+    backgroundColor: 'transparent',
   },
   stat: { flex: 1, gap: 5, alignItems: 'center' },
   statValue: { color: theme.colors.text, fontSize: 17, fontWeight: '600' },
@@ -254,12 +238,12 @@ const styles = StyleSheet.create({
   mission: {
     flexDirection: 'row',
     gap: 10,
-    padding: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 2,
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
   missionIcon: {
     width: 39,
@@ -271,23 +255,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: { color: theme.colors.text, fontSize: 13, fontWeight: '600', marginBottom: 3 },
-  suffix: {
+  rankingButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-    padding: 12,
-    borderRadius: 14,
+    gap: 5,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
   },
-  preview: { color: theme.colors.text, fontSize: 11 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  notice: {
-    color: theme.colors.textSecondary,
+
+  rankingButtonText: {
+    color: theme.colors.primarySoft,
     fontSize: 11,
-    textAlign: 'center',
-    paddingVertical: 8,
+    fontWeight: '600',
   },
 });

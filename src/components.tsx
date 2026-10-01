@@ -115,7 +115,7 @@ export function Avatar({
         <Image
           source={user.image}
           onError={() => setFailed(true)}
-          style={{ width: size - 4, height: size - 4, borderRadius: size / 2 }}
+          style={{ width: size, height: size, borderRadius: size / 2 }}
         />
       )}
     </Pressable>
@@ -129,6 +129,7 @@ export function Screen({
   children,
   actions,
   avatar = true,
+  headerCentered = false,
 }: {
   title: string;
   subtitle?: string;
@@ -136,6 +137,7 @@ export function Screen({
   children: ReactNode;
   actions?: ReactNode;
   avatar?: boolean;
+  headerCentered?: boolean;
 }) {
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
   return (
@@ -165,7 +167,9 @@ export function Screen({
               </Pressable>
             )}
             <View style={styles.heading}>
-              <Text style={styles.title}>{title}</Text>
+              <Text style={[styles.title, headerCentered && styles.centeredText]}>
+                {title}
+              </Text>
               {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
             </View>
             {actions ??
@@ -349,30 +353,59 @@ export function Chips({
   options,
   value,
   onChange,
+  variant = 'pill',
 }: {
   options: string[];
   value: string;
   onChange: (value: string) => void;
+  variant?: 'pill' | 'underline';
 }) {
+  const underlined = variant === 'underline';
+
   return (
     <ScrollView
       horizontal
       style={{ flexGrow: 0 }}
       showsHorizontalScrollIndicator={Platform.OS === 'web'}
-      contentContainerStyle={styles.chips}
+      contentContainerStyle={[
+        styles.chips,
+        underlined && styles.underlineTabs,
+      ]}
     >
-      {options.map((option) => (
-        <Pressable
-          key={option}
-          onPress={() => onChange(option)}
-          accessibilityRole="button"
-          aria-selected={value === option}
-          accessibilityState={{ selected: value === option }}
-          style={[styles.chip, value === option && styles.chipActive]}
-        >
-          <Text style={[styles.chipText, value === option && styles.chipTextActive]}>{option}</Text>
-        </Pressable>
-      ))}
+      {options.map((option) => {
+        const selected = value === option;
+
+        return (
+          <Pressable
+            key={option}
+            onPress={() => onChange(option)}
+            accessibilityRole="button"
+            aria-selected={selected}
+            accessibilityState={{ selected }}
+            style={[
+              styles.chip,
+              underlined && styles.underlineTab,
+              selected &&
+                (underlined
+                  ? styles.underlineTabActive
+                  : styles.chipActive),
+            ]}
+          >
+            <Text
+              style={[
+                styles.chipText,
+                underlined && styles.underlineTabText,
+                selected &&
+                  (underlined
+                    ? styles.underlineTabTextActive
+                    : styles.chipTextActive),
+              ]}
+            >
+              {option}
+            </Text>
+          </Pressable>
+        );
+      })}
     </ScrollView>
   );
 }
@@ -521,7 +554,10 @@ export function ReviewCard({ review }: { review: Review }) {
         onPress={openReview}
         style={styles.reviewContent}
       >
-        <Text numberOfLines={3} style={styles.reviewText}>
+        {review.title && (
+          <Text style={styles.reviewCardTitle}>{review.title}</Text>
+        )}
+        <Text numberOfLines={3} style={[styles.reviewText, styles.reviewCardBody]}>
           {review.spoiler
             ? 'Esta review contiene spoilers. Abrila para elegir si querés leerla.'
             : review.text}
@@ -558,8 +594,6 @@ const styles = StyleSheet.create({
   back: { paddingVertical: 8 },
   avatar: {
     backgroundColor: theme.colors.surfaceLight,
-    borderWidth: 1.5,
-    borderColor: theme.colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -720,4 +754,49 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   starHalf: { flex: 1 },
+  centeredText: {
+    textAlign: 'center',
+  },
+  underlineTabs: {
+  width: '100%',
+  gap: 0,
+  paddingVertical: 0,
+  borderBottomWidth: 1,
+  borderBottomColor: theme.colors.border,
+},
+
+  underlineTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderWidth: 0,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+    borderRadius: 0,
+    backgroundColor: 'transparent',
+  },
+
+  underlineTabActive: {
+    backgroundColor: 'transparent',
+    borderBottomColor: theme.colors.primary,
+  },
+
+  underlineTabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+
+  underlineTabTextActive: {
+    color: theme.colors.primarySoft,
+  },
+  reviewCardTitle: {
+    color: theme.colors.text,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '700',
+    marginBottom: 5,
+  },
+  reviewCardBody: { color: theme.colors.textSoft },
 });

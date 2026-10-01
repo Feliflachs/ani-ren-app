@@ -13,7 +13,15 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Action, Avatar, Dialog, EmptyState, Screen, Section } from '../../src/components';
-import { currentFriendIds, findAnime, findUser, getParam, reviews } from '../../src/mock';
+import { useAppState } from '../../src/AppState';
+import {
+  currentUser,
+  findAnime,
+  findUser,
+  getParam,
+  lists,
+  reviews,
+} from '../../src/mock';
 import { theme } from '../../src/theme';
 
 // TODO BACKEND [RATINGS-DISTRIBUCION]: recuperar conteos reales por anime; estos porcentajes son ejemplos.
@@ -87,6 +95,9 @@ export default function DetalleAnime() {
   const id = getParam(params.id) ?? '';
   const [message, setMessage] = useState('');
   const [imageFailed, setImageFailed] = useState(false);
+  const [listPicker, setListPicker] = useState(false);
+  const { friendIds, getActivity, updateActivity } = useAppState();
+  const activity = getActivity(id);
   // TODO BACKEND [ANIME-DETALLE]: consultar anime y su elenco por id; manejar carga, error y no encontrado.
   const item = findAnime(id);
   if (!item)
@@ -101,7 +112,7 @@ export default function DetalleAnime() {
       </Screen>
     );
   const friendReviews = reviews.filter(
-    (review) => review.animeId === item.id && currentFriendIds.includes(review.userId),
+    (review) => review.animeId === item.id && friendIds.includes(review.userId),
   );
   const animeReviews = reviews.filter((review) => review.animeId === item.id);
   const distribution = distributions[item.id];
@@ -126,6 +137,13 @@ export default function DetalleAnime() {
 
   const writeReview = () =>
     router.push({ pathname: '/review/escribir', params: { animeId: item.id } });
+  const ownLists = lists.filter((list) => list.userId === currentUser.id);
+  const toggleList = (listId: string) => {
+    const listIds = activity.listIds.includes(listId)
+      ? activity.listIds.filter((currentId) => currentId !== listId)
+      : [...activity.listIds, listId];
+    updateActivity(item.id, { listIds });
+  };
   const openStreamingPlatform = (url: string) => {
     Linking.openURL(url).catch(() =>
       setMessage('No se pudo abrir el enlace. Probá desde tu navegador.'),
@@ -200,6 +218,69 @@ export default function DetalleAnime() {
           </View>
         </View>
       </View>
+      <View style={styles.activityActions}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={activity.watched ? 'Quitar de vistos' : 'Marcar como visto'}
+          accessibilityState={{ selected: activity.watched }}
+          onPress={() => updateActivity(item.id, { watched: !activity.watched })}
+          style={styles.activityButton}
+        >
+          <Ionicons
+            name={activity.watched ? 'eye' : 'eye-outline'}
+            size={23}
+            color={activity.watched ? theme.colors.primarySoft : theme.colors.textSecondary}
+          />
+          <Text style={[styles.activityLabel, activity.watched && styles.activityLabelActive]}>
+            Visto
+          </Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={activity.liked ? 'Quitar Me gusta' : 'Marcar Me gusta'}
+          accessibilityState={{ selected: activity.liked }}
+          onPress={() => updateActivity(item.id, { liked: !activity.liked })}
+          style={styles.activityButton}
+        >
+          <Ionicons
+            name={activity.liked ? 'heart' : 'heart-outline'}
+            size={23}
+            color={activity.liked ? theme.colors.accentSoft : theme.colors.textSecondary}
+          />
+          <Text style={[styles.activityLabel, activity.liked && styles.activityLabelLiked]}>
+            Me gusta
+          </Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            activity.watchlist ? 'Quitar de Watchlist' : 'Guardar en Watchlist'
+          }
+          accessibilityState={{ selected: activity.watchlist }}
+          onPress={() => updateActivity(item.id, { watchlist: !activity.watchlist })}
+          style={styles.activityButton}
+        >
+          <Ionicons
+            name={activity.watchlist ? 'bookmark' : 'bookmark-outline'}
+            size={23}
+            color={activity.watchlist ? theme.colors.primarySoft : theme.colors.textSecondary}
+          />
+          <Text style={[styles.activityLabel, activity.watchlist && styles.activityLabelActive]}>
+            Watchlist
+          </Text>
+        </Pressable>
+      </View>
+      <Action
+        label={
+          activity.listIds.length
+            ? `Agregar a lista · ${activity.listIds.length}`
+            : 'Agregar a lista'
+        }
+        icon="albums-outline"
+        onPress={() => setListPicker(true)}
+      />
       <Action label="Review" icon="add-circle-outline" primary onPress={writeReview} />
       <Section title="Dónde ver" />
       <ScrollView
@@ -360,6 +441,30 @@ export default function DetalleAnime() {
         }
       />
       <Dialog
+        visible={listPicker}
+        title="Agregar a lista"
+        text="Podés elegir más de una."
+        onClose={() => setListPicker(false)}
+      >
+        {ownLists.map((list) => (
+          <Action
+            key={list.id}
+            label={list.title}
+            icon={activity.listIds.includes(list.id) ? 'checkmark-circle' : 'ellipse-outline'}
+            active={activity.listIds.includes(list.id)}
+            onPress={() => toggleList(list.id)}
+          />
+        ))}
+        <Action
+          label="Crear una lista"
+          icon="add-outline"
+          onPress={() => {
+            setListPicker(false);
+            router.push({ pathname: '/lista/editar', params: { animeId: item.id } });
+          }}
+        />
+      </Dialog>
+      <Dialog
         visible={message.length > 0}
         title="Vista previa"
         text={message}
@@ -402,6 +507,23 @@ const styles = StyleSheet.create({
   barTrack: { flex: 1, height: 4, backgroundColor: theme.colors.surfaceLight, borderRadius: 3 },
   bar: { height: '100%', backgroundColor: theme.colors.primary, borderRadius: 3 },
   barCount: { width: 34, color: theme.colors.textSecondary, fontSize: 8, textAlign: 'right' },
+  activityActions: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  activityButton: {
+    flex: 1,
+    minHeight: 65,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
+  },
+  activityLabel: { color: theme.colors.textSecondary, fontSize: 10 },
+  activityLabelActive: { color: theme.colors.primarySoft },
+  activityLabelLiked: { color: theme.colors.accentSoft },
   platforms: { gap: 10 },
   platform: {
     backgroundColor: theme.colors.surface,

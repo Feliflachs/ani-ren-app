@@ -46,7 +46,7 @@ export default function ReviewScreen() {
           title="No encontramos esta publicación"
           text="Puede haberse eliminado o el enlace no ser correcto."
           action="Ir a Social"
-          onPress={() => router.replace('/social')}
+          onPress={() => router.replace('/')}
         />
       </Screen>
     );
@@ -74,7 +74,7 @@ export default function ReviewScreen() {
   };
   return (
     <Screen title={item ? 'Review' : 'Publicación'} back>
-      <View style={styles.card}>
+      <View style={styles.reviewContainer}>
         <View style={styles.row}>
           <Avatar
             user={author}
@@ -119,6 +119,9 @@ export default function ReviewScreen() {
           />
         ) : (
           <>
+            {review.title && (
+              <Text style={styles.reviewTitle}>{review.title}</Text>
+            )}
             <Text style={styles.body}>{review.text}</Text>
             {review.spoiler && (
               <Action
@@ -176,7 +179,7 @@ export default function ReviewScreen() {
               />
               <View style={styles.grow}>
                 <Text style={styles.name}>{findUser(comment.userId)?.name}</Text>
-                <Text style={styles.body}>{comment.text}</Text>
+                <Text style={styles.commentText}>{comment.text}</Text>
                 <Text style={styles.meta}>{comment.time}</Text>
               </View>
             </View>
@@ -223,7 +226,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0, gap: 5 },
   name: { color: theme.colors.text, fontSize: 13, fontWeight: '600' },
   meta: { color: theme.colors.textSecondary, fontSize: 11, lineHeight: 17 },
-  body: { color: theme.colors.text, fontSize: 14, lineHeight: 23 },
+  body: { color: theme.colors.textSoft, fontSize: 14, lineHeight: 23 },
   rating: { color: theme.colors.primarySoft, fontWeight: '700', fontSize: 16 },
   animeLink: { padding: 11, backgroundColor: theme.colors.surfaceLight, borderRadius: 10, gap: 4 },
   link: { color: theme.colors.primarySoft, fontSize: 14, fontWeight: '600' },
@@ -232,12 +235,9 @@ const styles = StyleSheet.create({
   comment: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 2,
     gap: 10,
-    borderRadius: 14,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
   },
   input: {
     minHeight: 85,
@@ -249,5 +249,26 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     padding: 12,
     fontSize: 13,
+  },
+  reviewContainer: {
+    paddingVertical: 14,
+    paddingHorizontal: 2,
+    gap: 14,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: 'transparent',
+  },
+  commentText: {
+    color: theme.colors.text,
+    fontSize: 12,
+    lineHeight: 19,
+  },
+  reviewTitle: {
+    color: theme.colors.text,
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '700',
+    marginBottom: 6,
   },
 });

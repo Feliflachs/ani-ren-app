@@ -1,5 +1,13 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import { anime, currentLibrary, currentUser, lists, reviews } from './mock';
+import {
+  anime,
+  currentFollowingIds,
+  currentLibrary,
+  currentUser,
+  followingByUser,
+  lists,
+  reviews,
+} from './mock';
 
 export type AnimeActivity = {
   watched: boolean;
@@ -7,6 +15,7 @@ export type AnimeActivity = {
   watchlist: boolean;
   rating?: number;
   date?: string;
+  reviewTitle?: string;
   reviewText?: string;
   spoiler: boolean;
   listIds: string[];
@@ -16,6 +25,8 @@ type ActivityDraft = AnimeActivity & { logged: boolean };
 
 type AppStateValue = {
   activities: Record<string, AnimeActivity>;
+  followingIds: string[];
+  friendIds: string[];
   watchedIds: string[];
   likedIds: string[];
   watchlistIds: string[];
@@ -23,6 +34,7 @@ type AppStateValue = {
   getActivity: (animeId: string) => AnimeActivity;
   saveActivity: (animeId: string, draft: ActivityDraft) => void;
   updateActivity: (animeId: string, changes: Partial<AnimeActivity>) => void;
+  toggleFollowing: (userId: string) => void;
 };
 
 const emptyActivity: AnimeActivity = {
@@ -42,6 +54,7 @@ const initialActivities = anime.reduce<Record<string, AnimeActivity>>((result, i
     liked: currentUser.favorites.includes(item.id),
     watchlist: currentLibrary.Watchlist.includes(item.id),
     rating: ownReview?.rating,
+    reviewTitle: ownReview?.title,
     reviewText: ownReview?.text,
     spoiler: ownReview?.spoiler ?? false,
     listIds: lists
@@ -56,6 +69,15 @@ const AppStateContext = createContext<AppStateValue | undefined>(undefined);
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [activities, setActivities] = useState(initialActivities);
+  const [followingIds, setFollowingIds] = useState<string[]>([...currentFollowingIds]);
+
+  const toggleFollowing = useCallback((userId: string) => {
+    setFollowingIds((current) =>
+      current.includes(userId)
+        ? current.filter((id) => id !== userId)
+        : [...current, userId],
+    );
+  }, []);
 
   const updateActivity = useCallback((animeId: string, changes: Partial<AnimeActivity>) => {
     setActivities((current) => ({
@@ -77,11 +99,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     const watchedIds = entries.filter(([, value]) => value.watched).map(([id]) => id);
     const likedIds = entries.filter(([, value]) => value.liked).map(([id]) => id);
     const watchlistIds = entries.filter(([, value]) => value.watchlist).map(([id]) => id);
+    const friendIds = followingIds.filter((userId) =>
+      (followingByUser[userId] ?? []).includes(currentUser.id),
+    );
     const newlyWatched = watchedIds.filter((id) => !initiallyWatched.has(id)).length;
     const removedWatched = [...initiallyWatched].filter((id) => !watchedIds.includes(id)).length;
 
     return {
       activities,
+      followingIds,
+      friendIds,
       watchedIds,
       likedIds,
       watchlistIds,
@@ -89,8 +116,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       getActivity: (animeId: string) => activities[animeId] ?? emptyActivity,
       saveActivity,
       updateActivity,
+      toggleFollowing,
     };
-  }, [activities, saveActivity, updateActivity]);
+  }, [activities, followingIds, saveActivity, toggleFollowing, updateActivity]);
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
 }

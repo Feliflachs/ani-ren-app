@@ -62,6 +62,7 @@ export default function MapScreen() {
         options={Object.values(mapMetrics)}
         value={mapMetrics[metric]}
         onChange={(label) => setMetric(getMapMetric(label))}
+        variant="underline"
       />
       {metric === 'anime' && (
         <>
@@ -199,11 +200,12 @@ const styles = StyleSheet.create({
   notice: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   noticeText: { color: theme.colors.primarySoft, fontSize: 11 },
   mapCard: {
-    padding: 9,
-    borderRadius: 14,
-    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 0,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: 'transparent',
   },
   legend: {
     flexDirection: 'row',

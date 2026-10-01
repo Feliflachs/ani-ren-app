@@ -51,13 +51,10 @@ const decorators = [
     value: 'Explorador',
     locked: true,
   },
-  { id: 'avatar-violeta', type: 'Avatar', label: 'Borde violeta', value: 'Violeta', locked: false },
-  { id: 'avatar-lavanda', type: 'Avatar', label: 'Borde lavanda', value: 'Lavanda', locked: false },
-  { id: 'avatar-coral', type: 'Avatar', label: 'Borde coral', value: 'Coral', locked: true },
 ];
 
 const suggestedTitles = ['Sanji', 'Viajero', 'Espíritu shonen'];
-const tabs = ['Rangos', 'Títulos', 'Sufijos', 'Insignias', 'Avatar'];
+const tabs = ['Rangos', 'Títulos', 'Sufijos', 'Insignias'];
 export default function RanksScreen() {
   const { watchedCount } = useAppState();
   const rankProgress = getRankProgress(watchedCount);
@@ -69,7 +66,6 @@ export default function RanksScreen() {
   const [title, setTitle] = useState(exampleTitle ?? rankProgress.rank);
   const [suffix, setSuffix] = useState('-kun');
   const [badge, setBadge] = useState(rankProgress.rank);
-  const [frame, setFrame] = useState('Violeta');
   const [message, setMessage] = useState('');
   const items = exampleTitle
     ? [
@@ -84,7 +80,7 @@ export default function RanksScreen() {
       ]
     : decorators;
   const selectedValue =
-    tab === 'Títulos' ? title : tab === 'Sufijos' ? suffix : tab === 'Insignias' ? badge : frame;
+    tab === 'Títulos' ? title : tab === 'Sufijos' ? suffix : tab === 'Insignias' ? badge : '';
   // TODO BACKEND [DECORADOR-APLICAR]: validar desbloqueo y guardar selección; hoy modifica solo esta vista previa.
   const select = (item: (typeof decorators)[number]) => {
     if (item.locked) {
@@ -96,17 +92,11 @@ export default function RanksScreen() {
     if (item.type === 'Títulos') setTitle(item.value);
     if (item.type === 'Sufijos') setSuffix(item.value);
     if (item.type === 'Insignias') setBadge(item.value);
-    if (item.type === 'Avatar') setFrame(item.value);
   };
   return (
     <Screen title="Tu estilo Aura" subtitle="Rangos y decoradores para un perfil a tu manera." back>
       <View style={styles.preview}>
-        <View
-          style={[
-            styles.avatarFrame,
-            { borderColor: frame === 'Lavanda' ? theme.colors.primarySoft : theme.colors.primary },
-          ]}
-        >
+        <View style={styles.avatarPreview}>
           <Avatar size={72} />
           <View style={styles.badge}>
             {ranks.includes(badge) ? (
@@ -176,7 +166,7 @@ export default function RanksScreen() {
         </>
       ) : (
         <>
-          <Section title={tab === 'Avatar' ? 'Decoradores del avatar' : tab} />
+          <Section title={tab} />
           <View style={styles.catalog}>
             {items
               .filter((item) => item.type === tab)
@@ -248,7 +238,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: 16,
   },
-  avatarFrame: { padding: 4, borderWidth: 2, borderRadius: 45 },
+  avatarPreview: { position: 'relative' },
   badge: {
     position: 'absolute',
     right: -1,
