@@ -131,7 +131,7 @@ export function Screen({
   avatar = true,
   headerCentered = false,
 }: {
-  title: string;
+  title: ReactNode;
   subtitle?: string;
   back?: boolean;
   children: ReactNode;
@@ -139,7 +139,7 @@ export function Screen({
   avatar?: boolean;
   headerCentered?: boolean;
 }) {
-  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/inicio'));
   return (
     <SafeAreaView
       style={styles.screen}
@@ -267,7 +267,7 @@ export function AnimeCard({
   const [failed, setFailed] = useState(false);
   return (
     <Pressable
-      onPress={() => router.push({ pathname: '/anime/[id]', params: { id: item.id } })}
+      onPress={() => router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })}
       accessibilityRole="button"
       accessibilityLabel={`Ver ${item.title}`}
       style={[styles.animeCard, { width }]}
@@ -511,7 +511,7 @@ export function ListCard({ list }: { list: AnimeList }) {
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={() => router.push({ pathname: '/lista/[id]', params: { id: list.id } })}
+      onPress={() => router.push({ pathname: '/perfil/listas/[id]', params: { id: list.id } })}
       style={styles.review}
     >
       <Text style={styles.reviewAuthor}>{list.title}</Text>
@@ -528,7 +528,7 @@ export function ListCard({ list }: { list: AnimeList }) {
 export function ReviewCard({ review }: { review: Review }) {
   const author = findUser(review.userId);
   const item = findAnime(review.animeId);
-  const openReview = () => router.push({ pathname: '/review/[id]', params: { id: review.id } });
+  const openReview = () => router.push({ pathname: '/inicio/review/[id]', params: { id: review.id } });
 
   return (
     <View style={styles.review}>
@@ -536,7 +536,7 @@ export function ReviewCard({ review }: { review: Review }) {
         <Avatar
           user={author}
           size={34}
-          onPress={() => router.push({ pathname: '/usuario/[id]', params: { id: review.userId } })}
+          onPress={() => router.push({ pathname: '/perfil/usuario/[id]', params: { id: review.userId } })}
         />
         <Pressable style={styles.heading} accessibilityRole="button" onPress={openReview}>
           <Text style={styles.reviewAuthor}>{author?.name ?? 'Usuario'}</Text>

@@ -2,9 +2,9 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Action, Avatar, Dialog, Screen, Section } from '../src/components';
-import { anime, currentUser, findAnime, users } from '../src/mock';
-import { theme } from '../src/theme';
+import { Action, Avatar, Dialog, Screen, Section } from '../../src/components';
+import { anime, currentUser, findAnime, users } from '../../src/mock';
+import { theme } from '../../src/theme';
 
 type ProfileDialog = 'avatar' | 'favorites' | 'saved' | 'cancel' | null;
 
@@ -128,7 +128,7 @@ export default function EditarPerfilScreen() {
             <Text style={styles.position}>#{index + 1}</Text>
             <Pressable
               style={styles.flex}
-              onPress={() => router.push({ pathname: '/anime/[id]', params: { id } })}
+              onPress={() => router.push({ pathname: '/explorar/anime/[id]', params: { id } })}
               accessibilityRole="button"
             >
               <Text style={styles.label}>{item?.title}</Text>

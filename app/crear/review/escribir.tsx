@@ -1,10 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Image, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
-import { Action, Dialog, EmptyState, Screen, StarRating } from '../../src/components';
-import { useAppState } from '../../src/AppState';
-import { currentUser, findAnime, getParam, reviews } from '../../src/mock';
-import { theme } from '../../src/theme';
+import { Action, Dialog, EmptyState, Screen, StarRating } from '../../../src/components';
+import { useAppState } from '../../../src/AppState';
+import { currentUser, findAnime, getParam, reviews } from '../../../src/mock';
+import { theme } from '../../../src/theme';
 
 type ReviewDialog = 'confirmed' | 'discard' | null;
 
@@ -55,7 +55,7 @@ export default function EscribirReviewScreen() {
   const goBack = () =>
     router.canGoBack()
       ? router.back()
-      : router.replace({ pathname: '/anime/[id]', params: { id: item?.id ?? 'frieren' } });
+      : router.replace({ pathname: '/explorar/anime/[id]', params: { id: item?.id ?? 'frieren' } });
 
   const save = () => {
     setTouched(true);
@@ -104,7 +104,7 @@ export default function EscribirReviewScreen() {
           title="Anime no encontrado"
           text="Elegí un anime antes de registrar tu actividad."
           action="Buscar anime"
-          onPress={() => router.replace('/busqueda')}
+          onPress={() => router.replace('/explorar/busqueda')}
         />
       </Screen>
     );

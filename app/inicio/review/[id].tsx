@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Action, AnimeCard, Avatar, EmptyState, Screen, Section } from '../../src/components';
+import { Action, AnimeCard, Avatar, EmptyState, Screen, Section } from '../../../src/components';
 import {
   currentLikedReviewIds,
   currentUser,
@@ -9,8 +9,8 @@ import {
   findUser,
   getParam,
   reviews,
-} from '../../src/mock';
-import { theme } from '../../src/theme';
+} from '../../../src/mock';
+import { theme } from '../../../src/theme';
 
 type Comment = { id: string; userId: string; text: string; time: string };
 
@@ -46,7 +46,7 @@ export default function ReviewScreen() {
           title="No encontramos esta publicación"
           text="Puede haberse eliminado o el enlace no ser correcto."
           action="Ir a Social"
-          onPress={() => router.replace('/')}
+          onPress={() => router.replace('/inicio')}
         />
       </Screen>
     );
@@ -79,13 +79,13 @@ export default function ReviewScreen() {
           <Avatar
             user={author}
             onPress={() =>
-              router.push({ pathname: '/usuario/[id]', params: { id: review.userId } })
+              router.push({ pathname: '/perfil/usuario/[id]', params: { id: review.userId } })
             }
           />
           <Pressable
             accessibilityRole="button"
             onPress={() =>
-              router.push({ pathname: '/usuario/[id]', params: { id: review.userId } })
+              router.push({ pathname: '/perfil/usuario/[id]', params: { id: review.userId } })
             }
             style={styles.grow}
           >
@@ -101,7 +101,7 @@ export default function ReviewScreen() {
         {item && (
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.push({ pathname: '/anime/[id]', params: { id: item.id } })}
+            onPress={() => router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })}
             style={styles.animeLink}
           >
             <Text style={styles.link}>{item.title}</Text>
@@ -153,7 +153,7 @@ export default function ReviewScreen() {
                 icon="create-outline"
                 onPress={() =>
                   router.push({
-                    pathname: '/review/escribir',
+                    pathname: '/crear/review/escribir',
                     params: { id: review.id, animeId: item.id },
                   })
                 }
@@ -174,7 +174,7 @@ export default function ReviewScreen() {
                 user={findUser(comment.userId)}
                 size={32}
                 onPress={() =>
-                  router.push({ pathname: '/usuario/[id]', params: { id: comment.userId } })
+                  router.push({ pathname: '/perfil/usuario/[id]', params: { id: comment.userId } })
                 }
               />
               <View style={styles.grow}>

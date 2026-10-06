@@ -11,7 +11,7 @@ import {
   Screen,
   SearchBar,
   Section,
-} from '../src/components';
+} from '../../src/components';
 import {
   anime,
   currentLikedReviewIds,
@@ -20,9 +20,9 @@ import {
   getParam,
   lists,
   reviews,
-} from '../src/mock';
-import { useAppState } from '../src/AppState';
-import { theme } from '../src/theme';
+} from '../../src/mock';
+import { useAppState } from '../../src/AppState';
+import { theme } from '../../src/theme';
 
 export default function BibliotecaScreen() {
   const params = useLocalSearchParams();
@@ -79,7 +79,7 @@ export default function BibliotecaScreen() {
       />
       <Section
         title={`${count} ${tab === 'Listas' ? 'listas' : tab === 'Likes' ? 'publicaciones' : 'animes'}`}
-        onPress={tab === 'Listas' ? () => router.push('/lista/editar') : undefined}
+        onPress={tab === 'Listas' ? () => router.push('/perfil/listas/editar') : undefined}
         action="Nueva lista"
       />
       {count === 0 && (
@@ -88,7 +88,7 @@ export default function BibliotecaScreen() {
           text={query ? 'Probá con otro nombre.' : 'Descubrí una historia y guardala para después.'}
           action={query ? 'Limpiar búsqueda' : tab === 'Listas' ? 'Crear lista' : 'Explorar anime'}
           onPress={() =>
-            query ? setQuery('') : router.push(tab === 'Listas' ? '/lista/editar' : '/explorar')
+            query ? setQuery('') : router.push(tab === 'Listas' ? '/perfil/listas/editar' : '/explorar')
           }
         />
       )}
@@ -120,7 +120,7 @@ export default function BibliotecaScreen() {
         <Action
           label="Organizar una nueva lista"
           icon="albums-outline"
-          onPress={() => router.push('/lista/editar')}
+          onPress={() => router.push('/perfil/listas/editar')}
         />
       )}
     </Screen>

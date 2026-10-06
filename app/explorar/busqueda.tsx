@@ -12,7 +12,7 @@ import {
   Screen,
   SearchBar,
   Section,
-} from '../src/components';
+} from '../../src/components';
 import {
   anime,
   findAnime,
@@ -24,8 +24,8 @@ import {
   reviews,
   seasons,
   users,
-} from '../src/mock';
-import { theme } from '../src/theme';
+} from '../../src/mock';
+import { theme } from '../../src/theme';
 
 export default function BusquedaScreen() {
   const params = useLocalSearchParams();
@@ -159,7 +159,7 @@ export default function BusquedaScreen() {
               <Pressable
                 key={item.id}
                 accessibilityRole="button"
-                onPress={() => router.push({ pathname: '/usuario/[id]', params: { id: item.id } })}
+                onPress={() => router.push({ pathname: '/perfil/usuario/[id]', params: { id: item.id } })}
                 style={[styles.card, styles.row]}
               >
                 <Avatar user={item} />

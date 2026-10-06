@@ -1,8 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Action, Avatar, Chips, EmptyState, Screen, SearchBar } from '../src/components';
-import { useAppState } from '../src/AppState';
+import { Action, Avatar, Chips, EmptyState, Screen, SearchBar } from '../../src/components';
+import { useAppState } from '../../src/AppState';
 import {
   currentUser,
   findUser,
@@ -10,8 +10,8 @@ import {
   getParam,
   getRankProgress,
   users,
-} from '../src/mock';
-import { theme } from '../src/theme';
+} from '../../src/mock';
+import { theme } from '../../src/theme';
 
 export default function ComunidadScreen() {
   const { followingIds: ownFollowingIds, toggleFollowing } = useAppState();
@@ -58,7 +58,7 @@ export default function ComunidadScreen() {
   const openProfile = (userId: string) =>
     userId === currentUser.id
       ? router.push('/perfil')
-      : router.push({ pathname: '/usuario/[id]', params: { id: userId } });
+      : router.push({ pathname: '/perfil/usuario/[id]', params: { id: userId } });
   return (
     <Screen
       title={isOwn ? 'Comunidad' : `Conexiones de ${profile.name}`}

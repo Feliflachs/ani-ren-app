@@ -17,4 +17,8 @@ Las portadas son placeholders locales para el prototipo, obtenidos del CDN de My
 
 Para reemplazar una portada, cambiar el `image` del anime en `src/mock.ts`; las pantallas reutilizan esa referencia.
 
+`mascota-transparente.png` es una variante de `mascota.png`, editada con generación de imágenes el 6 de octubre de 2026 para quitar el fondo y ajustar el encuadre del símbolo en el login. Conserva transparencia real; el original no se reemplazó.
+
+`mascota-login.png` es una variante transparente con «Ani-ren» en la banda del sombrero, generada a partir de `mascota-transparente.png` el 6 de octubre de 2026. Se usa en el login; el símbolo pequeño de Inicio conserva la versión sin texto.
+
 `paises.json` contiene siluetas SVG estáticas derivadas de [Natural Earth, Admin 0 Countries 1:110m](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_110m_admin_0_countries.geojson), sin Antártida. Se redondearon y proyectaron las coordenadas para un viewBox de 360 × 145. Natural Earth publica estos datos en [dominio público](https://www.naturalearthdata.com/about/terms-of-use/). El mapa no solicita ubicación ni consulta servidores. Solo los seis países del mock tienen métricas y controles; los colores representan datos ficticios.

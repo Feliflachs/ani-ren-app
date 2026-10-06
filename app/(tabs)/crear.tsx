@@ -72,7 +72,7 @@ export default function Crear() {
               key={item.id}
               onPress={() =>
                 router.push({
-                  pathname: '/review/escribir',
+                  pathname: '/crear/review/escribir',
                   params: { animeId: item.id },
                 })
               }
@@ -128,7 +128,7 @@ export default function Crear() {
             label="Crear nueva lista"
             icon="add-outline"
             primary
-            onPress={() => router.push('/lista/editar')}
+            onPress={() => router.push('/perfil/listas/editar')}
           />
         </>
       )}

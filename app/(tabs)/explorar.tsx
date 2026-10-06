@@ -75,12 +75,12 @@ export default function Explorar() {
   // TODO BACKEND [EXPLORAR]: consultar tendencias, géneros y temporadas; por ahora catálogo local.
   const trendWidth = Math.max(82, Math.min(110, (width - 56) / 4));
   const genreLabels = showAllGenres ? genres : genres.slice(0, 4);
-  const search = () => router.push({ pathname: '/busqueda', params: { q: query } });
+  const search = () => router.push({ pathname: '/explorar/busqueda', params: { q: query } });
   const genreCards = genreLabels.map((genre, index) => (
     <Pressable
       accessibilityRole="button"
       key={genre}
-      onPress={() => router.push({ pathname: '/busqueda', params: { genre } })}
+      onPress={() => router.push({ pathname: '/explorar/busqueda', params: { genre } })}
       style={styles.genre}
     >
       <ImageBackground
@@ -131,12 +131,12 @@ export default function Explorar() {
           <Text style={styles.new}>NUEVO</Text>
         </View>
         <Text style={styles.description}>Explorá estadísticas y tendencias de anime por país.</Text>
-        <WorldMap onSelect={(id) => router.push({ pathname: '/mapa', params: { pais: id } })} />
+        <WorldMap onSelect={(id) => router.push({ pathname: '/explorar/mapa', params: { pais: id } })} />
         <Action
           label="Explorar mapa"
           icon="location-outline"
           primary
-          onPress={() => router.push('/mapa')}
+          onPress={() => router.push('/explorar/mapa')}
         />
       </View>
       <View style={styles.recognitionCard}>
@@ -201,7 +201,7 @@ export default function Explorar() {
           </View>
         )}
       </View>
-      <Section title="Tendencias globales" action="Ver más" onPress={() => router.push('/tops')} />
+      <Section title="Tendencias globales" action="Ver más" onPress={() => router.push('/explorar/tops')} />
       <ScrollView
         horizontal
         style={{ flexGrow: 0 }}
@@ -213,17 +213,12 @@ export default function Explorar() {
         ))}
       </ScrollView>
       <Section title="Explorar por temporada" />
-      <ScrollView
-        horizontal
-        style={{ flexGrow: 0 }}
-        showsHorizontalScrollIndicator={Platform.OS === 'web'}
-        contentContainerStyle={styles.row}
-      >
+      <View style={styles.seasonsRow}>
         {seasons.map((season, index) => (
           <Pressable
             accessibilityRole="button"
             key={season}
-            onPress={() => router.push({ pathname: '/busqueda', params: { season } })}
+            onPress={() => router.push({ pathname: '/explorar/busqueda', params: { season } })}
             style={styles.season}
           >
             <ImageBackground
@@ -246,7 +241,7 @@ export default function Explorar() {
             </ImageBackground>
           </Pressable>
         ))}
-      </ScrollView>
+      </View>
       <Dialog
         visible={notice !== ''}
         title="Reconocer anime"
@@ -326,8 +321,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: theme.colors.background,
   },
+  seasonsRow: { flexDirection: 'row', gap: 8 },
   season: {
-    width: 83,
+    flex: 1,
+    minWidth: 0,
     borderRadius: 10,
     overflow: 'hidden',
     borderWidth: 1,

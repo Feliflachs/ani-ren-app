@@ -9,7 +9,7 @@ import {
   ReviewCard,
   Screen,
   Section,
-} from '../../src/components';
+} from '../../../src/components';
 import {
   countries,
   findAnime,
@@ -19,9 +19,9 @@ import {
   getParam,
   mapMetrics,
   reviews,
-} from '../../src/mock';
-import { theme } from '../../src/theme';
-import { WorldMap } from '../../src/WorldMap';
+} from '../../../src/mock';
+import { theme } from '../../../src/theme';
+import { WorldMap } from '../../../src/WorldMap';
 
 // TODO BACKEND [REVIEWS-PAIS]: recuperar reviews locales por país; estas asociaciones son solo ejemplos.
 const localReviewIds: Record<string, string[]> = {
@@ -51,7 +51,7 @@ export default function CountryScreen() {
   const returnToMap = () =>
     getParam(params.origin) === 'mapa' && router.canGoBack()
       ? router.back()
-      : router.replace({ pathname: '/mapa', params: mapParams });
+      : router.replace({ pathname: '/explorar/mapa', params: mapParams });
   if (!country)
     return (
       <Screen title="País no encontrado" back>
@@ -59,7 +59,7 @@ export default function CountryScreen() {
           title="No encontramos este país"
           text="Elegí un país del mapa de ejemplo para consultar su actividad."
           action="Ir al mapa"
-          onPress={() => router.replace({ pathname: '/mapa', params: mapParams })}
+          onPress={() => router.replace({ pathname: '/explorar/mapa', params: mapParams })}
         />
       </Screen>
     );
@@ -81,7 +81,7 @@ export default function CountryScreen() {
           metric={metric}
           animeId={selectedAnime?.id}
           onSelect={(pais) =>
-            router.replace({ pathname: '/mapa/[pais]', params: { ...mapParams, pais } })
+            router.replace({ pathname: '/explorar/mapa/[pais]', params: { ...mapParams, pais } })
           }
         />
       </View>
@@ -120,7 +120,7 @@ export default function CountryScreen() {
                   <Action
                     label="Ver ficha del anime"
                     onPress={() =>
-                      router.push({ pathname: '/anime/[id]', params: { id: selectedAnime.id } })
+                      router.push({ pathname: '/explorar/anime/[id]', params: { id: selectedAnime.id } })
                     }
                   />
                 </View>

@@ -10,9 +10,9 @@ import {
   Screen,
   SearchBar,
   Section,
-} from '../../src/components';
-import { anime, currentUser, findAnime, getParam, lists } from '../../src/mock';
-import { theme } from '../../src/theme';
+} from '../../../src/components';
+import { anime, currentUser, findAnime, getParam, lists } from '../../../src/mock';
+import { theme } from '../../../src/theme';
 
 type ListDialog = 'confirmed' | 'discard' | null;
 
@@ -39,7 +39,7 @@ export default function EditarListaScreen() {
   const goBack = () =>
     router.canGoBack()
       ? router.back()
-      : router.replace({ pathname: '/biblioteca', params: { tab: 'Listas' } });
+      : router.replace({ pathname: '/perfil/biblioteca', params: { tab: 'Listas' } });
   const moveAnime = (index: number, direction: number) => {
     setAnimeIds((previous) => {
       const nextIndex = index + direction;
@@ -69,7 +69,7 @@ export default function EditarListaScreen() {
           title="Lista no encontrada"
           text="Podés crear una colección propia con tus historias favoritas."
           action="Crear mi lista"
-          onPress={() => router.replace('/lista/editar')}
+          onPress={() => router.replace('/perfil/listas/editar')}
         />
       </Screen>
     );
@@ -80,7 +80,7 @@ export default function EditarListaScreen() {
           title="Esta lista pertenece a otra persona"
           text="Podés crear una colección propia con tus historias favoritas."
           action="Crear mi lista"
-          onPress={() => router.replace('/lista/editar')}
+          onPress={() => router.replace('/perfil/listas/editar')}
         />
       </Screen>
     );

@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Action, AnimeCard, Chips, Screen, SearchBar, Section } from '../../src/components';
+import { Action, AnimeCard, Chips, Screen, SearchBar, Section } from '../../../src/components';
 import {
   anime,
   countries,
@@ -12,9 +12,9 @@ import {
   getMapMetric,
   getParam,
   mapMetrics,
-} from '../../src/mock';
-import { theme } from '../../src/theme';
-import { WorldMap } from '../../src/WorldMap';
+} from '../../../src/mock';
+import { theme } from '../../../src/theme';
+import { WorldMap } from '../../../src/WorldMap';
 
 export default function MapScreen() {
   const params = useLocalSearchParams<{
@@ -150,7 +150,7 @@ export default function MapScreen() {
           disabled={metric === 'anime' && !selectedAnime}
           onPress={() =>
             router.push({
-              pathname: '/mapa/[pais]',
+              pathname: '/explorar/mapa/[pais]',
               params: {
                 pais: selectedCountry.id,
                 metric,

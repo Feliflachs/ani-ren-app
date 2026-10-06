@@ -57,7 +57,17 @@ export default function Inicio() {
   };
   return (
     <Screen
-      title="Ani-Ren 🪷"
+      title={
+        <>
+          Ani-Ren{' '}
+          <Image
+            source={require('../../assets/mascota-transparente.png')}
+            style={{ width: 28, height: 28 }}
+            resizeMode="contain"
+            accessibilityLabel="Símbolo de Ani-ren"
+          />
+        </>
+      }
       avatar={false}
       headerCentered
     >
@@ -81,7 +91,7 @@ export default function Inicio() {
                 user={author}
                 size={50}
                 onPress={() =>
-                  router.push({ pathname: '/usuario/[id]', params: { id: item.userId } })
+                  router.push({ pathname: '/perfil/usuario/[id]', params: { id: item.userId } })
                 }
               />
               <View style={styles.author}>
@@ -89,7 +99,7 @@ export default function Inicio() {
                   <Pressable
                     onPress={() =>
                       router.push({
-                        pathname: '/usuario/[id]',
+                        pathname: '/perfil/usuario/[id]',
                         params: { id: item.userId },
                       })
                     }
@@ -142,7 +152,7 @@ export default function Inicio() {
               </Pressable>
             </View>
             <Pressable
-              onPress={() => router.push({ pathname: '/review/[id]', params: { id: item.id } })}
+              onPress={() => router.push({ pathname: '/inicio/review/[id]', params: { id: item.id } })}
               accessibilityRole="button"
               accessibilityLabel="Leer publicación completa"
             >
@@ -158,7 +168,7 @@ export default function Inicio() {
             {selectedAnime && (
               <Pressable
                 onPress={() =>
-                  router.push({ pathname: '/anime/[id]', params: { id: selectedAnime.id } })
+                  router.push({ pathname: '/explorar/anime/[id]', params: { id: selectedAnime.id } })
                 }
                 style={styles.animePreview}
                 accessibilityRole="button"
@@ -195,7 +205,7 @@ export default function Inicio() {
                 </Text>
               </Pressable>
               <Pressable
-                onPress={() => router.push({ pathname: '/review/[id]', params: { id: item.id } })}
+                onPress={() => router.push({ pathname: '/inicio/review/[id]', params: { id: item.id } })}
                 accessibilityRole="button"
                 accessibilityLabel="Ver comentarios"
                 style={styles.iconAction}

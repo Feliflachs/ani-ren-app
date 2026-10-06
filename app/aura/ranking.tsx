@@ -22,7 +22,7 @@ export default function RankingScreen() {
 
   const openProfile = (userId: string) => {
     if (userId === currentUser.id) router.push('/perfil');
-    else router.push({ pathname: '/usuario/[id]', params: { id: userId } });
+    else router.push({ pathname: '/perfil/usuario/[id]', params: { id: userId } });
   };
 
   return (

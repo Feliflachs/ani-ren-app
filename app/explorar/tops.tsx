@@ -1,9 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { AnimeCard, Chips, EmptyState, Screen, Section } from '../src/components';
-import { anime, genres, getParam } from '../src/mock';
-import { theme } from '../src/theme';
+import { AnimeCard, Chips, EmptyState, Screen, Section } from '../../src/components';
+import { anime, genres, getParam } from '../../src/mock';
+import { theme } from '../../src/theme';
 
 export default function TopsScreen() {
   const params = useLocalSearchParams();
@@ -53,7 +53,7 @@ export default function TopsScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Ver ${item.title}`}
-            onPress={() => router.push({ pathname: '/anime/[id]', params: { id: item.id } })}
+            onPress={() => router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })}
             style={styles.info}
           >
             <Text style={styles.title}>{item.title}</Text>

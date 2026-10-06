@@ -9,6 +9,7 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   return (
     <Tabs
+      initialRouteName="inicio"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primarySoft,
@@ -28,7 +29,7 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="inicio"
         options={{
           title: 'Inicio',
           tabBarIcon: ({ color, size }) => (

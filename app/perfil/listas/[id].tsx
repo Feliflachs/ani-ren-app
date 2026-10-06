@@ -1,10 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Action, AnimeCard, Avatar, EmptyState, Screen, Section } from '../../src/components';
-import { useAppState } from '../../src/AppState';
-import { currentUser, findAnime, findUser, getParam, lists } from '../../src/mock';
-import { theme } from '../../src/theme';
+import { Action, AnimeCard, Avatar, EmptyState, Screen, Section } from '../../../src/components';
+import { useAppState } from '../../../src/AppState';
+import { currentUser, findAnime, findUser, getParam, lists } from '../../../src/mock';
+import { theme } from '../../../src/theme';
 
 export default function ListaScreen() {
   const params = useLocalSearchParams();
@@ -19,7 +19,7 @@ export default function ListaScreen() {
           title="Esta lista no está disponible"
           text="Puede haberse eliminado o el enlace no ser correcto."
           action="Ver mi biblioteca"
-          onPress={() => router.replace({ pathname: '/biblioteca', params: { tab: 'Listas' } })}
+          onPress={() => router.replace({ pathname: '/perfil/biblioteca', params: { tab: 'Listas' } })}
         />
       </Screen>
     );
@@ -44,11 +44,11 @@ export default function ListaScreen() {
           <Avatar
             user={author}
             size={38}
-            onPress={() => router.push({ pathname: '/usuario/[id]', params: { id: list.userId } })}
+            onPress={() => router.push({ pathname: '/perfil/usuario/[id]', params: { id: list.userId } })}
           />
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.push({ pathname: '/usuario/[id]', params: { id: list.userId } })}
+            onPress={() => router.push({ pathname: '/perfil/usuario/[id]', params: { id: list.userId } })}
             style={styles.grow}
           >
             <Text style={styles.name}>{author?.name ?? 'Usuario'}</Text>
@@ -72,7 +72,7 @@ export default function ListaScreen() {
             <Action
               label="Editar lista"
               icon="create-outline"
-              onPress={() => router.push({ pathname: '/lista/editar', params: { id: list.id } })}
+              onPress={() => router.push({ pathname: '/perfil/listas/editar', params: { id: list.id } })}
             />
           </View>
         )}
@@ -90,7 +90,7 @@ export default function ListaScreen() {
           <AnimeCard item={item} width={74} />
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.push({ pathname: '/anime/[id]', params: { id: item.id } })}
+            onPress={() => router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })}
             style={styles.grow}
           >
             <Text style={styles.name}>{item.title}</Text>

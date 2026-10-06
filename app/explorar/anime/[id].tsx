@@ -12,8 +12,8 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { Action, Avatar, Dialog, EmptyState, Screen, Section } from '../../src/components';
-import { useAppState } from '../../src/AppState';
+import { Action, Avatar, Dialog, EmptyState, Screen, Section } from '../../../src/components';
+import { useAppState } from '../../../src/AppState';
 import {
   currentUser,
   findAnime,
@@ -21,8 +21,8 @@ import {
   getParam,
   lists,
   reviews,
-} from '../../src/mock';
-import { theme } from '../../src/theme';
+} from '../../../src/mock';
+import { theme } from '../../../src/theme';
 
 // TODO BACKEND [RATINGS-DISTRIBUCION]: recuperar conteos reales por anime; estos porcentajes son ejemplos.
 const distributions: Record<string, number[]> = {
@@ -136,7 +136,7 @@ export default function DetalleAnime() {
   ];
 
   const writeReview = () =>
-    router.push({ pathname: '/review/escribir', params: { animeId: item.id } });
+    router.push({ pathname: '/crear/review/escribir', params: { animeId: item.id } });
   const ownLists = lists.filter((list) => list.userId === currentUser.id);
   const toggleList = (listId: string) => {
     const listIds = activity.listIds.includes(listId)
@@ -360,7 +360,7 @@ export default function DetalleAnime() {
                   user={author}
                   size={44}
                   onPress={() =>
-                    router.push({ pathname: '/usuario/[id]', params: { id: author.id } })
+                    router.push({ pathname: '/perfil/usuario/[id]', params: { id: author.id } })
                   }
                 />
                 <Text style={styles.meta}>{author.name}</Text>
@@ -377,7 +377,7 @@ export default function DetalleAnime() {
       <Section
         title="Reviews destacadas"
         action="Ver amigos"
-        onPress={() => router.push('/comunidad')}
+        onPress={() => router.push('/perfil/comunidad')}
       />
       {animeReviews.length ? (
         animeReviews.map((review) => {
@@ -388,7 +388,7 @@ export default function DetalleAnime() {
               key={review.id}
               accessibilityRole="button"
               accessibilityLabel={`Leer review de ${author.name}`}
-              onPress={() => router.push({ pathname: '/review/[id]', params: { id: review.id } })}
+              onPress={() => router.push({ pathname: '/inicio/review/[id]', params: { id: review.id } })}
               style={styles.infoCard}
             >
               <View style={styles.reviewHeader}>
@@ -437,7 +437,7 @@ export default function DetalleAnime() {
         label="Popularidad por país"
         icon="earth-outline"
         onPress={() =>
-          router.push({ pathname: '/mapa', params: { metric: 'anime', animeId: item.id } })
+          router.push({ pathname: '/explorar/mapa', params: { metric: 'anime', animeId: item.id } })
         }
       />
       <Dialog
@@ -460,7 +460,7 @@ export default function DetalleAnime() {
           icon="add-outline"
           onPress={() => {
             setListPicker(false);
-            router.push({ pathname: '/lista/editar', params: { animeId: item.id } });
+            router.push({ pathname: '/perfil/listas/editar', params: { animeId: item.id } });
           }}
         />
       </Dialog>

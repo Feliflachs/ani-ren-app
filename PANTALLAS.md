@@ -19,27 +19,27 @@ El mapa actual comprende 21 pantallas navegables y una vista de apertura. Las ru
 | N.º | Vista | Archivo implementado |
 | --- | --- | --- |
 | 0 | Apertura de Ani-ren | Configuración de splash; sin ruta propia |
-| 1 | Inicio | app/(tabs)/index.tsx |
+| 1 | Inicio | app/(tabs)/inicio.tsx |
 | 2 | Explorar | app/(tabs)/explorar.tsx |
 | 3 | Crear | app/(tabs)/crear.tsx |
 | 4 | Aura | app/(tabs)/aura.tsx |
 | 5 | Perfil | app/(tabs)/perfil.tsx |
-| 6 | Detalle de anime | app/anime/[id].tsx |
-| 7 | Resultados de búsqueda | app/busqueda.tsx |
-| 8 | Mi biblioteca | app/biblioteca.tsx |
-| 9 | Detalle de publicación o review | app/review/[id].tsx |
-| 10 | Escribir o editar review | app/review/escribir.tsx |
-| 11 | Perfil de otro usuario | app/usuario/[id].tsx |
-| 12 | Editar perfil | app/editar-perfil.tsx |
-| 13 | Tops de anime | app/tops.tsx |
-| 14 | Detalle de lista | app/lista/[id].tsx |
-| 15 | Crear o editar lista | app/lista/editar.tsx |
-| 16 | Comunidad: amigos y conexiones | app/comunidad.tsx |
+| 6 | Detalle de anime | app/explorar/anime/[id].tsx |
+| 7 | Resultados de búsqueda | app/explorar/busqueda.tsx |
+| 8 | Mi biblioteca | app/perfil/biblioteca.tsx |
+| 9 | Detalle de publicación o review | app/inicio/review/[id].tsx |
+| 10 | Escribir o editar review | app/crear/review/escribir.tsx |
+| 11 | Perfil de otro usuario | app/perfil/usuario/[id].tsx |
+| 12 | Editar perfil | app/perfil/editar.tsx |
+| 13 | Tops de anime | app/explorar/tops.tsx |
+| 14 | Detalle de lista | app/perfil/listas/[id].tsx |
+| 15 | Crear o editar lista | app/perfil/listas/editar.tsx |
+| 16 | Comunidad: amigos y conexiones | app/perfil/comunidad.tsx |
 | 17 | Misiones y logros | app/aura/misiones.tsx |
 | 18 | Rangos y personalización Aura | app/aura/rangos.tsx |
 | 19 | Ranking de usuarios | app/aura/ranking.tsx |
-| 20 | Mapa anime mundial | app/mapa/index.tsx |
-| 21 | Detalle de país | app/mapa/[pais].tsx |
+| 20 | Mapa anime mundial | app/explorar/mapa/index.tsx |
+| 21 | Detalle de país | app/explorar/mapa/[pais].tsx |
 
 ## Navegación principal
 
@@ -69,7 +69,7 @@ Se interpreta el opening como una apertura estática y breve, seguida de Inicio.
 
 ### 1. Inicio
 
-Referencia: Home.png. Ruta prevista: app/(tabs)/index.tsx.
+Referencia: Home.png. Ruta prevista: app/(tabs)/inicio.tsx.
 
 Propósito: reunir descubrimiento de anime, actividad de amigos y accesos a la colección personal.
 
@@ -161,7 +161,7 @@ El historial muestra fechas, anime marcado como visto y reviews escritas. Puede 
 
 ### 6. Detalle de anime
 
-Referencia: Busqueda Anime.png. Ruta prevista: app/anime/[id].tsx.
+Referencia: Busqueda Anime.png. Ruta prevista: app/explorar/anime/[id].tsx.
 
 Propósito: concentrar la información y las acciones relacionadas con un anime.
 
