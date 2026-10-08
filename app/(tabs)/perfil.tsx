@@ -1,6 +1,8 @@
+import { useCurrentUser } from '../../src/useCurrentUser';
 import { PerfilView } from '../../src/PerfilView';
-import { currentUser } from '../../src/mock';
 
 export default function PerfilScreen() {
+  const currentUser = useCurrentUser();
+
   return <PerfilView user={currentUser} />;
 }

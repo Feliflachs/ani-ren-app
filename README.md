@@ -26,7 +26,7 @@ En computadora la app queda centrada en una columna de hasta 480 px, con espacio
 - `src/WorldMap.tsx`: mapa SVG local con colores por métrica y país.
 - `assets/`: logo, portadas y siluetas. [Procedencia](assets/FUENTES.md).
 
-Cada pantalla contiene su JSX, estado local, funciones y `StyleSheet.create`. La navegación usa identificadores y la puntuación base es sobre 10; la ficha convierte a 5 estrellas.
+Cada pantalla contiene su JSX, borradores locales y estilos. Los datos compartidos viven en contextos por responsabilidad. La navegación usa identificadores y la puntuación va de 0,5 a 5 estrellas.
 
 Expo Router obtiene las rutas de los archivos, por eso se conserva uno por pantalla. `node_modules/`, `.expo/`, `dist/` y `artifacts/` son dependencias o resultados generados; no forman parte del código que hay que mantener.
 
@@ -36,9 +36,11 @@ El ancho máximo está definido en `theme.layout.maxWidth` y se aplica al Stack 
 
 ## Qué se puede recorrer
 
-Búsqueda de anime, reviews, usuarios y listas; reconocimiento visual simulado desde cámara o galería; ficha con puntuación, sinopsis, información, personajes, voces de ejemplo, plataformas, amigos y reviews; biblioteca; creación y edición de reviews y listas; feed y comentarios; perfiles, edición y comunidad; Aura con misiones, rangos y ranking; mapa y detalle de país.
+Búsqueda de anime, reviews, usuarios y listas; selección real de imágenes desde cámara o galería (reconocimiento pendiente); ficha de anime; biblioteca; creación y edición local de reviews y listas; feed y comentarios; perfiles, edición y comunidad; Aura con misiones calculadas desde la actividad; mapa y detalle de país con métricas ilustrativas.
 
-Likes, colecciones, seguimiento, comentarios, filtros y previews responden en la pantalla. Las amistades se derivan del seguimiento mutuo. Los formularios validan campos y muestran confirmaciones identificadas como simulaciones. El estado compartido sincroniza varias interacciones durante la sesión, pero no persiste al salir; no hay cuentas, base de datos ni API.
+Login usa cuentas públicas de `src/usuarios-demo.json` y recuerda solo el ID mediante AsyncStorage. El registro valida pero no crea cuentas. El nombre de usuario no se edita. Perfiles, colecciones, reviews, listas, likes, comentarios y relaciones usan contextos separados; los totales personales se derivan de sus datos. Los cambios se comparten entre pantallas y cuentas. Las reviews/logs también se guardan en AsyncStorage y sobreviven a recargar/cerrar; el resto de la actividad se reinicia. No hay backend ni API.
+
+`npm test` comprueba la lógica local; `npm run typecheck` y `npm run lint` revisan el código. `HANDOFF.md` documenta las responsabilidades, contratos de datos y puntos a conectar con el backend. Falta probar los recorridos interactivos en teléfono.
 
 En Explorar, «Reconocer anime» permite tomar una foto con permiso de cámara o elegir una imagen con el selector del sistema, y muestra la imagen real. El reconocimiento está pendiente y se informa al pulsar «Reconocer anime». Para comprobarlo en un teléfono, probar cámara, permiso rechazado, galería y cancelación. El selector de avatar de Editar perfil sigue simulado. Las cifras, umbrales, fechas de temporada, actores de voz y disponibilidad de plataformas son datos ilustrativos. Los enlaces de plataformas abren sus sitios oficiales para comprobar disponibilidad.
 

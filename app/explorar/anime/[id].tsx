@@ -1,3 +1,7 @@
+import { useDirectory } from '../../../src/useDirectory';
+import { useLists } from '../../../src/context/ListsContext';
+import { useReviews } from '../../../src/context/ReviewsContext';
+import { useCurrentUser } from '../../../src/useCurrentUser';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -12,16 +16,17 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { Action, Avatar, Dialog, EmptyState, Screen, Section } from '../../../src/components';
-import { useAppState } from '../../../src/AppState';
 import {
-  currentUser,
-  findAnime,
-  findUser,
-  getParam,
-  lists,
-  reviews,
-} from '../../../src/mock';
+  ReviewCard,
+  Action,
+  Avatar,
+  Dialog,
+  EmptyState,
+  Screen,
+  Section,
+} from '../../../src/components';
+import { useAppState } from '../../../src/context/AppState';
+import { findAnime, getParam } from '../../../src/mock';
 import { theme } from '../../../src/theme';
 
 // TODO BACKEND [RATINGS-DISTRIBUCION]: recuperar conteos reales por anime; estos porcentajes son ejemplos.
@@ -89,6 +94,12 @@ const streamingPlatforms = [
 ];
 
 export default function DetalleAnime() {
+  const { findUser } = useDirectory();
+  const { lists, toggleAnime } = useLists();
+  const { reviews } = useReviews();
+
+  const currentUser = useCurrentUser();
+
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const { width: windowWidth } = useWindowDimensions();
   const width = Math.min(windowWidth, theme.layout.maxWidth);
@@ -138,12 +149,7 @@ export default function DetalleAnime() {
   const writeReview = () =>
     router.push({ pathname: '/crear/review/escribir', params: { animeId: item.id } });
   const ownLists = lists.filter((list) => list.userId === currentUser.id);
-  const toggleList = (listId: string) => {
-    const listIds = activity.listIds.includes(listId)
-      ? activity.listIds.filter((currentId) => currentId !== listId)
-      : [...activity.listIds, listId];
-    updateActivity(item.id, { listIds });
-  };
+  const toggleList = (listId: string) => toggleAnime(currentUser.id, listId, item.id);
   const openStreamingPlatform = (url: string) => {
     Linking.openURL(url).catch(() =>
       setMessage('No se pudo abrir el enlace. Probá desde tu navegador.'),
@@ -255,9 +261,7 @@ export default function DetalleAnime() {
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={
-            activity.watchlist ? 'Quitar de Watchlist' : 'Guardar en Watchlist'
-          }
+          accessibilityLabel={activity.watchlist ? 'Quitar de Watchlist' : 'Guardar en Watchlist'}
           accessibilityState={{ selected: activity.watchlist }}
           onPress={() => updateActivity(item.id, { watchlist: !activity.watchlist })}
           style={styles.activityButton}
@@ -380,34 +384,7 @@ export default function DetalleAnime() {
         onPress={() => router.push('/perfil/comunidad')}
       />
       {animeReviews.length ? (
-        animeReviews.map((review) => {
-          const author = findUser(review.userId);
-          if (!author) return null;
-          return (
-            <Pressable
-              key={review.id}
-              accessibilityRole="button"
-              accessibilityLabel={`Leer review de ${author.name}`}
-              onPress={() => router.push({ pathname: '/inicio/review/[id]', params: { id: review.id } })}
-              style={styles.infoCard}
-            >
-              <View style={styles.reviewHeader}>
-                <Avatar user={author} size={30} />
-                <View style={styles.flex}>
-                  <Text style={styles.username}>{author.name}</Text>
-                  <Text style={styles.meta}>{review.time}</Text>
-                </View>
-                <Text style={styles.friendScore}>★ {(review.rating ?? 0).toFixed(1)}</Text>
-              </View>
-              <Text numberOfLines={3} style={styles.synopsis}>
-                {review.spoiler ? 'Esta review contiene spoilers. Tocá para verla.' : review.text}
-              </Text>
-              <Text style={styles.meta}>
-                ♡ {review.likes} · {review.comments} comentarios
-              </Text>
-            </Pressable>
-          );
-        })
+        animeReviews.map((review) => <ReviewCard key={review.id} review={review} />)
       ) : (
         <EmptyState
           title="La primera review puede ser tuya"
@@ -557,7 +534,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   friend: { alignItems: 'center', gap: 4, width: 70 },
   friendScore: { color: theme.colors.primarySoft, fontSize: 12 },
-  reviewHeader: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   username: { color: theme.colors.primarySoft, fontSize: 11, fontWeight: '600' },
   news: {
     flexDirection: 'row',

@@ -1,21 +1,26 @@
+import { useDirectory } from '../../src/useDirectory';
+import { useCurrentUser } from '../../src/useCurrentUser';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Avatar, Chips, Screen } from '../../src/components';
-import { useAppState } from '../../src/AppState';
-import { currentUser, getRankProgress, users } from '../../src/mock';
+import { useAppState } from '../../src/context/AppState';
+import { getRankProgress } from '../../src/mock';
 import { theme } from '../../src/theme';
 
 // TODO BACKEND [RANKING]: consultar posiciones y relaciones reales por cantidad de anime visto.
 
 export default function RankingScreen() {
+  const { users } = useDirectory();
+
+  const currentUser = useCurrentUser();
+
   const { friendIds } = useAppState();
   const [filter, setFilter] = useState('Global');
   const ranked = users
     .filter(
-      (user) =>
-        filter === 'Global' || user.id === currentUser.id || friendIds.includes(user.id),
+      (user) => filter === 'Global' || user.id === currentUser.id || friendIds.includes(user.id),
     )
     .sort((a, b) => b.watched - a.watched);
   const currentPosition = ranked.findIndex((user) => user.id === currentUser.id) + 1;

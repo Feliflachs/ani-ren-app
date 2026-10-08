@@ -1,9 +1,11 @@
+import { useReviews } from '../../../src/context/ReviewsContext';
+import { useCurrentUser } from '../../../src/useCurrentUser';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Image, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { Action, Dialog, EmptyState, Screen, StarRating } from '../../../src/components';
-import { useAppState } from '../../../src/AppState';
-import { currentUser, findAnime, getParam, reviews } from '../../../src/mock';
+import { useAppState } from '../../../src/context/AppState';
+import { findAnime, getParam } from '../../../src/mock';
 import { theme } from '../../../src/theme';
 
 type ReviewDialog = 'confirmed' | 'discard' | null;
@@ -24,6 +26,10 @@ const isValidSeenDate = (value: string, today: Date) => {
 };
 
 export default function EscribirReviewScreen() {
+  const { reviews } = useReviews();
+
+  const currentUser = useCurrentUser();
+
   const params = useLocalSearchParams();
   const reviewId = getParam(params.id) ?? getParam(params.reviewId);
   const existing = reviews.find((review) => review.id === reviewId);
@@ -35,21 +41,21 @@ export default function EscribirReviewScreen() {
   const watched = saved.watched;
   const liked = saved.liked;
   const watchlist = saved.watchlist;
-  const [rating, setRating] = useState<number | undefined>(existing?.rating ?? saved.rating);
+  const [rating, setRating] = useState<number | undefined>(saved.rating);
   const [reviewOpen, setReviewOpen] = useState(Boolean(existing || saved.reviewText));
-  const [title, setTitle] = useState(
-    existing?.title ?? saved.reviewTitle ?? '',
-  );
-  const [text, setText] = useState(existing?.text ?? saved.reviewText ?? '');
+  const [title, setTitle] = useState(saved.reviewTitle ?? '');
+  const [text, setText] = useState(saved.reviewText ?? '');
   const [date, setDate] = useState(saved.date ?? formatDate(today));
-  const [spoiler, setSpoiler] = useState(existing?.spoiler ?? saved.spoiler);
+  const [spoiler, setSpoiler] = useState(saved.spoiler);
   const listIds = saved.listIds;
   const [dialog, setDialog] = useState<ReviewDialog>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [touched, setTouched] = useState(false);
 
   const createsLog = watched || rating !== undefined || reviewOpen;
   const validDate = !createsLog || isValidSeenDate(date, today);
-  const validText = text.trim().length === 0 || text.trim().length >= 10;
+  const validText = !reviewOpen || text.trim().length >= 10;
   const hasActivity = createsLog || liked || watchlist || listIds.length > 0;
   const valid = hasActivity && validDate && validText;
   const goBack = () =>
@@ -57,27 +63,33 @@ export default function EscribirReviewScreen() {
       ? router.back()
       : router.replace({ pathname: '/explorar/anime/[id]', params: { id: item?.id ?? 'frieren' } });
 
-  const save = () => {
+  const save = async () => {
     setTouched(true);
-    if (!valid || !item) return;
-    // TODO BACKEND [ACTIVIDAD-GUARDAR]: reemplazar esta actualización local por una única operación del usuario y el anime.
-    saveActivity(item.id, {
-      watched,
-      liked,
-      watchlist,
-      rating,
-      date: createsLog ? date : undefined,
-      reviewTitle:
-        reviewOpen && title.trim()
-          ? title.trim()
-          : undefined,
-      reviewText: reviewOpen && text.trim() ? text.trim() : undefined,
-      spoiler: reviewOpen && spoiler,
-      listIds,
-      logged: reviewOpen,
-
-    });
-    setDialog('confirmed');
+    if (!valid || !item || saving) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      // TODO BACKEND [ACTIVIDAD-GUARDAR]: reemplazar esta actualización local por una única operación del usuario y el anime.
+      await saveActivity(item.id, {
+        watched,
+        liked,
+        watchlist,
+        rating,
+        date: createsLog ? date : undefined,
+        reviewTitle: reviewOpen && title.trim() ? title.trim() : undefined,
+        reviewText: reviewOpen && text.trim() ? text.trim() : undefined,
+        spoiler: reviewOpen && spoiler,
+        listIds,
+        logged: reviewOpen,
+      });
+      setDialog('confirmed');
+    } catch {
+      setSaveError(
+        'No pudimos guardar la review en el dispositivo. Tu borrador sigue acá; reintentá.',
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (reviewId && !existing)
@@ -150,22 +162,22 @@ export default function EscribirReviewScreen() {
               placeholderTextColor={theme.colors.textSecondary}
               style={styles.input}
             />
-            <Text style={styles.meta}>
-              {title.length} / 100 · El título es opcional.
-            </Text>
+            <Text style={styles.meta}>{title.length} / 100 · El título es opcional.</Text>
             <Text style={styles.label}>Review</Text>
             <TextInput
-              accessibilityLabel="Texto opcional de tu review"
+              accessibilityLabel="Texto de tu review"
               value={text}
               onChangeText={setText}
               onBlur={() => setTouched(true)}
               multiline
               maxLength={2000}
-              placeholder="Escribí una review o dejalo vacío para guardar solo el log."
+              placeholder="Escribí tu review (al menos 10 caracteres)."
               placeholderTextColor={theme.colors.textSecondary}
               style={[styles.input, styles.multiline]}
             />
-            <Text style={styles.meta}>{text.length} / 2000 · El texto es opcional.</Text>
+            <Text style={styles.meta}>
+              {text.length} / 2000 · Mínimo 10 caracteres para publicar.
+            </Text>
             {touched && !validText && (
               <Text style={styles.error}>Si escribís una review, usá al menos 10 caracteres.</Text>
             )}
@@ -204,10 +216,20 @@ export default function EscribirReviewScreen() {
             )}
           </View>
         )}
-
       </View>
 
-      <Action label="Listo" icon="checkmark" primary disabled={!valid} onPress={save} />
+      {!!saveError && (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {saveError}
+        </Text>
+      )}
+      <Action
+        label={saving ? 'Guardando…' : 'Listo'}
+        icon="checkmark"
+        primary
+        disabled={!valid || saving}
+        onPress={save}
+      />
       <Action label="Cancelar" onPress={() => setDialog('discard')} />
 
       <Dialog

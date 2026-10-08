@@ -1,9 +1,12 @@
+import { useDirectory } from '../../../src/useDirectory';
 import { useLocalSearchParams } from 'expo-router';
 import { EmptyState, Screen } from '../../../src/components';
 import { PerfilView } from '../../../src/PerfilView';
-import { findUser, getParam } from '../../../src/mock';
+import { getParam } from '../../../src/mock';
 
 export default function UsuarioScreen() {
+  const { findUser } = useDirectory();
+
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const user = findUser(getParam(params.id));
   if (!user) {

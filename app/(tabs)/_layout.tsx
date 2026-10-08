@@ -1,11 +1,13 @@
+import { useCurrentUser } from '../../src/useCurrentUser';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../src/theme';
 import { Image } from 'react-native';
-import { currentUser } from '../../src/mock';
 
 export default function TabLayout() {
+  const currentUser = useCurrentUser();
+
   const insets = useSafeAreaInsets();
   return (
     <Tabs
@@ -50,9 +52,7 @@ export default function TabLayout() {
         name="crear"
         options={{
           title: 'Crear',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="add" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <Ionicons name="add" size={size} color={color} />,
         }}
       />
       <Tabs.Screen

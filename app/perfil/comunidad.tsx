@@ -1,20 +1,21 @@
+import { useDirectory } from '../../src/useDirectory';
+import { useCurrentUser } from '../../src/useCurrentUser';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Action, Avatar, Chips, EmptyState, Screen, SearchBar } from '../../src/components';
-import { useAppState } from '../../src/AppState';
-import {
-  currentUser,
-  findUser,
-  followingByUser,
-  getParam,
-  getRankProgress,
-  users,
-} from '../../src/mock';
+import { useAppState } from '../../src/context/AppState';
+import { useSocial } from '../../src/context/SocialContext';
+import { getParam, getRankProgress } from '../../src/mock';
 import { theme } from '../../src/theme';
 
 export default function ComunidadScreen() {
+  const { findUser, users } = useDirectory();
+
+  const currentUser = useCurrentUser();
+
   const { followingIds: ownFollowingIds, toggleFollowing } = useAppState();
+  const { getFollowingIds, getFriendIds, getFollowerIds } = useSocial();
   const params = useLocalSearchParams<{ id?: string | string[]; tab?: string | string[] }>();
   const id = getParam(params.id) ?? currentUser.id;
   const isOwn = id === currentUser.id;
@@ -33,15 +34,9 @@ export default function ComunidadScreen() {
         />
       </Screen>
     );
-  const getFollowingIds = (userId: string) =>
-    userId === currentUser.id ? ownFollowingIds : (followingByUser[userId] ?? []);
   const followingIds = getFollowingIds(profile.id);
-  const followerIds = users
-    .filter((user) => getFollowingIds(user.id).includes(profile.id))
-    .map((user) => user.id);
-  const friendIds = followingIds.filter((userId) =>
-    getFollowingIds(userId).includes(profile.id),
-  );
+  const followerIds = getFollowerIds(profile.id);
+  const friendIds = getFriendIds(profile.id);
   const otherUsers = users.filter((user) => user.id !== profile.id);
   const connections = otherUsers.filter((user) => {
     const searchMatches = `${user.name} ${user.handle}`
@@ -65,12 +60,7 @@ export default function ComunidadScreen() {
       subtitle={isOwn ? 'Seguimientos y amistades mutuas.' : 'Conexiones públicas de ejemplo.'}
       back
     >
-      <Chips
-        options={tabs}
-        value={tab}
-        onChange={setTab}
-        variant="underline"
-      />
+      <Chips options={tabs} value={tab} onChange={setTab} variant="underline" />
       <SearchBar value={query} onChangeText={setQuery} placeholder="Buscar por nombre o usuario…" />
       <Text style={styles.meta}>
         {connections.length} {tab.toLowerCase()} de ejemplo

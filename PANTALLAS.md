@@ -1,6 +1,6 @@
 # Ani-ren — Plan de pantallas
 
-Estado: hay 21 pantallas navegables implementadas en Expo, con datos de ejemplo y apertura estática configurada. Social fue integrada en Inicio; Ajustes, Tu perfil anime y Solicitar agregar un anime fueron retiradas del alcance actual.
+Estado actualizado al 7/10/2026: pantallas navegables en Expo, login con sesión local y datos de ejemplo compartidos por contextos. Inicio integra Social. Ajustes, Tu perfil anime y Solicitar agregar un anime siguen fuera del alcance. Consultar HANDOFF para el estado funcional y los contratos de datos actuales; este documento conserva las especificaciones visuales.
 
 Revisión del 20/09/2026: se simplificó el código y se unificaron componentes y cálculos compartidos, manteniendo todas las rutas de este inventario y los comentarios `TODO BACKEND`.
 
@@ -96,11 +96,11 @@ Orden del contenido:
 - Buscador.
 - Explorar por género: Acción, Comedia, Fantasía, Romance y Ver todos.
 - Mapa anime mundial: ilustración, explicación y leyenda de intensidad.
-- Reconocer anime: carga o cámara simuladas, vista previa y coincidencia de ejemplo.
+- Reconocer anime: cámara y galería reales, permisos/cancelación y vista previa. Reconocimiento pendiente, sin coincidencias inventadas.
 - Tendencias globales: fila horizontal de anime con posición y puntuación.
 - Explorar por temporada: Primavera, Verano, Otoño e Invierno de 2026.
 
-Conexiones: anime hacia su detalle; avatar hacia Perfil; buscador, género o temporada hacia Resultados de búsqueda; mapa hacia Mapa anime mundial; reconocimiento simulado hacia el anime identificado; acceso a tops hacia Tops de anime. La vista previa del mapa conserva la composición del mockup; su pantalla ampliada simula las estadísticas.
+Conexiones: anime hacia su detalle; avatar hacia Perfil; buscador, género o temporada hacia Resultados de búsqueda; mapa hacia Mapa anime mundial; acceso a tops hacia Tops de anime. Reconocer anime informa que la integración está pendiente. El mapa usa estadísticas de ejemplo.
 
 ### 3. Crear
 
@@ -240,7 +240,7 @@ Salidas: anime, review o lista hacia sus detalles; conexiones hacia Comunidad; V
 
 Entrada: acción de edición en Perfil.
 
-Contenido: vista previa del avatar, nombre, handle, bio, top de favoritos y botones Guardar / Cancelar. Un selector de anime permite organizar los favoritos destacados. Guardar simula la actualización local.
+Contenido: vista previa del avatar, nombre editable, handle de solo lectura, bio, favoritos y botones Guardar / Cancelar. Guardar actualiza el perfil compartido en memoria; no se escribe en un servidor.
 
 Al tocar el avatar se abre un panel con Tomar foto y Elegir de la galería. En esta etapa se dibujan el selector, la vista previa y las respuestas de cancelación o permiso no disponible. La captura real y la conexión con la galería se implementarán después. Los títulos y sufijos se seleccionan desde personalización Aura.
 
@@ -268,7 +268,7 @@ Entrada: Nueva lista en biblioteca o Editar en una lista propia.
 
 Contenido: nombre, descripción, selector de lista ordenada, búsqueda de anime, elementos seleccionados y acciones para agregar, quitar, subir o bajar posiciones. Botones Guardar y Cancelar. No requiere arrastrar elementos ni una librería para hacerlo.
 
-Estados: lista vacía, título faltante, anime ya agregado y vista previa de la lista. Guardar muestra un resultado simulado; no crea una colección remota.
+Estados: lista vacía, título faltante, anime ya agregado y vista previa. Guardar crea/actualiza la colección compartida en memoria, conservando el orden; no crea una colección remota.
 
 ## Amigos y conexiones
 
@@ -456,7 +456,7 @@ Letterboxd funciona como referencia de experiencia. El alcance concreto de este 
 - El marco del teléfono, la hora y los indicadores dibujados en los mockups no forman parte de la interfaz de la app.
 - Usar imágenes temporales cuando falten posters, avatares o ilustraciones independientes.
 - Mantener la misma identidad y los mismos datos del usuario en Inicio, Aura y Perfil.
-- Si se presentan puntuaciones sobre 10 y sobre 5, aplicar la misma conversión: 9,6/10 equivale a 4,8/5.
+- Las puntuaciones se muestran siempre sobre 5, en medias estrellas.
 
 ## Estados visuales que deben contemplarse
 
@@ -475,7 +475,7 @@ Letterboxd funciona como referencia de experiencia. El alcance concreto de este 
 - Modal abierto y cerrado cuando se utilice.
 - Texto extenso e imágenes temporales o no disponibles.
 
-Las interacciones son demostraciones locales. No se promete sincronización entre pantallas ni conservación de cambios al reiniciar la app en esta etapa.
+Las interacciones son locales y se comparten entre pantallas mediante sus contextos. No se conservan al reiniciar la app, salvo el ID de sesión y las reviews/logs.
 
 ## Criterio de implementación
 
@@ -496,4 +496,4 @@ Todas las vistas están en el alcance visual. El orden permite revisar identidad
 
 Verificación inicial: TypeScript, lint, versiones compatibles con Expo y exportación Android/iOS/web. En navegador se comprobaron las rutas principales a distintos anchos, controles Volver, estados vacíos y seleccionados, IDs inválidos y validaciones de formularios. Las capturas y resultados están en ani-ren-app/artifacts/. Queda revisar teclado, Safe Area y apertura en un teléfono físico; generar bundles no sustituye esa revisión.
 
-El trabajo actual implementa la interfaz y sus respuestas locales. Este mapa no incorpora autenticación, backend, APIs, persistencia, chat ni notificaciones reales. Las fórmulas de ranking, los umbrales de rangos, los criterios de IA, la disponibilidad de plataformas y las métricas por país siguen siendo ejemplos. Las colecciones y relaciones iniciales se comparten desde src/mock.ts para conservar coherencia sin sincronizar las modificaciones locales.
+El trabajo actual implementa interfaz, login de demostración y respuestas locales compartidas. Se persisten la sesión y las reviews/logs. No hay backend, APIs, chat ni notificaciones reales. Los umbrales de rangos, criterios de IA, plataformas y métricas globales/por país siguen siendo ejemplos. `src/mock.ts` inicializa los contextos; sus modificaciones locales se sincronizan entre las pantallas, y los totales personales y misiones se calculan desde ese estado.

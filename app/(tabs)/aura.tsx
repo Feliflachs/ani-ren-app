@@ -1,23 +1,21 @@
+import { useMissions } from '../../src/useMissions';
+import { useCurrentUser } from '../../src/useCurrentUser';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import {
-  Action,
-  Dialog,
-  Progress,
-  RankInsignia,
-  Screen,
-  Section,
-} from '../../src/components';
-import { useAppState } from '../../src/AppState';
-import { auraMissions, currentUser, getRankProgress, ranks } from '../../src/mock';
+import { Action, Dialog, Progress, RankInsignia, Screen, Section } from '../../src/components';
+import { useAppState } from '../../src/context/AppState';
+import { getRankProgress, ranks } from '../../src/mock';
 import { theme } from '../../src/theme';
 
 // TODO BACKEND [AURA]: consultar rango, progreso, beneficios y misiones mediante el id del usuario.
-const featuredMissions = auraMissions.filter((mission) => mission.state === 'En curso').slice(0, 3);
 
 export default function AuraScreen() {
+  const currentUser = useCurrentUser();
+  const { missions: auraMissions } = useMissions();
+  const featuredMissions = auraMissions.slice(0, 3);
+
   const { likedIds, watchedCount, watchlistIds } = useAppState();
   const rankProgress = getRankProgress(watchedCount);
   const currentRankIndex = ranks.indexOf(rankProgress.rank);
@@ -48,11 +46,7 @@ export default function AuraScreen() {
           accessibilityLabel="Ver ranking de usuarios"
           style={styles.rankingButton}
         >
-          <Ionicons
-            name="podium-outline"
-            size={17}
-            color={theme.colors.primarySoft}
-          />
+          <Ionicons name="podium-outline" size={17} color={theme.colors.primarySoft} />
           <Text style={styles.rankingButtonText}>Ranking</Text>
         </Pressable>
       }

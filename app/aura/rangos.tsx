@@ -1,10 +1,11 @@
+import { useCurrentUser } from '../../src/useCurrentUser';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Action, Avatar, Chips, Dialog, RankInsignia, Screen, Section } from '../../src/components';
-import { useAppState } from '../../src/AppState';
-import { currentUser, getParam, getRankProgress, ranks } from '../../src/mock';
+import { useAppState } from '../../src/context/AppState';
+import { getParam, getRankProgress, ranks } from '../../src/mock';
 import { theme } from '../../src/theme';
 
 // TODO BACKEND [DECORADORES]: consultar catálogo y desbloqueos por id de usuario; no son reglas definitivas.
@@ -56,6 +57,8 @@ const decorators = [
 const suggestedTitles = ['Sanji', 'Viajero', 'Espíritu shonen'];
 const tabs = ['Rangos', 'Títulos', 'Sufijos', 'Insignias'];
 export default function RanksScreen() {
+  const currentUser = useCurrentUser();
+
   const { watchedCount } = useAppState();
   const rankProgress = getRankProgress(watchedCount);
   const currentRankIndex = ranks.indexOf(rankProgress.rank);

@@ -1,7 +1,11 @@
+import { useLists } from './context/ListsContext';
+import { useReviews } from './context/ReviewsContext';
+import { useCurrentUser } from './useCurrentUser';
+import { useSession } from './context/SessionContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   Action,
   AnimeCard,
@@ -16,18 +20,9 @@ import {
   Screen,
   Section,
 } from './components';
-import { useAppState } from './AppState';
-import {
-  currentLikedReviewIds,
-  currentUser,
-  findAnime,
-  getRankProgress,
-  lists,
-  followingByUser,
-  currentFollowingIds,
-  type User,
-  reviews,
-} from './mock';
+import { useAppState, useActivities } from './context/AppState';
+import { useSocial } from './context/SocialContext';
+import { findAnime, getRankProgress, type User } from './mock';
 import { theme } from './theme';
 
 export function PerfilView({
@@ -37,29 +32,50 @@ export function PerfilView({
   user: User;
   publicProfile?: boolean;
 }) {
+  const { lists } = useLists();
+  const { reviews, getLikedIds } = useReviews();
+
+  const currentUser = useCurrentUser();
+  const { signOut } = useSession();
+  const [closingSession, setClosingSession] = useState(false);
+  const [sessionError, setSessionError] = useState('');
+  const currentLikedReviewIds = getLikedIds(user.id);
+  const { getFriendIds } = useSocial();
+  const { getCollection } = useActivities();
+
   const [view, setView] = useState('Reviews');
   const [historyFilter, setHistoryFilter] = useState('Todo');
   const [width, setWidth] = useState(300);
   const [sharing, setSharing] = useState(false);
-  const { likedIds, watchedCount, watchedIds, followingIds, toggleFollowing } = useAppState();
+  const { likedIds, watchedCount, followingIds, toggleFollowing } = useAppState();
   const isOwnProfile = user.id === currentUser.id;
   const canManage = isOwnProfile && !publicProfile;
   const following = followingIds.includes(user.id);
-  const isFriend = following && (followingByUser[user.id] ?? []).includes(currentUser.id);
+  const isFriend = getFriendIds(currentUser.id).includes(user.id);
   const favorites = isOwnProfile ? likedIds : user.favorites;
   const totalWatched = isOwnProfile ? watchedCount : user.watched;
-  const historyIds = isOwnProfile ? watchedIds : user.favorites.slice(0, 2);
+  const historyIds = getCollection(user.id).watchedIds;
   const latestAnime = findAnime(historyIds[historyIds.length - 1]);
   // TODO BACKEND [PERFIL-CONSULTAR]: consultar currentUser.id, sus favoritos, actividad, reviews, listas y likes; hoy son datos compartidos de ejemplo.
   const myReviews = reviews.filter((item) => item.userId === user.id);
   const myLists = lists.filter((item) => item.userId === user.id);
-  const likedReviews = isOwnProfile
-    ? reviews.filter((item) => currentLikedReviewIds.includes(item.id))
-    : reviews.filter((item) => item.userId !== user.id).slice(0, 2);
+  const likedReviews = reviews.filter((item) => currentLikedReviewIds.includes(item.id));
   const shownReviews = view === 'Likes' ? likedReviews : myReviews;
   const rankProgress = getRankProgress(totalWatched);
   const openConnections = (tab: string) =>
     router.push({ pathname: '/perfil/comunidad', params: { id: user.id, tab } });
+
+  async function cerrarSesion() {
+    if (closingSession) return;
+    setClosingSession(true);
+    setSessionError('');
+    try {
+      await signOut();
+    } catch {
+      setSessionError('No pudimos cerrar la sesión. Volvé a intentarlo.');
+      setClosingSession(false);
+    }
+  }
 
   return (
     <Screen
@@ -106,13 +122,10 @@ export function PerfilView({
               onPress={() => openConnections('Amigos')}
             />
             <Action
-              label="Cerrar sesión"
+              label={closingSession ? 'Cerrando…' : 'Cerrar sesión'}
               icon="log-out-outline"
-              onPress={() => {
-                // Por ahora solo vuelve al acceso: no hay sesión persistida que borrar.
-                router.dismissAll();
-                router.replace('/login');
-              }}
+              disabled={closingSession}
+              onPress={cerrarSesion}
             />
           </>
         ) : isOwnProfile ? (
@@ -133,17 +146,18 @@ export function PerfilView({
           </>
         )}
       </View>
+      {!!sessionError && (
+        <Text accessibilityRole="alert" style={styles.meta}>
+          {sessionError}
+        </Text>
+      )}
       {!isOwnProfile && isFriend && <Text style={styles.meta}>Amigos · Se siguen mutuamente.</Text>}
 
       <View style={styles.stats}>
         {[
           {
             label: 'Seguidores',
-            value:
-              user.followers +
-              (!isOwnProfile
-                ? Number(following) - Number(currentFollowingIds.includes(user.id))
-                : 0),
+            value: user.followers,
             onPress: () => openConnections('Seguidores'),
           },
           {
@@ -294,25 +308,7 @@ export function PerfilView({
       </View>
       <Section title="Reviews destacadas" action="Ver todas" onPress={() => setView('Reviews')} />
       {myReviews.map((item) => (
-        <Pressable
-          key={`featured-${item.id}`}
-          style={styles.reviewRow}
-          onPress={() => router.push({ pathname: '/inicio/review/[id]', params: { id: item.id } })}
-          accessibilityRole="button"
-        >
-          {findAnime(item.animeId) && (
-            <Image source={findAnime(item.animeId)?.image} style={styles.reviewImage} />
-          )}
-          <View style={styles.flex}>
-            <Text style={styles.rowTitle}>{findAnime(item.animeId)?.title ?? 'Publicación'}</Text>
-            <Text style={styles.muted} numberOfLines={2}>
-              {item.text}
-            </Text>
-          </View>
-          {item.rating !== undefined && (
-            <Text style={styles.purple}>★ {item.rating.toFixed(1)}</Text>
-          )}
-        </Pressable>
+        <ReviewCard key={item.id} review={item} />
       ))}
       <Chips
         options={['Reviews', 'Listas', 'Historial', 'Likes']}
@@ -390,14 +386,14 @@ export function PerfilView({
                     ? `una review de ${findAnime(item.animeId)?.title}`
                     : 'una publicación'}
                 </Text>
-                <Text style={styles.muted}>Hoy · {item.time}</Text>
+                <Text style={styles.muted}>{item.time}</Text>
               </Pressable>
             ))}
           {historyFilter !== 'Reviews' &&
             historyIds
               .slice(-3)
               .reverse()
-              .map((id, index) => (
+              .map((id) => (
                 <Pressable
                   key={id}
                   style={styles.panel}
@@ -408,9 +404,7 @@ export function PerfilView({
                     {isOwnProfile ? 'Marcaste' : `${user.name} marcó`} {findAnime(id)?.title} como
                     visto
                   </Text>
-                  <Text style={styles.muted}>
-                    {index === 0 ? 'Ayer' : `Hace ${index + 2} días`} · Actividad de ejemplo
-                  </Text>
+                  <Text style={styles.muted}>Marcado como visto · actividad local</Text>
                 </Pressable>
               ))}
           {((historyFilter === 'Reviews' && !myReviews.length) ||
@@ -491,22 +485,6 @@ const styles = StyleSheet.create({
   activity: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 5 },
   flex: { flex: 1, gap: 4 },
   muted: { color: theme.colors.textSecondary, fontSize: 10, lineHeight: 16 },
-  reviewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 9,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-  },
-  reviewImage: {
-    width: 68,
-    height: 54,
-    borderRadius: 6,
-    backgroundColor: theme.colors.surfaceLight,
-  },
   rowTitle: { color: theme.colors.text, fontSize: 12, fontWeight: '600' },
   bottomActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   activityPanel: {

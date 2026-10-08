@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Action, Chips, Dialog, EmptyState, Progress, Screen } from '../../src/components';
-import { auraMissions } from '../../src/mock';
+import { useMissions } from '../../src/useMissions';
 import { theme } from '../../src/theme';
 
 // TODO BACKEND [MISIONES]: recuperar misiones, progreso, recompensas y logros por usuario.
@@ -11,27 +11,25 @@ const missionFilters = ['Todas', 'Pendiente', 'En curso', 'Completada'];
 const achievementFilters = ['Todos', 'Obtenidos', 'Bloqueados'];
 
 export default function MissionsScreen() {
+  const { missions: auraMissions, claimedIds, claimReward: receiveReward } = useMissions();
   const [tab, setTab] = useState('Misiones');
   const [filter, setFilter] = useState('Todas');
-  const [selectedMission, setSelectedMission] = useState<(typeof auraMissions)[number] | null>(
-    null,
-  );
-  const [claimedIds, setClaimedIds] = useState<string[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedMission = auraMissions.find((mission) => mission.id === selectedId);
+
   const showingAchievements = tab === 'Logros';
 
   const visibleMissions = auraMissions.filter((mission) => {
     if (filter === 'Todas' || filter === 'Todos') return true;
     if (!showingAchievements) return mission.state === filter;
     if (filter === 'Obtenidos') return claimedIds.includes(mission.id);
-    return mission.state !== 'Completada';
+    return !claimedIds.includes(mission.id) && mission.state !== 'Completada';
   });
 
   // TODO BACKEND [RECOMPENSA]: validar la misión por id y confirmar la obtención real del badge.
   const claimReward = () => {
     if (!selectedMission || selectedMission.state !== 'Completada') return;
-    setClaimedIds((currentIds) =>
-      currentIds.includes(selectedMission.id) ? currentIds : [...currentIds, selectedMission.id],
-    );
+    receiveReward(selectedMission.id);
   };
 
   const changeTab = (nextTab: string) => {
@@ -52,7 +50,7 @@ export default function MissionsScreen() {
         onChange={setFilter}
       />
       <Text style={styles.notice}>
-        Objetivos y recompensas de ejemplo; no se recalcula tu historial.
+        El progreso se calcula con tus vistos y reviews de esta demo.
       </Text>
 
       {visibleMissions.map((mission) => {
@@ -68,7 +66,7 @@ export default function MissionsScreen() {
             key={mission.id}
             accessibilityRole="button"
             accessibilityLabel={`Ver ${showingAchievements ? mission.reward : mission.title}`}
-            onPress={() => setSelectedMission(mission)}
+            onPress={() => setSelectedId(mission.id)}
             style={styles.card}
           >
             <View style={styles.top}>
@@ -108,7 +106,7 @@ export default function MissionsScreen() {
       )}
 
       <Dialog
-        visible={selectedMission !== null}
+        visible={!!selectedMission}
         title={
           showingAchievements ? (selectedMission?.reward ?? '') : (selectedMission?.title ?? '')
         }
@@ -117,7 +115,7 @@ export default function MissionsScreen() {
             ? `${selectedMission.description} Recompensa decorativa: ${selectedMission.reward}. Estado: ${selectedMission.state}.`
             : ''
         }
-        onClose={() => setSelectedMission(null)}
+        onClose={() => setSelectedId(null)}
       >
         {selectedMission?.state === 'Completada' ? (
           <>
@@ -131,17 +129,18 @@ export default function MissionsScreen() {
               disabled={claimedIds.includes(selectedMission.id)}
               onPress={claimReward}
             />
-            <Text style={styles.meta}>La selección se mantiene solo en esta pantalla.</Text>
+            <Text style={styles.meta}>La recompensa se conserva mientras la app siga abierta.</Text>
           </>
         ) : selectedMission ? (
           <Text style={styles.body}>
-            La recompensa está bloqueada hasta completar el objetivo. Este progreso es ilustrativo.
+            La recompensa está bloqueada hasta completar el objetivo. El progreso cambia con tu
+            actividad.
           </Text>
         ) : null}
         <Action
           label="Ver rangos y decoradores"
           onPress={() => {
-            setSelectedMission(null);
+            setSelectedId(null);
             router.push('/aura/rangos');
           }}
         />

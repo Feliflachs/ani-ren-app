@@ -1,17 +1,25 @@
+import { useDirectory } from '../../../src/useDirectory';
+import { useLists } from '../../../src/context/ListsContext';
+import { useCurrentUser } from '../../../src/useCurrentUser';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Action, AnimeCard, Avatar, EmptyState, Screen, Section } from '../../../src/components';
-import { useAppState } from '../../../src/AppState';
-import { currentUser, findAnime, findUser, getParam, lists } from '../../../src/mock';
+
+import { findAnime, getParam } from '../../../src/mock';
 import { theme } from '../../../src/theme';
 
 export default function ListaScreen() {
+  const { findUser } = useDirectory();
+  const { lists, toggleLike: toggleListLike, isLiked } = useLists();
+
+  const currentUser = useCurrentUser();
+
   const params = useLocalSearchParams();
-  const { activities } = useAppState();
+
   // TODO BACKEND [LISTA-DETALLE]: consultar lista por id, autor, pertenencia y orden de animeIds.
   const list = lists.find((item) => item.id === getParam(params.id));
-  const [liked, setLiked] = useState(false);
+  const liked = isLiked(currentUser.id, getParam(params.id) ?? '');
   if (!list)
     return (
       <Screen title="Lista" back>
@@ -19,21 +27,19 @@ export default function ListaScreen() {
           title="Esta lista no está disponible"
           text="Puede haberse eliminado o el enlace no ser correcto."
           action="Ver mi biblioteca"
-          onPress={() => router.replace({ pathname: '/perfil/biblioteca', params: { tab: 'Listas' } })}
+          onPress={() =>
+            router.replace({ pathname: '/perfil/biblioteca', params: { tab: 'Listas' } })
+          }
         />
       </Screen>
     );
   const author = findUser(list.userId);
   const own = list.userId === currentUser.id;
-  const animeIds = own
-    ? Object.entries(activities)
-        .filter(([, activity]) => activity.listIds.includes(list.id))
-        .map(([animeId]) => animeId)
-    : list.animeIds;
+  const animeIds = list.animeIds;
   const items = animeIds.map(findAnime).filter((item) => item !== undefined);
   const toggleLike = () => {
     // TODO BACKEND [LISTA-LIKE]: hoy cambia un contador local; guardar like de currentUser.id a list.id.
-    setLiked((value) => !value);
+    toggleListLike(currentUser.id, list.id);
   };
   return (
     <Screen title={list.ordered ? 'Top personal' : 'Lista de anime'} back>
@@ -44,11 +50,15 @@ export default function ListaScreen() {
           <Avatar
             user={author}
             size={38}
-            onPress={() => router.push({ pathname: '/perfil/usuario/[id]', params: { id: list.userId } })}
+            onPress={() =>
+              router.push({ pathname: '/perfil/usuario/[id]', params: { id: list.userId } })
+            }
           />
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.push({ pathname: '/perfil/usuario/[id]', params: { id: list.userId } })}
+            onPress={() =>
+              router.push({ pathname: '/perfil/usuario/[id]', params: { id: list.userId } })
+            }
             style={styles.grow}
           >
             <Text style={styles.name}>{author?.name ?? 'Usuario'}</Text>
@@ -61,7 +71,7 @@ export default function ListaScreen() {
       <View style={styles.actions}>
         <View style={styles.grow}>
           <Action
-            label={`${liked ? 'Te gusta' : 'Me gusta'} · ${list.likes + (liked ? 1 : 0)}`}
+            label={`${liked ? 'Te gusta' : 'Me gusta'} · ${list.likes}`}
             icon={liked ? 'heart' : 'heart-outline'}
             active={liked}
             onPress={toggleLike}
@@ -72,7 +82,9 @@ export default function ListaScreen() {
             <Action
               label="Editar lista"
               icon="create-outline"
-              onPress={() => router.push({ pathname: '/perfil/listas/editar', params: { id: list.id } })}
+              onPress={() =>
+                router.push({ pathname: '/perfil/listas/editar', params: { id: list.id } })
+              }
             />
           </View>
         )}
@@ -90,7 +102,9 @@ export default function ListaScreen() {
           <AnimeCard item={item} width={74} />
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })}
+            onPress={() =>
+              router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })
+            }
             style={styles.grow}
           >
             <Text style={styles.name}>{item.title}</Text>

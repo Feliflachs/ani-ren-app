@@ -1,17 +1,27 @@
+import { useProfiles } from '../../src/context/ProfilesContext';
+import { useActivities } from '../../src/context/AppState';
+import { useDirectory } from '../../src/useDirectory';
+import { useCurrentUser } from '../../src/useCurrentUser';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Action, Avatar, Dialog, Screen, Section } from '../../src/components';
-import { anime, currentUser, findAnime, users } from '../../src/mock';
+import { anime, findAnime } from '../../src/mock';
 import { theme } from '../../src/theme';
 
 type ProfileDialog = 'avatar' | 'favorites' | 'saved' | 'cancel' | null;
 
 export default function EditarPerfilScreen() {
-  // TODO BACKEND [PERFIL-EDITAR-CARGAR]: obtener los campos editables y favoritos de currentUser.id; hoy se inicia con el perfil mock.
+  const { users } = useDirectory();
+
+  const currentUser = useCurrentUser();
+
+  // Borrador local: solo Guardar modifica los datos compartidos.
   const [name, setName] = useState(currentUser.name);
-  const [handle, setHandle] = useState(currentUser.handle);
+  const handle = currentUser.handle;
+  const { updateProfile } = useProfiles();
+  const { setFavorites: saveFavorites } = useActivities();
   const [bio, setBio] = useState(currentUser.bio);
   const [favorites, setFavorites] = useState(currentUser.favorites);
   const [avatar, setAvatar] = useState(currentUser.image);
@@ -19,8 +29,7 @@ export default function EditarPerfilScreen() {
   const [avatarNotice, setAvatarNotice] = useState('');
   const [attempted, setAttempted] = useState(false);
   const nameError = name.trim().length === 0;
-  const handleError = handle.trim().length === 0 || /[^a-zA-Z0-9_.]/.test(handle.trim());
-  const canSave = !nameError && !handleError;
+  const canSave = !nameError;
   const preview = {
     ...currentUser,
     name: name.trim() || currentUser.name,
@@ -33,10 +42,11 @@ export default function EditarPerfilScreen() {
   const save = () => {
     setAttempted(true);
     if (!canSave) return;
-    // TODO BACKEND [PERFIL-EDITAR-GUARDAR]: enviar currentUser.id, nombre, handle, bio y favoritos ordenados; hoy solo se confirma el borrador local.
+    // TODO BACKEND [PERFIL-EDITAR-GUARDAR]: confirmar nombre, bio y avatar mediante ProfilesContext; el handle no se edita.
     // TODO BACKEND [AVATAR-SUBIR]: subir la imagen seleccionada y guardar su referencia en el perfil después de la respuesta del servidor.
     setName(name.trim());
-    setHandle(handle.trim());
+    updateProfile(currentUser.id, { name: name.trim(), bio: bio.trim(), image: avatar });
+    saveFavorites(currentUser.id, favorites);
     setDialog('saved');
   };
   const chooseImage = (source: 'Cámara' | 'Galería') => {
@@ -88,18 +98,16 @@ export default function EditarPerfilScreen() {
       <Text style={styles.label}>Usuario</Text>
       <TextInput
         accessibilityLabel="Usuario"
-        style={[styles.input, attempted && handleError && styles.invalid]}
+        style={styles.input}
         value={handle}
-        onChangeText={setHandle}
+        editable={false}
         placeholder="usuario"
         placeholderTextColor={theme.colors.textSecondary}
         autoCapitalize="none"
         autoCorrect={false}
         maxLength={24}
       />
-      {handleError && (
-        <Text style={styles.error}>Usá letras, números, punto o guion bajo, sin espacios.</Text>
-      )}
+      <Text style={styles.meta}>El nombre de usuario no se puede cambiar.</Text>
       <Text style={styles.label}>Bio</Text>
       <TextInput
         accessibilityLabel="Biografía"
@@ -166,7 +174,7 @@ export default function EditarPerfilScreen() {
       <Action label="Guardar cambios" primary icon="checkmark-outline" onPress={save} />
       <Action label="Cancelar" onPress={() => setDialog('cancel')} />
       <Text style={styles.meta}>
-        El borrador y su confirmación son locales; otras pantallas conservan el perfil de ejemplo.
+        Los cambios se comparten entre pantallas y se reinician al recargar la app.
       </Text>
       <Dialog
         visible={dialog === 'avatar'}
@@ -227,7 +235,7 @@ export default function EditarPerfilScreen() {
       <Dialog
         visible={dialog === 'saved'}
         title="Cambios preparados"
-        text="Simulación: guardaste el borrador local. El perfil no se actualizó en un servidor."
+        text="Tu perfil se actualizó en esta demostración local."
         onClose={() => setDialog(null)}
       />
       <Dialog

@@ -1,3 +1,5 @@
+import { useLists } from '../../../src/context/ListsContext';
+import { useCurrentUser } from '../../../src/useCurrentUser';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -11,16 +13,21 @@ import {
   SearchBar,
   Section,
 } from '../../../src/components';
-import { anime, currentUser, findAnime, getParam, lists } from '../../../src/mock';
+import { anime, findAnime, getParam } from '../../../src/mock';
 import { theme } from '../../../src/theme';
 
 type ListDialog = 'confirmed' | 'discard' | null;
 
 export default function EditarListaScreen() {
+  const { lists, saveList } = useLists();
+
+  const currentUser = useCurrentUser();
+
   const params = useLocalSearchParams();
   const id = getParam(params.id);
   // TODO BACKEND [LISTA-EDITAR-CONSULTA]: recuperar lista por id y verificar permisos de currentUser.id.
   const existing = lists.find((item) => item.id === id);
+  const [savedId, setSavedId] = useState(existing?.id);
   const [title, setTitle] = useState(existing?.title ?? '');
   const [description, setDescription] = useState(existing?.description ?? '');
   const [ordered, setOrdered] = useState(existing?.ordered ?? false);
@@ -57,8 +64,15 @@ export default function EditarListaScreen() {
   };
   const save = () => {
     if (!valid) return;
-    // TODO BACKEND [LISTA-GUARDAR]: hoy se confirma una vista previa; guardar id opcional, currentUser.id, título, descripción, animeIds y ordered.
-    // Verificar autor y confirmar únicamente tras la respuesta real del servidor.
+    // TODO BACKEND [LISTA-GUARDAR]: conectar saveList con la API conservando el orden de animeIds.
+    // El contexto valida el autor; por ahora guarda en memoria.
+    setSavedId(
+      saveList(
+        currentUser.id,
+        { title: title.trim(), description: description.trim(), ordered, animeIds },
+        savedId,
+      ),
+    );
     setDialog('confirmed');
   };
 
@@ -210,7 +224,7 @@ export default function EditarListaScreen() {
       {!valid && (
         <Text style={styles.meta}>Para guardar, elegí un nombre y agregá al menos un anime.</Text>
       )}
-      <Text style={styles.meta}>La lista es una demostración local; no se guarda al salir.</Text>
+      <Text style={styles.meta}>Los cambios son locales y se reinician al recargar la app.</Text>
       <Action
         label={existing ? 'Guardar cambios' : 'Crear lista'}
         icon="checkmark-circle-outline"
@@ -221,8 +235,8 @@ export default function EditarListaScreen() {
       <Action label="Cancelar" onPress={() => setDialog('discard')} />
       <Dialog
         visible={dialog === 'confirmed'}
-        title="Simulación: lista preparada"
-        text="La vista previa está lista. No se creó ni modificó una colección permanente."
+        title="Lista guardada"
+        text="Los cambios ya aparecen en tu perfil y biblioteca. Se conservan mientras la app siga abierta."
         onClose={() => setDialog(null)}
       >
         <View style={styles.card}>

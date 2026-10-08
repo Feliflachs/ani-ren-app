@@ -1,3 +1,6 @@
+import { useDirectory } from '../../src/useDirectory';
+import { useLists } from '../../src/context/ListsContext';
+import { useReviews } from '../../src/context/ReviewsContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -13,21 +16,14 @@ import {
   SearchBar,
   Section,
 } from '../../src/components';
-import {
-  anime,
-  findAnime,
-  findUser,
-  genres,
-  getParam,
-  getRankProgress,
-  lists,
-  reviews,
-  seasons,
-  users,
-} from '../../src/mock';
+import { anime, findAnime, genres, getParam, getRankProgress, seasons } from '../../src/mock';
 import { theme } from '../../src/theme';
 
 export default function BusquedaScreen() {
+  const { findUser, users } = useDirectory();
+  const { lists } = useLists();
+  const { reviews } = useReviews();
+
   const params = useLocalSearchParams();
   const { width: windowWidth } = useWindowDimensions();
   const width = Math.min(windowWidth, theme.layout.maxWidth);
@@ -139,10 +135,7 @@ export default function BusquedaScreen() {
           onPress={() => setStatus('ready')}
         />
       ) : count === 0 ? (
-        <EmptyState
-          action="Limpiar búsqueda"
-          onPress={clearSearch}
-        />
+        <EmptyState action="Limpiar búsqueda" onPress={clearSearch} />
       ) : (
         <>
           {category === 'Anime' && (
@@ -159,7 +152,9 @@ export default function BusquedaScreen() {
               <Pressable
                 key={item.id}
                 accessibilityRole="button"
-                onPress={() => router.push({ pathname: '/perfil/usuario/[id]', params: { id: item.id } })}
+                onPress={() =>
+                  router.push({ pathname: '/perfil/usuario/[id]', params: { id: item.id } })
+                }
                 style={[styles.card, styles.row]}
               >
                 <Avatar user={item} />

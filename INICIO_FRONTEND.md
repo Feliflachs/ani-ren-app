@@ -51,7 +51,7 @@ Usuarios, anime, reviews, publicaciones, listas, amigos, estadísticas, misiones
 
 La idea de IA se representa con ejemplos predeterminados y una etiqueta clara de demostración. El opening es estático. Cámara y galería tienen selector y vista previa de ejemplo; la captura real no forma parte del primer trabajo visual.
 
-La carpeta backend/ permanece vacía durante esta etapa. Autenticación, base de datos, APIs externas, persistencia, cálculo real de rangos, IA real, chat, notificaciones y animación del logo quedan para después.
+No hay backend durante esta etapa. Login con cuentas de demostración y persistencia local del ID ya están implementados. Contextos separados comparten actividad, perfiles, relaciones, listas y reviews; Aura calcula el progreso con esos datos mediante un hook, sin contexto propio. Las reviews/logs se guardan localmente y se restauran al reiniciar. Autenticación real, base remota, APIs, persistencia del resto de la actividad, IA, chat, notificaciones y animación del logo quedan para después. Consultar el HANDOFF actualizado antes de integrar servicios.
 
 ## Fuentes para retomar
 

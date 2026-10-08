@@ -1,6 +1,74 @@
 ﻿# Ani-ren: funcionamiento actual y próximos pasos
 
-Actualizado: 6 de octubre de 2026.
+Actualizado: 8 de octubre de 2026. Rama de trabajo: `context`.
+
+## Estado de la revisión del 8 de octubre
+
+Se unificaron los datos personales y sus consumidores. Las secciones históricas describen el proceso; para datos, persistencia e integración futura rige este apartado.
+
+Los seis contextos viven en `src/context/`, incluido `AppState.tsx`. Los hooks que combinan datos permanecen en `src/`. Esta reorganización cambia rutas de archivos, no funcionamiento.
+
+### Método y responsabilidades
+
+1. Separar el estado por responsabilidad, sin crear un contexto por pantalla.
+2. Cargar los ejemplos de `mock.ts` una sola vez en los providers.
+3. Hacer que todas las pantallas lean el mismo estado y calculen los totales a partir de él.
+4. Reutilizar tarjetas y reglas visuales, y después eliminar estilos/imports sin uso.
+5. Comprobar cambios de cuenta, edición, relaciones y spoilers con pruebas de lógica y una exportación.
+
+| Archivo | Fuente que administra | Consumidores |
+| --- | --- | --- |
+| `SessionContext.tsx` | ID de la cuenta activa; ingreso, restauración y cierre | Login, layout, hooks de usuario |
+| `ProfilesContext.tsx` | Nombre visible, biografía e imagen | Editor, avatares y directorio de perfiles |
+| `AppState.tsx` | Vistos, favoritos ordenados, watchlist y recompensas por usuario | Biblioteca, ficha de anime, perfil y misiones |
+| `SocialContext.tsx` | IDs seguidos; deriva seguidores y amistad mutua | Comunidad, perfiles, feed, amigos del anime y ranking |
+| `ReviewsContext.tsx` | Reviews/logs, puntuación, fecha, spoilers, likes, comentarios y publicaciones guardadas | Inicio, detalle, editor, búsqueda, perfil, biblioteca, ficha de anime y mapa |
+| `ListsContext.tsx` | Listas con su `animeIds` ordenado y likes | Editor, tarjetas, detalle, perfil, biblioteca, búsqueda y selector del anime |
+| `useMissions.ts` | Hook sin contexto propio; calcula progreso y consulta recompensas en AppState | Aura y Misiones |
+| `missions.ts` | Definición de objetivos y cálculo reutilizable por tipo de misión | Aura y Misiones |
+| `useDirectory.ts` | No almacena estado: compone perfiles y totales actuales | Toda pantalla que muestra personas |
+| `useCurrentUser.ts` | Resuelve el perfil actual a partir del ID de sesión | Pantallas de la cuenta activa |
+
+`useAppState()` conserva una interfaz cómoda para la actividad del anime, pero no guarda otra copia de las reviews ni de las listas: consulta sus contextos. Los textos y puntuaciones se guardan únicamente en `ReviewsContext`; el contenido y orden de las listas, únicamente en `ListsContext`.
+
+Hay seis contextos por responsabilidad. Se retiró el provider exclusivo de Aura: sus cálculos no necesitan otro contexto. Los hooks `useMissions`, `useDirectory` y `useCurrentUser` solo consultan/componen datos.
+
+### Comportamiento acordado
+
+- El `@usuario` y el ID no se editan. El formulario muestra el usuario como solo lectura; las reglas de alta siguen en `src/login.ts`. No hay que renombrar autores en cada review: se relacionan por ID.
+- Editar nombre/bio/avatar de ejemplo y favoritos actualiza las vistas locales. El selector de avatar sigue siendo una demostración, no acceso al dispositivo; cámara y galería reales están en Explorar.
+- Los totales de perfil, Aura, comunidad y ranking salen de las colecciones. Se eliminaron los grandes números personales ficticios: ahora una biblioteca de cuatro animes indica cuatro. El catálogo y las métricas globales/por país siguen siendo muestras estáticas.
+- Los likes y comentarios son compartidos. Las conversaciones empiezan vacías porque no había comentarios específicos por review; ya no se reutilizan los mismos dos comentarios para todas.
+- Crear/editar una review actualiza Inicio, Perfil, Biblioteca, búsqueda y ficha. Un log sin texto no se publica como review. Si se abre el campo de review, requiere al menos diez caracteres.
+- Las listas guardadas aparecen en todas sus vistas. Agregar un anime desde su ficha lo coloca al final; quitarlo conserva el orden del resto. No se reconstruyen según el catálogo.
+- `ReviewCard` es la tarjeta común. Tocar su cuerpo abre el detalle; no hay botón "Ver review". Likes y otras acciones son independientes. `ReviewContent` y `SpoilerCover` ocultan título y texto con una cubierta gris hasta tocarla; también se usan en el detalle. El formulario ya tiene el interruptor «Contiene spoilers».
+- Misiones: objetivos de demo alcanzables con el catálogo (2 romances, 3 de Acción, 4 géneros, 3 reviews y primer visto). No hay objetivo semanal porque todavía no existe un historial temporal completo. Recompensas solo reclamables con el objetivo completo; se conservan por usuario durante la ejecución. Los decoradores de Rangos siguen siendo una vista previa local.
+- Los providers de datos no se desmontan al salir de la cuenta: permiten ver las mismas modificaciones al visitar ese perfil desde otra cuenta. Se reinician los formularios y la navegación al cambiar el ID activo.
+- **Persistencia:** AsyncStorage recuerda el ID de sesión y las reviews/logs (clave `ani-ren:reviews:v1`), incluyendo texto, título, fecha, puntuación y spoilers. El editor confirma después de escribir y conserva el borrador si falla. La app espera la lectura inicial; si falla, muestra Reintentar sin sobrescribir los datos. Likes, comentarios, listas, perfiles editados, relaciones, recompensas y cambios de colecciones siguen siendo temporales. Los vistos iniciales incluyen los animes de las reviews restauradas. No se escriben archivos del proyecto.
+
+### Mapa para conectar el backend después
+
+No hay URLs ni esquema de base de datos definitivo. Estos son contratos de frontend para coordinar con el equipo; una API deberá validar autoría, reglas y errores del lado servidor. Adaptar respuestas en los providers evita reescribir cada tarjeta.
+
+| Dominio | Lecturas y operaciones a reemplazar | Atributos que usa la interfaz |
+| --- | --- | --- |
+| Sesión | `buscarCuenta`, `signIn`, `restore`, `signOut` | ID estable; mecanismo de sesión real por definir. El JSON de contraseñas públicas se retira al integrar autenticación |
+| Perfiles | Carga de `ProfilesContext`, `updateProfile` | `id`, `name`, `handle`, `bio`, imagen; las imágenes locales deberán adaptarse a URLs/archivos |
+| Colecciones | Carga de `AppState`, `updateCollection`, `setFavorites` | `userId`, IDs de anime vistos, favoritos ordenados y watchlist |
+| Relaciones | Carga de `SocialContext`, `toggleFollowing` | `userId`, `otherId`; seguidores y amistad se derivan de los seguimientos |
+| Reviews/logs | Carga de `ReviewsContext`, `saveReview` | `id`, `userId`, `animeId`, `title`, `text`, `rating`, `spoiler`, `date`. Actualmente hay una entrada por usuario/anime; acordar si habrá varias y timestamps antes de integrar |
+| Interacciones | `toggleLike`, `toggleSaved`, `addComment` de Reviews; `toggleLike` de Lists | ID de publicación/lista, ID de usuario; comentarios con `id`, `userId`, `text`, fecha/hora |
+| Listas | Carga de `ListsContext`, `saveList`, `toggleAnime` | `id`, `userId`, `title`, `description`, `ordered`, `animeIds` preservando el orden |
+| Aura | Definiciones/progreso de misiones y reclamación de recompensas | ID de misión, criterio, objetivo, progreso y recompensa por usuario; rangos y decoradores requieren reglas acordadas |
+| Catálogo y búsqueda | `anime`, `findAnime`, géneros, temporadas en `mock.ts`; filtros de Búsqueda y Crear | Metadatos del anime y resultados por categoría; paginación/carga/error al integrar |
+| Rankings y mapa | `getCountryMetric`, `getCountryTop`, `countries`, `localReviewIds` en detalle de país; Tops | País, anime, período, métrica y agregados; no se deducen de la actividad personal actual |
+| Reconocimiento | Selección de imagen en Explorar y futura función de reconocimiento | Imagen de entrada y coincidencias normalizadas; todavía no se consulta ninguna API |
+
+Los totales personales se calculan completos para esta demo pequeña. Con backend y paginación deberá recibirse el total real, no contar únicamente los elementos de una página. Añadir estados de carga/error y confirmar las mutaciones cuando responda el servidor.
+
+### Validación de esta etapa
+
+`npm.cmd test` ejecuta pruebas de lógica con hooks y almacenamiento simulados, sin servicios externos. Cubre perfiles, cambio de cuenta, relaciones, likes/comentarios, edición y restauración de reviews, errores de almacenamiento, navegación de tarjetas, listas ordenadas, misiones, sesión y cubierta de spoilers. También ejecutar TypeScript, lint y exportación. Falta inspección interactiva en teléfono: especialmente revelar spoilers, teclado, volver de editores, permisos y restaurar sesión.
 
 ## 1. Objetivo y alcance
 
@@ -8,7 +76,7 @@ Aplicación educativa para descubrir anime, registrar actividad, compartir revie
 
 Prioridad: código simple que el equipo pueda entender y explicar. Cada decisión debe tener una razón concreta. Evitar infraestructura y abstracciones innecesarias; no contratar servicios pagos.
 
-Este documento separa lo implementado de las propuestas futuras. El 5 de octubre se reorganizaron las subpantallas por sección en la rama `trabajo/organizacion-frontend`. El 6 de octubre se agregaron login con cuentas JSON y registro de validación. Todavía no se cambia el usuario de la app al ingresar, ni hay autenticación persistente, ubicación o traducciones. Acordar cada paso antes de programarlo.
+Este documento separa lo implementado de las propuestas futuras. El 5 de octubre se reorganizaron las subpantallas por sección en la rama `trabajo/organizacion-frontend`. El 6 de octubre se agregaron login con cuentas JSON y registro de validación. En la rama `context` se conectó la cuenta elegida con las pantallas y se agregó sesión local persistente. No hay backend, ubicación ni traducciones. Acordar cada paso antes de programarlo.
 
 ## 2. Organización actual
 
@@ -51,7 +119,8 @@ Solo existen esos dos layouts. Las subpantallas se agrupan en `app/inicio/`, `ap
 | `src/theme.ts` | Colores, espacios, tipografía, radios y ancho máximo. Centraliza valores; hoy el tema es fijo. |
 | `src/components.tsx` | Screen, Action, SearchBar, Avatar, tarjetas, Chips, Dialog, EmptyState, Progress, StarRating y RankInsignia. Evita duplicar controles. |
 | `src/mock.ts` | Tipos, catálogo, usuarios, reviews, listas, países, misiones, relaciones y funciones de ejemplo. Permite presentar sin servidor. |
-| `src/AppState.tsx` | Actividad y seguimientos temporales compartidos entre pantallas. |
+| `src/context/AppState.tsx` | Actividad y seguimientos temporales compartidos entre pantallas. |
+| `src/context/SessionContext.tsx` | Cuenta activa, carga inicial, ingreso y cierre de sesión; recuerda solo su ID con AsyncStorage. |
 | `src/PerfilView.tsx` | Vista común del perfil propio y público; recibe el usuario y adapta las acciones según corresponda. |
 | `src/WorldMap.tsx` | Siluetas SVG locales y países seleccionables, coloreados por métricas de ejemplo. |
 
@@ -61,16 +130,18 @@ Solo existen esos dos layouts. Las subpantallas se agrupan en `app/inicio/`, `ap
 
 ### Estado y actividad
 
-`AppStateProvider` envuelve la app desde el layout principal. Conserva por anime: visto, favorito, watchlist, puntuación, fecha, título/texto, spoiler y pertenencia a listas. Conserva seguimientos y deriva amistades del seguimiento mutuo. Las pantallas consumen estos datos con `useAppState`.
+`AppStateProvider` conserva vistos, favoritos y watchlist por usuario. `useAppState` combina esas colecciones con la puntuación/texto de Reviews, la pertenencia de Lists y las relaciones de Social, sin almacenarlas por duplicado. Ver el mapa de contextos del apartado inicial.
 
-No hay persistencia al cerrar/recargar, autenticación real ni backend conectado. `currentUser` sigue siendo un usuario fijo de `mock.ts`. No todas las acciones pasan por el contexto: varios formularios, likes y comentarios tienen estado local. Guardar actividad no equivale a publicar una nueva review en todos los arrays del feed.
+La sesión y las reviews/logs se recuerdan al cerrar/recargar; el resto de la actividad modificada sigue siendo temporal. `useCurrentUser()` combina el ID de `SessionContext` con el directorio actualizado; ya no se exporta un usuario fijo de `mock.ts`. El ID del JSON se corresponde con un perfil de `mock.ts`, donde siguen los datos de ejemplo. Biblioteca, favoritos, listas, reviews, relaciones y Aura parten de esa persona. Desde la revisión del 7 de octubre, los datos se mantienen separados por ID durante la ejecución; cambiar de cuenta reinicia las pantallas, no las colecciones. Recargar recupera las reviews guardadas y los ejemplos iniciales para los otros datos.
+
+No hay autenticación real ni backend conectado. Los borradores permanecen en los formularios; al guardar, los contextos comparten los cambios. Las previews de decoradores siguen siendo locales.
 
 Reglas existentes:
 
 - Puntuación de 0.5 a 5, en medias estrellas, o sin puntuación.
 - Visto, Me gusta y Watchlist registran distintas relaciones con un anime.
 - Una puntuación o un log agrega el anime a Vistos.
-- Texto opcional; si se escribe, mínimo 10 caracteres.
+- Se puede guardar un log sin abrir el editor de texto. Al abrirlo para publicar una review, requiere mínimo 10 caracteres.
 - Fecha del log real y no futura.
 - Una actividad puede asociarse a varias listas.
 - Amigos significa seguimiento mutuo.
@@ -92,7 +163,7 @@ No hay GPS, país detectado ni ubicación en reviews. Detectar un país no calcu
 
 ## 4. Próximos pasos: definidos o en discusión
 
-La organización (4.1), la vista común de perfil (4.2) y los formularios de login/registro (4.3) están implementados. El resto sigue pendiente; las propuestas no son autorización para programarlo todo.
+La organización, los perfiles comunes, login, los contextos de datos y las misiones locales están implementados. Idiomas, temas, geolocalización, reconocimiento y persistencia de actividad siguen pendientes; las propuestas no son autorización para programarlo todo.
 
 ### 4.1. Carpetas por sección
 
@@ -104,9 +175,9 @@ Cada subpantalla tiene una sola ubicación y sigue siendo accesible desde otras 
 
 Implementado: `src/PerfilView.tsx` concentra el diseño basado en el perfil propio: identidad, estadísticas, insignia Aura, favoritos, actividad reciente, reviews destacadas y pestañas subrayadas Reviews/Listas/Historial/Likes. `app/(tabs)/perfil.tsx` pasa el usuario de ejemplo; `app/perfil/usuario/[id].tsx` resuelve el ID, maneja usuario inexistente y usa esa misma vista en modo público. Justificación: mantener el diseño común una sola vez.
 
-Los accesos a biblioteca personal y edición solo se ofrecen en el perfil propio. El perfil ajeno permite seguir/dejar de seguir y ver conexiones de esa persona; no abre la biblioteca o Aura del usuario actual como si fueran ajenas. Actividad, listas y reviews se derivan del perfil recibido. Likes e historial ajenos siguen usando ejemplos, no datos reales.
+Los accesos a biblioteca personal y edición solo se ofrecen en el perfil propio. El perfil ajeno permite seguir/dejar de seguir y ver conexiones de esa persona; no abre la biblioteca o Aura del usuario actual como si fueran ajenas. Actividad, listas y reviews se derivan del perfil recibido. Likes e historial ajenos consultan las mismas colecciones de cada usuario.
 
-Se reemplazó Iniciar sesión por Cerrar sesión en la fila de Editar perfil y Amigos; la fila puede envolver los botones en pantallas angostas. Por ahora limpia el recorrido de navegación y vuelve a Login; no hay sesión persistida que borrar ni se reinicia la actividad local. La autenticación por usuario sigue pendiente.
+Se reemplazó Iniciar sesión por Cerrar sesión en la fila de Editar perfil y Amigos; la fila puede envolver los botones en pantallas angostas. Ahora elimina el ID guardado y la cuenta activa. El layout vuelve al acceso; la actividad permanece separada por usuario hasta recargar la app. Si falla el almacenamiento, muestra un error para reintentar.
 
 Verificación: TypeScript, lint de los tres archivos y exportación web/Android/iOS. Se comprobó con render de prueba (componentes nativos y router simulados) la separación de datos/acciones de todos los perfiles de ejemplo, el subrayado, seguir, conexiones y retorno al login. Pendiente inspección visual y navegación real en teléfono.
 
@@ -118,11 +189,11 @@ Implementado el 6 de octubre:
 - `app/login/crear-cuenta.tsx`: validación y confirmación de registro simulado, con regreso al login tras 3 segundos. El temporizador se limpia al desmontar la pantalla.
 - `src/usuarios-demo.json`: cuentas `felipeanime`, `sofi_23` y `nicochan`, todas con contraseña ficticia `Anime2026`.
 - `src/login.ts`: búsqueda de cuenta y validación de registro, compartidas y separadas de la interfaz para comprobarlas fácilmente.
-- La app abre Login desde `app/index.tsx`. Al validar credenciales reemplaza Login por `/inicio`, cuya pantalla es `app/(tabs)/inicio.tsx`. Login no tiene flecha de regreso ni diálogo intermedio. Se conservan los dos layouts y todavía no se persiste sesión ni se protegen rutas por autenticación.
+- `app/index.tsx` dirige a Login sin sesión o a `/inicio` con cuenta activa. El layout espera la lectura local antes de mostrar pantallas y usa `Stack.Protected` para separar acceso/registro de las rutas de la app. Login no tiene flecha de regreso ni diálogo intermedio. Se conservan los dos layouts.
 
 Reglas iniciales: usuario de 3 a 20 caracteres (letras ASCII, números o guion bajo); se ignoran mayúsculas y espacios en los extremos al comparar nombres. No se permite un nombre ocupado en el JSON. Contraseña de al menos 8 caracteres con una letra y un número, y confirmación idéntica. La contraseña sí distingue mayúsculas y no se recorta. Estas reglas pueden ajustarse si el equipo define otras.
 
-El registro no guarda cuentas y lo aclara en pantalla. Un registro válido no permite entrar después con esos datos. No se persiste sesión ni se conecta un contexto de autenticación: el usuario pidió abordar el cambio de perfil por cuenta en otra etapa. Justificación: completar primero los formularios sin mezclar la migración de `currentUser` y de la actividad compartida.
+El registro no guarda cuentas y lo aclara en pantalla. Un registro válido no permite entrar después con esos datos. El ingreso sí conecta una cuenta del JSON con `SessionContext`, sin servidor.
 
 Definido por el usuario:
 
@@ -135,9 +206,9 @@ Definido por el usuario:
 
 La confirmación implementada dice: «Datos válidos. Registro simulado correctamente; no se creó una cuenta real».
 
-Pendientes: recordar sesión o no y qué información cambiará con cada cuenta. Cambiar de cuenta requiere adaptar `currentUser` y aislar la actividad, no solo aceptar una contraseña.
+Implementado en `context`: recordar el ID con la clave `ani-ren:sesion`, restaurar solo cuentas reconocidas y borrarlo al cerrar sesión. Un ID desconocido se descarta; si falla la lectura se permite volver a ingresar. La contraseña no se copia a AsyncStorage. Justificación: separar la identidad de la actividad y permitir demostrar distintas cuentas sin servidor.
 
-Si se recuerda sesión, guardar la referencia al usuario ficticio, no una contraseña real. El JSON contiene ejemplos públicos; no constituye autenticación segura. Backend real queda para después. Justificación: demostrar formularios y navegación sin necesitar servidor.
+El JSON contiene ejemplos públicos; no constituye autenticación segura. Backend real queda para después. Verificación de esta etapa: TypeScript, lint y exportación web/Android/iOS; pruebas de lógica con hooks y almacenamiento simulados para las tres cuentas, credenciales inválidas, restauración, cierre, errores de almacenamiento y separación de actividad. Falta verificar navegación y persistencia en un teléfono real.
 
 ### 4.4. Context y almacenamiento
 
@@ -216,7 +287,7 @@ La información en vivo necesita una fuente de actualizaciones del backend. Cont
 2. Rama `trabajo/organizacion-frontend` creada; guardar avances con commits cuando corresponda.
 3. Rutas reorganizadas. Comprobar también manualmente botón atrás y barra inferior en los recorridos de presentación.
 4. Vista de perfil unificada; revisar visualmente ambos modos en teléfono.
-5. Formularios de login y registro implementados. Siguiente etapa de autenticación: conectar la cuenta elegida con el estado y los perfiles.
+5. Login conectado con cuenta activa y sesión recordada en la rama `context`. Probar en teléfono: entrar con Felipe, cerrar sesión, entrar con Sofi y comprobar perfil/biblioteca; cerrar y abrir la app para comprobar restauración. Persistir actividad por cuenta queda para otra etapa.
 6. Preferencias locales y contextos necesarios.
 7. Ubicación puntual y país de publicación con recorrido acordado.
 8. Reconocimiento de capturas con trace.moe.
@@ -270,6 +341,6 @@ Sprint 1 pide propuesta, sostenibilidad, branding, prototipo público navegable,
 
 Documentar pruebas de cámara/fototeca y distinguir selección de imágenes de reconocimiento. No presentar datos de ejemplo, login simulado o métricas locales como servicios reales.
 
-README contiene textos antiguos sobre escala de 10 puntos y reconocimiento simulado. El código actual usa escala de 5 y selección real con reconocimiento pendiente. En esta reorganización se actualizaron referencias a archivos en HANDOFF y PANTALLAS; la revisión general de los textos antiguos queda pendiente.
+Se actualizaron README, PANTALLAS e INICIO_FRONTEND para indicar escala de 5, cámara/galería reales en Explorar, reconocimiento pendiente, sesión persistente y datos locales compartidos. Las previews de avatar y decoradores siguen identificadas como demostraciones.
 
 Para continuar: leer este documento, el código afectado y los ejemplos del usuario. Explicar qué se cambia y por qué. Hacer cambios pequeños y no confundir propuestas futuras con funciones terminadas ni con autorización para implementarlas ahora.

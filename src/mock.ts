@@ -204,18 +204,17 @@ export const anime: Anime[] = [
 ];
 
 // TODO BACKEND [USUARIOS]: recuperar perfiles, relaciones y estadísticas reales por id.
-export const users: User[] = [
+export type UserProfile = Omit<
+  User,
+  'watched' | 'reviews' | 'watchlist' | 'followers' | 'following'
+>;
+export const users: UserProfile[] = [
   {
     id: 'felipe',
     name: 'Felipe',
     handle: 'felipeanime',
     image: anime[1].image,
     bio: 'Anime, reviews y temporadas favoritas. Siempre buscando la próxima gran historia.',
-    watched: 128,
-    reviews: 27,
-    watchlist: 42,
-    followers: 184,
-    following: 96,
     favorites: ['frieren', 'vinland-saga', 'blue-lock', 'mob-psycho'],
   },
   {
@@ -224,11 +223,6 @@ export const users: User[] = [
     handle: 'sofi_23',
     image: anime[0].image,
     bio: 'Fantasía, romances y finales que me dejan pensando ✨',
-    watched: 164,
-    reviews: 45,
-    watchlist: 31,
-    followers: 256,
-    following: 110,
     favorites: ['frieren', 'spy-family', 'haikyuu', 'mob-psycho'],
   },
   {
@@ -237,11 +231,6 @@ export const users: User[] = [
     handle: 'nicochan',
     image: anime[2].image,
     bio: 'La segunda temporada siempre merece una oportunidad.',
-    watched: 142,
-    reviews: 36,
-    watchlist: 25,
-    followers: 192,
-    following: 84,
     favorites: ['vinland-saga', 'blue-lock', 'solo-leveling', 'haikyuu'],
   },
   {
@@ -250,11 +239,6 @@ export const users: User[] = [
     handle: 'luliotaku',
     image: anime[7].image,
     bio: 'Colecciono historias y personajes favoritos.',
-    watched: 96,
-    reviews: 22,
-    watchlist: 48,
-    followers: 145,
-    following: 76,
     favorites: ['spy-family', 'frieren', 'mob-psycho', 'haikyuu'],
   },
   {
@@ -263,18 +247,12 @@ export const users: User[] = [
     handle: 'shonenking',
     image: anime[6].image,
     bio: 'Un capítulo más. Siempre.',
-    watched: 328,
-    reviews: 81,
-    watchlist: 63,
-    followers: 720,
-    following: 150,
     favorites: ['demon-slayer', 'solo-leveling', 'blue-lock', 'vinland-saga'],
   },
 ];
-export const currentUser = users[0];
 
 // TODO BACKEND [FEED]: cargar publicaciones, reviews, likes y comentarios según el filtro solicitado.
-export const reviews: Review[] = [
+export const reviews: Omit<Review, 'likes' | 'comments'>[] = [
   {
     id: 'review-sofi',
     userId: 'sofi',
@@ -283,8 +261,6 @@ export const reviews: Review[] = [
     title: 'El tiempo también puede ser una aventura',
     text: 'Acabo de terminar Frieren y no tengo palabras... Una obra maestra. La voy a extrañar mucho. 💜✨ La forma en que habla del tiempo y de las personas que nos acompañan me llegó muchísimo.',
     time: 'Hace 2 h',
-    likes: 128,
-    comments: 23,
     spoiler: false,
   },
   {
@@ -295,8 +271,6 @@ export const reviews: Review[] = [
     title: 'La verdadera fuerza de Vinland Saga',
     text: 'La segunda temporada es cine. Una historia que se toma su tiempo y encuentra algo enorme en los momentos más pequeños.',
     time: 'Hace 4 h',
-    likes: 96,
-    comments: 15,
     spoiler: false,
   },
   {
@@ -307,8 +281,6 @@ export const reviews: Review[] = [
     title: 'Una historia que se queda con vos',
     text: 'Una obra maestra. La forma en que habla del paso del tiempo, de la amistad y de los recuerdos hace que cada capítulo valga la pena. Me quedo con su calma y con todo lo que transmite sin decirlo.',
     time: 'Hace 2 h',
-    likes: 42,
-    comments: 8,
     spoiler: false,
   },
   {
@@ -317,8 +289,6 @@ export const reviews: Review[] = [
     title: 'Busco recomendaciones de misterio',
     text: 'Recomienden animes de misterio o psicológicos 🙏 Quiero armar una lista para este fin de semana.',
     time: 'Hace 6 h',
-    likes: 34,
-    comments: 42,
     spoiler: false,
   },
   {
@@ -329,22 +299,19 @@ export const reviews: Review[] = [
     title: 'Ego, fútbol y adrenalina',
     text: 'Blue Lock es otro nivel de hype. ¡Equipo Z para siempre! ⚽',
     time: 'Ayer',
-    likes: 87,
-    comments: 12,
     spoiler: true,
   },
 ];
 
 // TODO BACKEND [LISTAS]: consultar colecciones por id y preservar el orden de animeIds.
-export const lists: AnimeList[] = [
+export const lists: Omit<AnimeList, 'likes'>[] = [
   {
     id: 'favoritos-felipe',
     userId: 'felipe',
     title: 'Historias que se quedan',
     description: 'Mi top de animes que volvería a ver una y mil veces.',
-    animeIds: currentUser.favorites,
+    animeIds: users[0].favorites,
     ordered: true,
-    likes: 38,
   },
   {
     id: 'finde-sofi',
@@ -353,7 +320,6 @@ export const lists: AnimeList[] = [
     description: 'Mundos donde perderse y personajes para recordar.',
     animeIds: ['frieren', 'solo-leveling', 'demon-slayer'],
     ordered: false,
-    likes: 62,
   },
   {
     id: 'equipo-nico',
@@ -362,7 +328,6 @@ export const lists: AnimeList[] = [
     description: 'Competir, crecer y darlo todo juntos.',
     animeIds: ['haikyuu', 'blue-lock', 'mob-psycho'],
     ordered: true,
-    likes: 25,
   },
 ];
 
@@ -441,60 +406,7 @@ export function getRankProgress(watched: number) {
   };
 }
 
-// TODO BACKEND [MISIONES]: consultar objetivos, progreso y recompensas por usuario.
-export const auraMissions = [
-  {
-    id: 'romance',
-    title: 'Amante del Romance',
-    description: 'Mirá 100 animes del género Romance.',
-    value: 30,
-    total: 100,
-    reward: 'Corazón de anime',
-    state: 'En curso',
-    icon: 'heart-outline' as const,
-  },
-  {
-    id: 'shonen',
-    title: 'La vida es un shonen',
-    description: 'Mirá 100 animes del género Acción.',
-    value: 64,
-    total: 100,
-    reward: 'Espíritu shonen',
-    state: 'En curso',
-    icon: 'flash-outline' as const,
-  },
-  {
-    id: 'generos',
-    title: 'Explorador de géneros',
-    description: 'Mirá 10 géneros diferentes.',
-    value: 7,
-    total: 10,
-    reward: 'Explorador',
-    state: 'En curso',
-    icon: 'compass-outline' as const,
-  },
-  {
-    id: 'reviews',
-    title: 'Una nueva voz',
-    description: 'Escribí 3 nuevas reviews esta semana.',
-    value: 0,
-    total: 3,
-    reward: 'Voz de la comunidad',
-    state: 'Pendiente',
-    icon: 'chatbox-outline' as const,
-  },
-  {
-    id: 'primera',
-    title: 'Primera historia',
-    description: 'Marcá tu primer anime como visto.',
-    value: 1,
-    total: 1,
-    reward: 'Primer capítulo',
-    state: 'Completada',
-    icon: 'ribbon-outline' as const,
-  },
-];
-
+// Métricas disponibles del mapa ilustrativo.
 export const mapMetrics = {
   reviews: 'Cantidad de reviews',
   vistos: 'Anime más visto',
@@ -530,11 +442,22 @@ export function getCountryTop(country: Country, metric: MapMetric) {
 }
 // TODO BACKEND [RELACIONES-USUARIO]: obtener colecciones, likes y seguimientos de currentUser.id.
 // Son muestras del historial; los totales del perfil representan un historial de ejemplo más amplio.
-export const currentLibrary = {
-  Watchlist: ['solo-leveling', 'demon-slayer', 'haikyuu', 'spy-family'],
-  Vistos: ['frieren', 'vinland-saga', 'blue-lock', 'mob-psycho'],
+export const librariesByUser: Record<string, { Watchlist: string[]; Vistos: string[] }> = {
+  felipe: {
+    Watchlist: ['solo-leveling', 'demon-slayer', 'haikyuu', 'spy-family'],
+    Vistos: ['frieren', 'vinland-saga', 'blue-lock', 'mob-psycho'],
+  },
+  sofi: { Watchlist: ['solo-leveling', 'blue-lock'], Vistos: ['frieren', 'spy-family', 'haikyuu'] },
+  nico: {
+    Watchlist: ['frieren', 'spy-family'],
+    Vistos: ['vinland-saga', 'blue-lock', 'solo-leveling'],
+  },
 };
-export const currentLikedReviewIds = ['review-sofi', 'post-luli', 'review-nico'];
+export const likedReviewsByUser: Record<string, string[]> = {
+  felipe: ['review-sofi', 'post-luli', 'review-nico'],
+  sofi: ['review-felipe', 'post-luli'],
+  nico: ['review-felipe', 'review-sofi'],
+};
 // La amistad no se guarda como una relación separada: existe cuando el seguimiento es mutuo.
 export const followingByUser: Record<string, string[]> = {
   felipe: ['sofi', 'nico'],
@@ -543,7 +466,6 @@ export const followingByUser: Record<string, string[]> = {
   luli: ['sofi'],
   shonen: ['nico'],
 };
-export const currentFollowingIds = followingByUser[currentUser.id] ?? [];
 export const genres = ['Acción', 'Comedia', 'Fantasía', 'Romance', 'Aventura', 'Drama', 'Deportes'];
 export const seasons = ['Primavera 2026', 'Verano 2026', 'Otoño 2026', 'Invierno 2026'];
 

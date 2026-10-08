@@ -1,3 +1,6 @@
+import { useLists } from '../../src/context/ListsContext';
+import { useReviews } from '../../src/context/ReviewsContext';
+import { useCurrentUser } from '../../src/useCurrentUser';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
@@ -12,19 +15,17 @@ import {
   SearchBar,
   Section,
 } from '../../src/components';
-import {
-  anime,
-  currentLikedReviewIds,
-  currentUser,
-  findAnime,
-  getParam,
-  lists,
-  reviews,
-} from '../../src/mock';
-import { useAppState } from '../../src/AppState';
+import { anime, findAnime, getParam } from '../../src/mock';
+import { useAppState } from '../../src/context/AppState';
 import { theme } from '../../src/theme';
 
 export default function BibliotecaScreen() {
+  const { lists } = useLists();
+  const { reviews, getLikedIds } = useReviews();
+
+  const currentUser = useCurrentUser();
+  const currentLikedReviewIds = getLikedIds(currentUser.id);
+
   const params = useLocalSearchParams();
   const options = ['Watchlist', 'Vistos', 'Favoritos', 'Listas', 'Likes'];
   const requested =
@@ -88,7 +89,9 @@ export default function BibliotecaScreen() {
           text={query ? 'Probá con otro nombre.' : 'Descubrí una historia y guardala para después.'}
           action={query ? 'Limpiar búsqueda' : tab === 'Listas' ? 'Crear lista' : 'Explorar anime'}
           onPress={() =>
-            query ? setQuery('') : router.push(tab === 'Listas' ? '/perfil/listas/editar' : '/explorar')
+            query
+              ? setQuery('')
+              : router.push(tab === 'Listas' ? '/perfil/listas/editar' : '/explorar')
           }
         />
       )}

@@ -1,3 +1,5 @@
+import { useReviews } from './context/ReviewsContext';
+import { useDirectory } from './useDirectory';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState, type ComponentProps, type ReactNode } from 'react';
@@ -15,16 +17,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  currentUser,
-  findAnime,
-  findUser,
-  type Anime,
-  type AnimeList,
-  type Review,
-  type User,
-} from './mock';
+import { findAnime, type Anime, type AnimeList, type Review, type User } from './mock';
 import { theme } from './theme';
+import { useSession } from './context/SessionContext';
+import { useSocial } from './context/SocialContext';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -36,6 +32,7 @@ const rankLooks: Record<string, { icon: IconName; color: string }> = {
   Leyenda: { icon: 'trophy-outline', color: '#C084FC' },
 };
 
+// Aura: insignia visual del rango; no calcula el progreso del usuario.
 export function RankInsignia({ rank, size = 34 }: { rank: string; size?: number }) {
   const look = rankLooks[rank] ?? rankLooks.Novato;
   return (
@@ -51,6 +48,7 @@ export function RankInsignia({ rank, size = 34 }: { rank: string; size?: number 
   );
 }
 
+// Formularios: selector de puntuación en medias estrellas.
 export function StarRating({
   value,
   onChange,
@@ -92,7 +90,7 @@ export function StarRating({
 
 // Elementos que se repiten de verdad en las pantallas: contenedor, búsqueda, cards y controles.
 export function Avatar({
-  user = currentUser,
+  user: profile,
   size = 42,
   onPress,
 }: {
@@ -100,7 +98,11 @@ export function Avatar({
   size?: number;
   onPress?: () => void;
 }) {
-  const [failed, setFailed] = useState(false);
+  const [failedImage, setFailedImage] = useState<User['image'] | null>(null);
+  const { user: currentUser } = useSession();
+  const { findUser } = useDirectory();
+  const user = profile ?? findUser(currentUser?.id);
+  if (!user) return null;
   return (
     <Pressable
       disabled={!onPress}
@@ -109,12 +111,12 @@ export function Avatar({
       accessibilityLabel={`Perfil de ${user.name}`}
       style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
     >
-      {failed ? (
+      {failedImage === user.image ? (
         <Text style={styles.initial}>{user.name.slice(0, 1)}</Text>
       ) : (
         <Image
           source={user.image}
-          onError={() => setFailed(true)}
+          onError={() => setFailedImage(user.image)}
           style={{ width: size, height: size, borderRadius: size / 2 }}
         />
       )}
@@ -122,6 +124,7 @@ export function Avatar({
   );
 }
 
+// Estructura común: áreas seguras, teclado, scroll y encabezado.
 export function Screen({
   title,
   subtitle,
@@ -167,9 +170,7 @@ export function Screen({
               </Pressable>
             )}
             <View style={styles.heading}>
-              <Text style={[styles.title, headerCentered && styles.centeredText]}>
-                {title}
-              </Text>
+              <Text style={[styles.title, headerCentered && styles.centeredText]}>{title}</Text>
               {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
             </View>
             {actions ??
@@ -182,6 +183,7 @@ export function Screen({
   );
 }
 
+// Controles compartidos: búsqueda, títulos de sección, botones y pestañas.
 export function SearchBar({
   value,
   onChangeText,
@@ -308,6 +310,7 @@ export function AnimeCard({
 
 export function Action({
   label,
+  accessibilityLabel,
   onPress,
   icon,
   active = false,
@@ -315,6 +318,7 @@ export function Action({
   disabled = false,
 }: {
   label: string;
+  accessibilityLabel?: string;
   onPress: () => void;
   icon?: IconName;
   active?: boolean;
@@ -324,7 +328,7 @@ export function Action({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       aria-selected={active}
       accessibilityState={{ disabled, selected: active }}
       onPress={onPress}
@@ -367,10 +371,7 @@ export function Chips({
       horizontal
       style={{ flexGrow: 0 }}
       showsHorizontalScrollIndicator={Platform.OS === 'web'}
-      contentContainerStyle={[
-        styles.chips,
-        underlined && styles.underlineTabs,
-      ]}
+      contentContainerStyle={[styles.chips, underlined && styles.underlineTabs]}
     >
       {options.map((option) => {
         const selected = value === option;
@@ -385,20 +386,14 @@ export function Chips({
             style={[
               styles.chip,
               underlined && styles.underlineTab,
-              selected &&
-                (underlined
-                  ? styles.underlineTabActive
-                  : styles.chipActive),
+              selected && (underlined ? styles.underlineTabActive : styles.chipActive),
             ]}
           >
             <Text
               style={[
                 styles.chipText,
                 underlined && styles.underlineTabText,
-                selected &&
-                  (underlined
-                    ? styles.underlineTabTextActive
-                    : styles.chipTextActive),
+                selected && (underlined ? styles.underlineTabTextActive : styles.chipTextActive),
               ]}
             >
               {option}
@@ -479,6 +474,7 @@ export function Dialog({
   );
 }
 
+// Indicadores: representación visual de un progreso ya calculado.
 export function Progress({
   value,
   total,
@@ -507,7 +503,10 @@ export function Progress({
   );
 }
 
+// Listas: resumen que recibe siempre la colección actualizada del contexto.
 export function ListCard({ list }: { list: AnimeList }) {
+  const { findUser } = useDirectory();
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -525,20 +524,77 @@ export function ListCard({ list }: { list: AnimeList }) {
   );
 }
 
-export function ReviewCard({ review }: { review: Review }) {
+// Reviews: una tarjeta compartida; el feed agrega acciones y la ficha del anime.
+export function SpoilerCover({ onReveal }: { onReveal: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Mostrar review con spoilers"
+      onPress={(event) => {
+        event.stopPropagation();
+        onReveal();
+      }}
+      style={styles.spoilerCover}
+    >
+      <Ionicons name="eye-off-outline" size={30} color={theme.colors.textSecondary} />
+      <Text style={styles.spoilerLabel}>Esta review podría contener spoilers</Text>
+      <Text style={styles.meta}>Tocá para mostrar</Text>
+    </Pressable>
+  );
+}
+export function ReviewContent({
+  review,
+  numberOfLines,
+  revealed,
+  onReveal,
+}: {
+  review: Review;
+  numberOfLines?: number;
+  revealed?: boolean;
+  onReveal?: () => void;
+}) {
+  const [visible, setVisible] = useState(false);
+  if (review.spoiler && !(revealed ?? visible))
+    return <SpoilerCover onReveal={onReveal ?? (() => setVisible(true))} />;
+  return (
+    <View style={styles.reviewContent}>
+      {review.title && <Text style={styles.reviewCardTitle}>{review.title}</Text>}
+      <Text numberOfLines={numberOfLines} style={[styles.reviewText, styles.reviewCardBody]}>
+        {review.text}
+      </Text>
+    </View>
+  );
+}
+export function ReviewCard({ review, feed = false }: { review: Review; feed?: boolean }) {
+  const [sharing, setSharing] = useState(false);
+  const { findUser } = useDirectory();
+  const { user } = useSession();
+  const { getLikedIds, toggleLike, getSavedIds, toggleSaved } = useReviews();
+  const { getFollowingIds, toggleFollowing } = useSocial();
   const author = findUser(review.userId);
   const item = findAnime(review.animeId);
-  const openReview = () => router.push({ pathname: '/inicio/review/[id]', params: { id: review.id } });
-
+  const liked = user ? getLikedIds(user.id).includes(review.id) : false;
+  const saved = user ? getSavedIds(user.id).includes(review.id) : false;
+  const following = user ? getFollowingIds(user.id).includes(review.userId) : false;
+  const openReview = () =>
+    router.push({ pathname: '/inicio/review/[id]', params: { id: review.id } });
   return (
     <View style={styles.review}>
       <View style={styles.reviewHeader}>
         <Avatar
           user={author}
-          size={34}
-          onPress={() => router.push({ pathname: '/perfil/usuario/[id]', params: { id: review.userId } })}
+          size={feed ? 48 : 34}
+          onPress={() =>
+            router.push({ pathname: '/perfil/usuario/[id]', params: { id: review.userId } })
+          }
         />
-        <Pressable style={styles.heading} accessibilityRole="button" onPress={openReview}>
+        <Pressable
+          style={styles.heading}
+          accessibilityRole="button"
+          onPress={() =>
+            router.push({ pathname: '/perfil/usuario/[id]', params: { id: review.userId } })
+          }
+        >
           <Text style={styles.reviewAuthor}>{author?.name ?? 'Usuario'}</Text>
           <Text style={styles.meta}>
             {item?.title ?? 'Publicación'} · {review.time}
@@ -547,30 +603,90 @@ export function ReviewCard({ review }: { review: Review }) {
         {review.rating !== undefined && (
           <Text style={styles.reviewRating}>★ {review.rating.toFixed(1)}</Text>
         )}
+        {feed && user && user.id !== review.userId && (
+          <Action
+            label={following ? 'Siguiendo' : 'Seguir'}
+            onPress={() => toggleFollowing(user.id, review.userId)}
+          />
+        )}
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Leer review de ${author?.name ?? 'Usuario'}`}
+        accessibilityLabel="Abrir review"
         onPress={openReview}
         style={styles.reviewContent}
       >
-        {review.title && (
-          <Text style={styles.reviewCardTitle}>{review.title}</Text>
-        )}
-        <Text numberOfLines={3} style={[styles.reviewText, styles.reviewCardBody]}>
-          {review.spoiler
-            ? 'Esta review contiene spoilers. Abrila para elegir si querés leerla.'
-            : review.text}
-        </Text>
-        <Text style={styles.meta}>
-          ♡ {review.likes} · {review.comments} comentarios
-        </Text>
+        <ReviewContent
+          key={review.id + String(review.spoiler)}
+          review={review}
+          numberOfLines={feed ? undefined : 3}
+        />
       </Pressable>
+      {feed && item && (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })}
+          style={styles.reviewHeader}
+        >
+          <Image source={item.image} style={{ width: 56, height: 80, borderRadius: 8 }} />
+          <View style={styles.heading}>
+            <Text style={styles.reviewAuthor}>{item.title}</Text>
+            <Text style={styles.meta}>
+              {item.year} · ★ {item.rating.toFixed(1)}
+            </Text>
+            <Text style={styles.meta} numberOfLines={3}>
+              {item.synopsis}
+            </Text>
+          </View>
+        </Pressable>
+      )}
+      <View style={[styles.reviewHeader, { flexWrap: 'wrap' }]}>
+        <Action
+          label={String(review.likes)}
+          accessibilityLabel={liked ? 'Quitar like' : 'Dar like'}
+          icon={liked ? 'heart' : 'heart-outline'}
+          active={liked}
+          disabled={!user}
+          onPress={() => {
+            if (user) toggleLike(user.id, review.id);
+          }}
+        />
+        <Action
+          label={String(review.comments)}
+          accessibilityLabel="Ver comentarios"
+          icon="chatbubble-outline"
+          onPress={openReview}
+        />
+        {feed && user && (
+          <Action
+            label={saved ? 'Guardada' : 'Guardar'}
+            icon={saved ? 'bookmark' : 'bookmark-outline'}
+            onPress={() => toggleSaved(user.id, review.id)}
+          />
+        )}
+        {feed && <Action label="Compartir" icon="share-outline" onPress={() => setSharing(true)} />}
+      </View>
+      <Dialog
+        visible={sharing}
+        title="Compartir publicación"
+        text="Demostración: esta publicación local todavía no tiene un enlace público para compartir."
+        onClose={() => setSharing(false)}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  spoilerCover: {
+    minHeight: 145,
+    padding: 24,
+    gap: 12,
+    borderRadius: 16,
+    backgroundColor: '#292F35',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spoilerLabel: { color: theme.colors.textSecondary, fontSize: 15, textAlign: 'center' },
   review: {
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
@@ -758,12 +874,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   underlineTabs: {
-  width: '100%',
-  gap: 0,
-  paddingVertical: 0,
-  borderBottomWidth: 1,
-  borderBottomColor: theme.colors.border,
-},
+    width: '100%',
+    gap: 0,
+    paddingVertical: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
 
   underlineTab: {
     flex: 1,

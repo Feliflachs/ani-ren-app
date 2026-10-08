@@ -1,51 +1,48 @@
+import { useDirectory } from '../../../src/useDirectory';
+import { useReviews } from '../../../src/context/ReviewsContext';
+import { useCurrentUser } from '../../../src/useCurrentUser';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Action, AnimeCard, Avatar, EmptyState, Screen, Section } from '../../../src/components';
 import {
-  currentLikedReviewIds,
-  currentUser,
-  findAnime,
-  findUser,
-  getParam,
-  reviews,
-} from '../../../src/mock';
+  ReviewContent,
+  Action,
+  AnimeCard,
+  Avatar,
+  EmptyState,
+  Screen,
+  Section,
+} from '../../../src/components';
+import { findAnime, getParam } from '../../../src/mock';
 import { theme } from '../../../src/theme';
 
-type Comment = { id: string; userId: string; text: string; time: string };
-
-// TODO BACKEND [COMENTARIOS-CONSULTA]: cargar la conversación de review.id con sus autores.
-const initialComments: Comment[] = [
-  {
-    id: 'comment-sofi',
-    userId: 'sofi',
-    text: '¡Me encanta leer opiniones así! Lo mejor es compartir estas historias 💜',
-    time: 'Hace 1 h',
-  },
-  {
-    id: 'comment-nico',
-    userId: 'nico',
-    text: 'Totalmente. Hay escenas que se quedan con vos por mucho tiempo.',
-    time: 'Hace 40 min',
-  },
-];
-
 export default function ReviewScreen() {
+  const { findUser } = useDirectory();
+  const {
+    reviews,
+    getLikedIds,
+    getComments,
+    toggleLike: toggleReviewLike,
+    addComment: saveComment,
+  } = useReviews();
+
+  const currentUser = useCurrentUser();
+
   const params = useLocalSearchParams();
   // TODO BACKEND [REVIEW-DETALLE]: consultar publicación, autor, likes y comentarios mediante params.id.
   const review = reviews.find((item) => item.id === getParam(params.id));
-  const initiallyLiked = currentLikedReviewIds.includes(getParam(params.id) ?? '');
-  const [liked, setLiked] = useState(initiallyLiked);
+  const reviewId = getParam(params.id) ?? '';
+  const liked = getLikedIds(currentUser.id).includes(reviewId);
   const [revealed, setRevealed] = useState(false);
   const [draft, setDraft] = useState('');
-  const [comments, setComments] = useState(initialComments);
+  const comments = getComments(reviewId);
   if (!review)
     return (
       <Screen title="Publicación" back>
         <EmptyState
           title="No encontramos esta publicación"
           text="Puede haberse eliminado o el enlace no ser correcto."
-          action="Ir a Social"
+          action="Ir a Inicio"
           onPress={() => router.replace('/inicio')}
         />
       </Screen>
@@ -54,22 +51,14 @@ export default function ReviewScreen() {
   const item = findAnime(review.animeId);
   const hidden = review.spoiler && !revealed;
   const toggleLike = () => {
-    // TODO BACKEND [REVIEW-LIKE]: hoy se cambia estado local; guardar interacción entre currentUser.id y review.id.
-    setLiked((value) => !value);
+    // TODO BACKEND [REVIEW-LIKE]: conectar toggleLike del contexto con la API.
+    toggleReviewLike(currentUser.id, reviewId);
   };
   const addComment = () => {
     const text = draft.trim();
     if (!text) return;
-    // TODO BACKEND [COMENTARIO-CREAR]: hoy se agrega a la vista; enviar review.id, currentUser.id y texto; incorporar el comentario confirmado.
-    setComments((previous) => [
-      ...previous,
-      {
-        id: `local-comment-${previous.length + 1}`,
-        userId: currentUser.id,
-        text,
-        time: 'Ahora · ejemplo',
-      },
-    ]);
+    // TODO BACKEND [COMENTARIO-CREAR]: conectar addComment del contexto con la API.
+    saveComment(currentUser.id, reviewId, text);
     setDraft('');
   };
   return (
@@ -101,7 +90,9 @@ export default function ReviewScreen() {
         {item && (
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })}
+            onPress={() =>
+              router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })
+            }
             style={styles.animeLink}
           >
             <Text style={styles.link}>{item.title}</Text>
@@ -110,27 +101,14 @@ export default function ReviewScreen() {
             </Text>
           </Pressable>
         )}
-        {hidden ? (
-          <EmptyState
-            title="Esta review contiene spoilers"
-            text="Podría revelar detalles importantes de la historia."
-            action="Quiero leerla"
-            onPress={() => setRevealed(true)}
-          />
-        ) : (
-          <>
-            {review.title && (
-              <Text style={styles.reviewTitle}>{review.title}</Text>
-            )}
-            <Text style={styles.body}>{review.text}</Text>
-            {review.spoiler && (
-              <Action
-                label="Ocultar spoilers"
-                icon="eye-off-outline"
-                onPress={() => setRevealed(false)}
-              />
-            )}
-          </>
+        <ReviewContent
+          key={reviewId}
+          review={review}
+          revealed={revealed}
+          onReveal={() => setRevealed(true)}
+        />
+        {review.spoiler && revealed && (
+          <Action label="Ocultar spoilers" onPress={() => setRevealed(false)} />
         )}
         {item && !hidden && (
           <View style={styles.poster}>
@@ -140,7 +118,7 @@ export default function ReviewScreen() {
         <View style={styles.actions}>
           <View style={styles.grow}>
             <Action
-              label={`${liked ? 'Te gusta' : 'Me gusta'} · ${review.likes + Number(liked) - Number(initiallyLiked)}`}
+              label={`${liked ? 'Te gusta' : 'Me gusta'} · ${review.likes}`}
               icon={liked ? 'heart' : 'heart-outline'}
               active={liked}
               onPress={toggleLike}
@@ -162,10 +140,8 @@ export default function ReviewScreen() {
           )}
         </View>
       </View>
-      <Section
-        title={`Comentarios · ${review.comments + comments.length - initialComments.length}`}
-      />
-      <Text style={styles.meta}>Una conversación de ejemplo con la comunidad.</Text>
+      <Section title={`Comentarios · ${review.comments}`} />
+      <Text style={styles.meta}>Comentarios de esta demostración local.</Text>
       {!hidden ? (
         <>
           {comments.map((comment) => (
@@ -196,7 +172,9 @@ export default function ReviewScreen() {
               placeholderTextColor={theme.colors.textSecondary}
               style={styles.input}
             />
-            <Text style={styles.meta}>{draft.length} / 500 · Se agrega solo en esta vista.</Text>
+            <Text style={styles.meta}>
+              {draft.length} / 500 · Se comparte con el resto de las pantallas.
+            </Text>
             <Action
               label="Comentar"
               icon="send-outline"
@@ -226,7 +204,6 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0, gap: 5 },
   name: { color: theme.colors.text, fontSize: 13, fontWeight: '600' },
   meta: { color: theme.colors.textSecondary, fontSize: 11, lineHeight: 17 },
-  body: { color: theme.colors.textSoft, fontSize: 14, lineHeight: 23 },
   rating: { color: theme.colors.primarySoft, fontWeight: '700', fontSize: 16 },
   animeLink: { padding: 11, backgroundColor: theme.colors.surfaceLight, borderRadius: 10, gap: 4 },
   link: { color: theme.colors.primarySoft, fontSize: 14, fontWeight: '600' },
@@ -263,12 +240,5 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontSize: 12,
     lineHeight: 19,
-  },
-  reviewTitle: {
-    color: theme.colors.text,
-    fontSize: 20,
-    lineHeight: 26,
-    fontWeight: '700',
-    marginBottom: 6,
   },
 });

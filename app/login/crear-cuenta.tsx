@@ -151,5 +151,4 @@ const styles = StyleSheet.create({
   submitText: { color: theme.colors.text, fontSize: 17, fontWeight: '600', textAlign: 'center' },
   signIn: { color: theme.colors.textSecondary, fontSize: 14, lineHeight: 22, textAlign: 'center' },
   link: { color: theme.colors.primarySoft, fontWeight: '600', textDecorationLine: 'underline' },
-  notice: { textAlign: 'center' },
 });

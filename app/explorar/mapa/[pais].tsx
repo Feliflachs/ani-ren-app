@@ -1,3 +1,4 @@
+import { useReviews } from '../../../src/context/ReviewsContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -18,7 +19,6 @@ import {
   getMapMetric,
   getParam,
   mapMetrics,
-  reviews,
 } from '../../../src/mock';
 import { theme } from '../../../src/theme';
 import { WorldMap } from '../../../src/WorldMap';
@@ -33,6 +33,8 @@ const localReviewIds: Record<string, string[]> = {
 };
 
 export default function CountryScreen() {
+  const { reviews } = useReviews();
+
   const params = useLocalSearchParams<{
     pais?: string | string[];
     metric?: string | string[];
@@ -120,7 +122,10 @@ export default function CountryScreen() {
                   <Action
                     label="Ver ficha del anime"
                     onPress={() =>
-                      router.push({ pathname: '/explorar/anime/[id]', params: { id: selectedAnime.id } })
+                      router.push({
+                        pathname: '/explorar/anime/[id]',
+                        params: { id: selectedAnime.id },
+                      })
                     }
                   />
                 </View>

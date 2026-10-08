@@ -11,28 +11,36 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { buscarCuenta } from '../../src/login';
+import { useSession } from '../../src/context/SessionContext';
 import { theme } from '../../src/theme';
 
 export default function LoginScreen() {
+  const { signIn } = useSession();
+  const [pending, setPending] = useState(false);
   const [usuario, setUsuario] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [error, setError] = useState('');
   const [altura, setAltura] = useState(560);
   const logoSize = Math.max(0, Math.min(220, altura - 400));
 
-  const entrar = () => {
+  const entrar = async () => {
+    if (pending) return;
     if (!usuario.trim() || !contrasena) {
       setError('Completá el usuario y la contraseña.');
       return;
     }
-    if (!buscarCuenta(usuario, contrasena)) {
-      setError('El usuario o la contraseña son incorrectos.');
-      return;
-    }
+    setPending(true);
     setError('');
-    setContrasena('');
-    router.replace('/inicio');
+    try {
+      if (!(await signIn(usuario, contrasena))) {
+        setError('El usuario o la contraseña son incorrectos.');
+      }
+      // El layout abre Inicio cuando cambia la sesión.
+    } catch {
+      setError('No pudimos guardar la sesión. Volvé a intentarlo.');
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -95,10 +103,12 @@ export default function LoginScreen() {
             )}
             <Pressable
               accessibilityRole="button"
+              accessibilityState={{ disabled: pending, busy: pending }}
+              disabled={pending}
               onPress={entrar}
               style={({ pressed }) => [styles.submit, pressed && styles.submitPressed]}
             >
-              <Text style={styles.submitText}>Iniciar sesión</Text>
+              <Text style={styles.submitText}>{pending ? 'Ingresando…' : 'Iniciar sesión'}</Text>
             </Pressable>
           </View>
           <Text style={styles.register}>
