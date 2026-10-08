@@ -1,8 +1,9 @@
 import { useReviews } from '../../../src/context/ReviewsContext';
 import { useCurrentUser } from '../../../src/useCurrentUser';
+import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Image, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Image, Platform, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { Action, Dialog, EmptyState, Screen, StarRating } from '../../../src/components';
 import { useAppState } from '../../../src/context/AppState';
 import { findAnime, getParam } from '../../../src/mock';
@@ -51,6 +52,7 @@ export default function EscribirReviewScreen() {
   const [dialog, setDialog] = useState<ReviewDialog>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [pais, setPais] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
 
   const createsLog = watched || rating !== undefined || reviewOpen;
@@ -63,12 +65,34 @@ export default function EscribirReviewScreen() {
       ? router.back()
       : router.replace({ pathname: '/explorar/anime/[id]', params: { id: item?.id ?? 'frieren' } });
 
+  // Como en el ejemplo de clase, pero guardamos solo el pais.
+  const obtenerPais = async () => {
+    if (Platform.OS === 'web') return;
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      if (!(await Location.hasServicesEnabledAsync())) return;
+
+      const p = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Low,
+      });
+      const [direccion] = await Location.reverseGeocodeAsync(p.coords);
+      setPais(direccion?.country ?? null);
+    } catch {
+      // Si falla la ubicacion, se puede guardar la review igual.
+      setPais(null);
+    }
+  };
+
   const save = async () => {
     setTouched(true);
     if (!valid || !item || saving) return;
     setSaving(true);
     setSaveError('');
+    setPais(null);
     try {
+      // Por ahora el país solo se muestra en la confirmación, no se persiste.
+      if (reviewOpen) await obtenerPais();
       // TODO BACKEND [ACTIVIDAD-GUARDAR]: reemplazar esta actualización local por una única operación del usuario y el anime.
       await saveActivity(item.id, {
         watched,
@@ -242,6 +266,15 @@ export default function EscribirReviewScreen() {
         }
         onClose={() => setDialog(null)}
       >
+        {reviewOpen && (
+          <Text style={styles.meta}>
+            {pais
+              ? `País detectado: ${pais}. Por ahora solo se muestra acá.`
+              : Platform.OS === 'web'
+                ? 'La detección del país está disponible en el teléfono.'
+                : 'No pudimos obtener el país. Tu review se guardó igual.'}
+          </Text>
+        )}
         <Action label="Volver al anime" onPress={goBack} />
       </Dialog>
 

@@ -12,6 +12,7 @@
     "web": { "bundler": "metro", "output": "single", "favicon": "./assets/mascota.png" },
     "plugins": [
       "expo-router",
+      ["expo-location", { "locationWhenInUsePermission": "Ani-ren usa tu ubicación para detectar el país al guardar una review." }],
       ["expo-image-picker", { "cameraPermission": "Ani-ren necesita usar la cámara para que puedas sacar una foto de un anime.", "photosPermission": "Ani-ren permite elegir una imagen de tu galería para reconocer un anime.", "microphonePermission": false }],
       ["expo-splash-screen", { "image": "./assets/mascota.png", "imageWidth": 180, "resizeMode": "contain", "backgroundColor": "#0D0D12" }]
     ]

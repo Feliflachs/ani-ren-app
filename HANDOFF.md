@@ -33,6 +33,12 @@ Los seis contextos viven en `src/context/`, incluido `AppState.tsx`. Los hooks q
 
 Hay seis contextos por responsabilidad. Se retiró el provider exclusivo de Aura: sus cálculos no necesitan otro contexto. Los hooks `useMissions`, `useDirectory` y `useCurrentUser` solo consultan/componen datos.
 
+### Ubicación al guardar una review (8 de octubre)
+
+`app/crear/review/escribir.tsx` contiene `obtenerPais()`, llamada desde `save` tras validar el formulario y solo si se escribe una review. Usa `expo-location`: permiso de primer plano, coordenadas actuales y `reverseGeocodeAsync`; toma solo `country`. El país se muestra temporalmente en la confirmación y no se agrega a la review, al almacenamiento ni al mapa. No conserva coordenadas/dirección ni realiza seguimiento continuo. Si se rechaza el permiso, faltan servicios, hay error, el guardado sigue sin país. En web se omite la consulta. Se simplificó al estilo del ejemplo de clase: `useState<string | null>` conserva solo el país y una función async dentro del componente lo actualiza. No usa `useEffect` porque se llama al tocar Listo. Se retiró el temporizador; la consulta puede demorar según el GPS y la red. La librería y el mensaje de permiso están configurados en package.json/app.json.
+
+Prueba manual pendiente en teléfono: permitir ubicación y comprobar el país; denegar permiso o desactivar GPS y comprobar que se guarda igual. No se pide ubicación al abrir el editor ni al guardar solo una puntuación. Conectar ese país con los datos de la review y el mapa queda pendiente. Esta sección reemplaza las notas históricas que indicaban geolocalización totalmente pendiente.
+
 ### Comportamiento acordado
 
 - El `@usuario` y el ID no se editan. El formulario muestra el usuario como solo lectura; las reglas de alta siguen en `src/login.ts`. No hay que renombrar autores en cada review: se relacionan por ID.
