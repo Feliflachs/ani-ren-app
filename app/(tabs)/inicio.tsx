@@ -1,41 +1,28 @@
-import { useReviews } from '../../src/context/ReviewsContext';
+import { selectFeed } from '../../src/feed';
+import { usePublications } from '../../src/context/PublicationsContext';
 import { useCurrentUser } from '../../src/useCurrentUser';
 import { useState } from 'react';
 import { Image } from 'react-native';
-import { ReviewCard, Chips, EmptyState, Screen } from '../../src/components';
+import { PublicationCard, Chips, EmptyState, Screen } from '../../src/components';
 import { useAppState } from '../../src/context/AppState';
 
 export default function Inicio() {
-  const { reviews } = useReviews();
+  const { publications, getLikedIds } = usePublications();
 
   const currentUser = useCurrentUser();
 
-  const { followingIds, friendIds } = useAppState();
+  const { followingIds, likedIds, watchlistIds } = useAppState();
   const [filter, setFilter] = useState('Para ti');
 
-  // TODO BACKEND [SOCIAL-FEED]: consultar el feed con texto, filtro y usuario; hoy son relaciones y publicaciones de ejemplo.
-  const feed = reviews
-    .filter((item) => {
-      if (filter === 'Para ti') {
-        return item.userId === currentUser.id || friendIds.includes(item.userId);
-      }
-
-      if (filter === 'Siguiendo') {
-        return followingIds.includes(item.userId);
-      }
-
-      return true;
-    })
-    .sort((a, b) => {
-      if (filter === 'Tendencia') {
-        const interactionsA = a.likes + a.comments;
-        const interactionsB = b.likes + b.comments;
-
-        return interactionsB - interactionsA;
-      }
-
-      return 0;
-    });
+  const feed = selectFeed(
+    publications,
+    filter,
+    currentUser.id,
+    followingIds,
+    likedIds,
+    watchlistIds,
+    getLikedIds(currentUser.id),
+  );
 
   return (
     <Screen
@@ -60,9 +47,17 @@ export default function Inicio() {
         variant="underline"
       />
       {feed.map((item) => (
-        <ReviewCard key={item.id} review={item} feed />
+        <PublicationCard key={item.id} review={item} feed />
       ))}
-      {feed.length === 0 && <EmptyState text="Seguí a otras personas o elegí otro feed." />}
+      {feed.length === 0 && (
+        <EmptyState
+          text={
+            filter === 'Para ti'
+              ? 'Todavía no hay publicaciones de otras personas que no sigas. Probá otro feed.'
+              : 'Todavía no hay publicaciones acá. Seguí a otras personas o probá otro feed.'
+          }
+        />
+      )}
     </Screen>
   );
 }

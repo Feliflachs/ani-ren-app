@@ -1,5 +1,5 @@
 import { useLists } from './context/ListsContext';
-import { useReviews } from './context/ReviewsContext';
+import { usePublications } from './context/PublicationsContext';
 import { useCurrentUser } from './useCurrentUser';
 import { useSession } from './context/SessionContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -16,7 +16,7 @@ import {
   Progress,
   RankInsignia,
   ListCard,
-  ReviewCard,
+  PublicationCard,
   Screen,
   Section,
 } from './components';
@@ -33,7 +33,7 @@ export function PerfilView({
   publicProfile?: boolean;
 }) {
   const { lists } = useLists();
-  const { reviews, getLikedIds } = useReviews();
+  const { publications, reviews, getLikedIds } = usePublications();
 
   const currentUser = useCurrentUser();
   const { signOut } = useSession();
@@ -44,7 +44,6 @@ export function PerfilView({
   const { getCollection } = useActivities();
 
   const [view, setView] = useState('Reviews');
-  const [historyFilter, setHistoryFilter] = useState('Todo');
   const [width, setWidth] = useState(300);
   const [sharing, setSharing] = useState(false);
   const { likedIds, watchedCount, followingIds, toggleFollowing } = useAppState();
@@ -54,13 +53,29 @@ export function PerfilView({
   const isFriend = getFriendIds(currentUser.id).includes(user.id);
   const favorites = isOwnProfile ? likedIds : user.favorites;
   const totalWatched = isOwnProfile ? watchedCount : user.watched;
-  const historyIds = getCollection(user.id).watchedIds;
-  const latestAnime = findAnime(historyIds[historyIds.length - 1]);
+  const watchedIds = getCollection(user.id).watchedIds;
+  const latestAnime = findAnime(watchedIds[watchedIds.length - 1]);
   // TODO BACKEND [PERFIL-CONSULTAR]: consultar currentUser.id, sus favoritos, actividad, reviews, listas y likes; hoy son datos compartidos de ejemplo.
-  const myReviews = reviews.filter((item) => item.userId === user.id);
+  const myReviews = reviews
+    .filter((item) => item.userId === user.id)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const featuredReviews = [...myReviews]
+    .sort(
+      (a, b) =>
+        b.likes + b.comments - (a.likes + a.comments) ||
+        Date.parse(b.createdAt) - Date.parse(a.createdAt),
+    )
+    .slice(0, 2);
+  const openReviews = () => router.push({ pathname: '/perfil/reviews', params: { id: user.id } });
+  const myPublications = publications
+    .filter((item) => item.userId === user.id)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const latestPublication = myPublications[0];
   const myLists = lists.filter((item) => item.userId === user.id);
-  const likedReviews = reviews.filter((item) => currentLikedReviewIds.includes(item.id));
-  const shownReviews = view === 'Likes' ? likedReviews : myReviews;
+  const likedReviews = publications.filter((item) => currentLikedReviewIds.includes(item.id));
+  const myPosts = publications.filter((item) => item.kind === 'post' && item.userId === user.id);
+  const shownReviews =
+    view === 'Likes' ? likedReviews : view === 'Posteos' ? myPosts : myReviews.slice(0, 2);
   const rankProgress = getRankProgress(totalWatched);
   const openConnections = (tab: string) =>
     router.push({ pathname: '/perfil/comunidad', params: { id: user.id, tab } });
@@ -165,7 +180,7 @@ export function PerfilView({
             value: user.following,
             onPress: () => openConnections('Siguiendo'),
           },
-          { label: 'Reviews', value: user.reviews, onPress: () => setView('Reviews') },
+          { label: 'Reviews', value: user.reviews, onPress: openReviews },
           {
             label: 'Watchlist',
             value: user.watchlist,
@@ -228,7 +243,7 @@ export function PerfilView({
               style={styles.quickLink}
               onPress={() =>
                 label === 'Reviews'
-                  ? setView('Reviews')
+                  ? openReviews()
                   : router.push({ pathname: '/perfil/biblioteca', params: { tab: label } })
               }
               accessibilityRole="button"
@@ -251,9 +266,9 @@ export function PerfilView({
           ))}
         </View>
       )}
-      <Section title="Actividad reciente" action="Ver todo" onPress={() => setView('Historial')} />
+      <Section title="Actividad reciente" />
       <View style={styles.activityPanel}>
-        {myReviews[0] && (
+        {latestPublication && (
           <View style={styles.activity}>
             <Avatar user={user} size={27} />
             <Pressable
@@ -261,7 +276,7 @@ export function PerfilView({
               onPress={() =>
                 router.push({
                   pathname: '/inicio/review/[id]',
-                  params: { id: myReviews[0].id },
+                  params: { id: latestPublication.id },
                 })
               }
               accessibilityRole="button"
@@ -269,14 +284,16 @@ export function PerfilView({
               <View style={styles.flex}>
                 <Text style={styles.meta}>
                   {user.name}
-                  {isOwnProfile ? '-kun' : ''} escribió una review
+                  {isOwnProfile ? '-kun' : ''}{' '}
+                  {latestPublication.kind === 'post' ? 'publicó un posteo' : 'escribió una review'}
                 </Text>
                 <Text style={styles.muted}>
-                  {myReviews[0].time} · {findAnime(myReviews[0].animeId)?.title ?? 'Publicación'}
+                  {latestPublication.time} ·{' '}
+                  {findAnime(latestPublication.animeId)?.title ?? 'Publicación'}
                 </Text>
               </View>
-              {myReviews[0].rating !== undefined && (
-                <Text style={styles.purple}>★ {myReviews[0].rating.toFixed(1)}</Text>
+              {latestPublication.rating !== undefined && (
+                <Text style={styles.purple}>★ {latestPublication.rating.toFixed(1)}</Text>
               )}
             </Pressable>
           </View>
@@ -302,41 +319,47 @@ export function PerfilView({
             </Pressable>
           </View>
         )}
-        {!myReviews.length && !latestAnime && (
+        {!latestPublication && !latestAnime && (
           <Text style={styles.muted}>Sin actividad de ejemplo.</Text>
         )}
       </View>
-      <Section title="Reviews destacadas" action="Ver todas" onPress={() => setView('Reviews')} />
-      {myReviews.map((item) => (
-        <ReviewCard key={item.id} review={item} />
+      <Section title="Reviews destacadas" />
+      {featuredReviews.map((item) => (
+        <PublicationCard key={item.id} review={item} />
       ))}
       <Chips
-        options={['Reviews', 'Listas', 'Historial', 'Likes']}
+        options={['Posteos', 'Reviews', 'Listas', 'Likes']}
         value={view}
         onChange={setView}
         variant="underline"
       />
-      {(view === 'Reviews' || view === 'Likes') && (
+      {(view === 'Posteos' || view === 'Reviews' || view === 'Likes') && (
         <>
           {shownReviews.map((item) => (
             <View key={item.id} style={styles.flex}>
-              <ReviewCard review={item} />
+              <PublicationCard review={item} />
               {publicProfile && isOwnProfile && item.userId === user.id && (
                 <Action
-                  label="Editar review"
+                  label={item.kind === 'post' ? 'Editar posteo' : 'Editar review'}
                   onPress={() =>
-                    router.push({ pathname: '/crear/review/escribir', params: { id: item.id } })
+                    router.push({
+                      pathname: item.kind === 'post' ? '/crear/posteo' : '/crear/review/escribir',
+                      params: { id: item.id },
+                    })
                   }
                 />
               )}
             </View>
           ))}
+          {view === 'Reviews' && myReviews.length > 2 && (
+            <Action label={`Ver todas las reviews (${myReviews.length})`} onPress={openReviews} />
+          )}
           {shownReviews.length === 0 && (
             <EmptyState
               title="Todavía no hay actividad"
               text={
                 isOwnProfile
-                  ? 'Tus reviews y likes aparecerán acá.'
+                  ? 'Tus posteos, reviews y likes aparecerán acá.'
                   : 'Las publicaciones de este usuario aparecerán acá.'
               }
             />
@@ -359,60 +382,6 @@ export function PerfilView({
             <EmptyState
               title="Sin listas públicas"
               text="Todavía no hay listas de ejemplo en este perfil."
-            />
-          )}
-        </>
-      )}
-      {view === 'Historial' && (
-        <>
-          <Chips
-            options={['Todo', 'Vistos', 'Reviews']}
-            value={historyFilter}
-            onChange={setHistoryFilter}
-          />
-          {historyFilter !== 'Vistos' &&
-            myReviews.map((item) => (
-              <Pressable
-                key={item.id}
-                style={styles.panel}
-                onPress={() =>
-                  router.push({ pathname: '/inicio/review/[id]', params: { id: item.id } })
-                }
-                accessibilityRole="button"
-              >
-                <Text style={styles.rowTitle}>
-                  {isOwnProfile ? 'Escribiste' : `${user.name} escribió`}{' '}
-                  {item.animeId
-                    ? `una review de ${findAnime(item.animeId)?.title}`
-                    : 'una publicación'}
-                </Text>
-                <Text style={styles.muted}>{item.time}</Text>
-              </Pressable>
-            ))}
-          {historyFilter !== 'Reviews' &&
-            historyIds
-              .slice(-3)
-              .reverse()
-              .map((id) => (
-                <Pressable
-                  key={id}
-                  style={styles.panel}
-                  onPress={() => router.push({ pathname: '/explorar/anime/[id]', params: { id } })}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.rowTitle}>
-                    {isOwnProfile ? 'Marcaste' : `${user.name} marcó`} {findAnime(id)?.title} como
-                    visto
-                  </Text>
-                  <Text style={styles.muted}>Marcado como visto · actividad local</Text>
-                </Pressable>
-              ))}
-          {((historyFilter === 'Reviews' && !myReviews.length) ||
-            (historyFilter === 'Vistos' && !historyIds.length) ||
-            (historyFilter === 'Todo' && !myReviews.length && !historyIds.length)) && (
-            <EmptyState
-              title="Sin actividad en este filtro"
-              text="Elegí otro filtro para recorrer el historial."
             />
           )}
         </>
@@ -474,18 +443,9 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   quickText: { color: theme.colors.primarySoft, fontSize: 9 },
-  panel: {
-    gap: 7,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 12,
-    backgroundColor: theme.colors.surface,
-  },
   activity: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 5 },
   flex: { flex: 1, gap: 4 },
   muted: { color: theme.colors.textSecondary, fontSize: 10, lineHeight: 16 },
-  rowTitle: { color: theme.colors.text, fontSize: 12, fontWeight: '600' },
   bottomActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   activityPanel: {
     gap: 7,

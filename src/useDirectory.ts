@@ -1,13 +1,14 @@
 import { useProfiles } from './context/ProfilesContext';
 import { useActivities } from './context/AppState';
-import { useReviews } from './context/ReviewsContext';
+import { usePublications } from './context/PublicationsContext';
 import { useSocial } from './context/SocialContext';
 
 // Datos derivados, no otro contexto: todos los perfiles consultan las mismas colecciones.
+// TODO BACKEND [PERFIL-TOTALES]: usar totales del servidor cuando haya paginación; contar elementos cargados no da el total real.
 export function useDirectory() {
   const { profiles } = useProfiles();
   const { getCollection } = useActivities();
-  const { reviews } = useReviews();
+  const { reviews } = usePublications();
   const { getFollowerIds, getFollowingIds } = useSocial();
   const users = profiles.map((profile) => {
     const activity = getCollection(profile.id);

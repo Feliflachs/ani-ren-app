@@ -1,4 +1,4 @@
-import { useReviews } from '../../../src/context/ReviewsContext';
+import { usePublications } from '../../../src/context/PublicationsContext';
 import { useCurrentUser } from '../../../src/useCurrentUser';
 import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -27,7 +27,7 @@ const isValidSeenDate = (value: string, today: Date) => {
 };
 
 export default function EscribirReviewScreen() {
-  const { reviews } = useReviews();
+  const { reviews } = usePublications();
 
   const currentUser = useCurrentUser();
 
@@ -58,8 +58,9 @@ export default function EscribirReviewScreen() {
   const createsLog = watched || rating !== undefined || reviewOpen;
   const validDate = !createsLog || isValidSeenDate(date, today);
   const validText = !reviewOpen || text.trim().length >= 10;
+  const validRating = !reviewOpen || rating !== undefined;
   const hasActivity = createsLog || liked || watchlist || listIds.length > 0;
-  const valid = hasActivity && validDate && validText;
+  const valid = hasActivity && validDate && validText && validRating;
   const goBack = () =>
     router.canGoBack()
       ? router.back()
@@ -176,6 +177,12 @@ export default function EscribirReviewScreen() {
 
         {reviewOpen && (
           <View style={styles.editor}>
+            {!validRating && (
+              <Text style={styles.error}>
+                Elegí una puntuación para publicar una review. Para conversar sin puntuar, usá Crear
+                → Posteo.
+              </Text>
+            )}
             <Text style={styles.label}>Título</Text>
             <TextInput
               accessibilityLabel="Título de la review"
@@ -261,7 +268,7 @@ export default function EscribirReviewScreen() {
         title="Actividad guardada"
         text={
           createsLog
-            ? `${item.title} ya aparece en tus vistos y en tu historial local.`
+            ? `${item.title} ya aparece en tus vistos.`
             : `Actualizamos tu actividad de ${item.title}.`
         }
         onClose={() => setDialog(null)}

@@ -1,13 +1,15 @@
 import { useDirectory } from '../../../src/useDirectory';
-import { useReviews } from '../../../src/context/ReviewsContext';
+import { usePublications } from '../../../src/context/PublicationsContext';
 import { useCurrentUser } from '../../../src/useCurrentUser';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useRef, useState } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
-  ReviewContent,
+  PublicationContent,
   Action,
-  AnimeCard,
+  SocialAction,
+  Dialog,
   Avatar,
   EmptyState,
   Screen,
@@ -19,22 +21,24 @@ import { theme } from '../../../src/theme';
 export default function ReviewScreen() {
   const { findUser } = useDirectory();
   const {
-    reviews,
+    publications,
     getLikedIds,
     getComments,
     toggleLike: toggleReviewLike,
     addComment: saveComment,
-  } = useReviews();
+  } = usePublications();
 
   const currentUser = useCurrentUser();
 
   const params = useLocalSearchParams();
   // TODO BACKEND [REVIEW-DETALLE]: consultar publicación, autor, likes y comentarios mediante params.id.
-  const review = reviews.find((item) => item.id === getParam(params.id));
+  const review = publications.find((item) => item.id === getParam(params.id));
   const reviewId = getParam(params.id) ?? '';
   const liked = getLikedIds(currentUser.id).includes(reviewId);
   const [revealed, setRevealed] = useState(false);
   const [draft, setDraft] = useState('');
+  const commentInput = useRef<TextInput>(null);
+  const [sharing, setSharing] = useState(false);
   const comments = getComments(reviewId);
   if (!review)
     return (
@@ -95,13 +99,16 @@ export default function ReviewScreen() {
             }
             style={styles.animeLink}
           >
-            <Text style={styles.link}>{item.title}</Text>
-            <Text style={styles.meta}>
-              {item.year} · {item.genres.slice(0, 2).join(' / ')}
-            </Text>
+            <Image source={item.image} style={styles.animeThumbnail} />
+            <View style={styles.grow}>
+              <Text style={styles.link}>{item.title}</Text>
+              <Text style={styles.meta}>
+                {item.year} · {item.genres.slice(0, 2).join(' / ')}
+              </Text>
+            </View>
           </Pressable>
         )}
-        <ReviewContent
+        <PublicationContent
           key={reviewId}
           review={review}
           revealed={revealed}
@@ -110,38 +117,48 @@ export default function ReviewScreen() {
         {review.spoiler && revealed && (
           <Action label="Ocultar spoilers" onPress={() => setRevealed(false)} />
         )}
-        {item && !hidden && (
-          <View style={styles.poster}>
-            <AnimeCard item={item} width={160} />
-          </View>
-        )}
         <View style={styles.actions}>
-          <View style={styles.grow}>
+          <SocialAction
+            count={review.likes}
+            label={liked ? 'Quitar like' : 'Dar like'}
+            icon={liked ? 'heart' : 'heart-outline'}
+            active={liked}
+            onPress={toggleLike}
+          />
+          <SocialAction
+            count={review.comments}
+            label="Escribir comentario"
+            icon="chatbubble-outline"
+            disabled={hidden}
+            onPress={() => commentInput.current?.focus()}
+          />
+          <SocialAction
+            label="Compartir publicación"
+            icon="share-outline"
+            onPress={() => setSharing(true)}
+          />
+          {review.userId === currentUser.id && review.kind === 'post' && (
             <Action
-              label={`${liked ? 'Te gusta' : 'Me gusta'} · ${review.likes}`}
-              icon={liked ? 'heart' : 'heart-outline'}
-              active={liked}
-              onPress={toggleLike}
+              label="Editar posteo"
+              icon="create-outline"
+              onPress={() => router.push({ pathname: '/crear/posteo', params: { id: review.id } })}
             />
-          </View>
+          )}
           {review.userId === currentUser.id && item && (
-            <View style={styles.grow}>
-              <Action
-                label="Editar review"
-                icon="create-outline"
-                onPress={() =>
-                  router.push({
-                    pathname: '/crear/review/escribir',
-                    params: { id: review.id, animeId: item.id },
-                  })
-                }
-              />
-            </View>
+            <Action
+              label="Editar review"
+              icon="create-outline"
+              onPress={() =>
+                router.push({
+                  pathname: '/crear/review/escribir',
+                  params: { id: review.id, animeId: item.id },
+                })
+              }
+            />
           )}
         </View>
       </View>
       <Section title={`Comentarios · ${review.comments}`} />
-      <Text style={styles.meta}>Comentarios de esta demostración local.</Text>
       {!hidden ? (
         <>
           {comments.map((comment) => (
@@ -160,55 +177,75 @@ export default function ReviewScreen() {
               </View>
             </View>
           ))}
-          <View style={styles.card}>
-            <Text style={styles.name}>Sumate a la conversación</Text>
+          <View style={styles.commentComposer}>
             <TextInput
+              ref={commentInput}
               accessibilityLabel="Tu comentario"
               value={draft}
               onChangeText={setDraft}
               multiline
               maxLength={500}
-              placeholder="¿Qué te pareció?"
+              placeholder="Escribí un comentario…"
               placeholderTextColor={theme.colors.textSecondary}
               style={styles.input}
             />
-            <Text style={styles.meta}>
-              {draft.length} / 500 · Se comparte con el resto de las pantallas.
-            </Text>
-            <Action
-              label="Comentar"
-              icon="send-outline"
-              primary
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Enviar comentario"
+              accessibilityState={{ disabled: !draft.trim() }}
+              style={({ pressed }) => [
+                styles.sendButton,
+                { opacity: !draft.trim() ? 0.35 : pressed ? 0.65 : 1 },
+              ]}
               disabled={!draft.trim()}
               onPress={addComment}
-            />
+            >
+              <Ionicons name="send-outline" size={21} color={theme.colors.primarySoft} />
+            </Pressable>
           </View>
+          {draft.length >= 400 && <Text style={styles.characterCount}>{draft.length} / 500</Text>}
         </>
       ) : (
         <Text style={styles.meta}>Revelá la review para leer también sus comentarios.</Text>
       )}
+      <Dialog
+        visible={sharing}
+        title="Compartir publicación"
+        text="Demostración: esta publicación local todavía no tiene un enlace público para compartir."
+        onClose={() => setSharing(false)}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  commentComposer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
-    borderRadius: 16,
-    padding: 14,
-    gap: 14,
+    borderRadius: 14,
+    padding: 4,
   },
+  sendButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  characterCount: { color: theme.colors.textSecondary, fontSize: 11, textAlign: 'right' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   grow: { flex: 1, minWidth: 0, gap: 5 },
   name: { color: theme.colors.text, fontSize: 13, fontWeight: '600' },
   meta: { color: theme.colors.textSecondary, fontSize: 11, lineHeight: 17 },
   rating: { color: theme.colors.primarySoft, fontWeight: '700', fontSize: 16 },
-  animeLink: { padding: 11, backgroundColor: theme.colors.surfaceLight, borderRadius: 10, gap: 4 },
+  animeLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: theme.colors.surfaceLight,
+    borderRadius: 10,
+    gap: 12,
+  },
+  animeThumbnail: { width: 40, height: 56, borderRadius: 5 },
   link: { color: theme.colors.primarySoft, fontSize: 14, fontWeight: '600' },
-  poster: { alignItems: 'center', paddingVertical: 4 },
-  actions: { flexDirection: 'row', gap: 8 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
   comment: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -217,12 +254,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   input: {
-    minHeight: 85,
+    flex: 1,
+    minHeight: 44,
+    maxHeight: 120,
     textAlignVertical: 'top',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceLight,
-    borderRadius: 10,
     color: theme.colors.text,
     padding: 12,
     fontSize: 13,

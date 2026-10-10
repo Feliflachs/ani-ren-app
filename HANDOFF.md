@@ -1,6 +1,47 @@
 ﻿# Ani-ren: funcionamiento actual y próximos pasos
 
-Actualizado: 8 de octubre de 2026. Rama de trabajo: `context`.
+Actualizado: 10 de octubre de 2026. Rama de trabajo: `context`.
+
+## Dirección acordada el 10 de octubre: comunidad y descubrimiento
+
+Base social implementada en el frontend local. Backend e imágenes siguen pendientes. Tienen prioridad sobre las propuestas anteriores cuando se contradigan. La devolución de la entrega orienta Ani-ren hacia una red social para recomendar y descubrir anime. Cámara y reconocimiento pasan a segundo plano. Se implementó la base de publicaciones y los feeds tras la autorización del usuario. No se creó un repositorio de backend.
+
+### Siguiendo y Para ti
+
+- **Siguiendo:** publicaciones y reviews de las cuentas seguidas, inicialmente por fecha.
+- **Para ti:** descubrir personas y animes. En la primera versión se excluyen las cuentas seguidas y las publicaciones propias. Las señales acordadas son géneros que le gustan al usuario, etiquetas relacionadas con sus intereses y animes de su watchlist.
+- Los animes ya vistos no son un requisito ni el filtro principal de Para ti; una publicación sobre uno puede aparecer si es relevante. Haber visto un anime tampoco obliga a recomendar contenido sobre él.
+- Se busca variedad de autores y animes. No rellenar silenciosamente Para ti con Siguiendo cuando falte contenido. Regla inicial en `src/feed.ts`: +3 por anime de watchlist, +1 por género coincidente y +1 por etiqueta coincidente. Los géneros se infieren de favoritos y watchlist; las etiquetas, de publicaciones que gustaron. Se desempata por fecha y se alternan autores cuando es posible. Sin coincidencias se ofrece contenido de otras cuentas por fecha; nunca se incluyen seguidos ni el propio usuario. Son reglas simples ajustables, no IA.
+- **Explorar** conserva la búsqueda intencional, catálogo, filtros y tops; Para ti es descubrimiento mediante publicaciones.
+
+### Publicación común y review
+
+Modelo en `src/publications.ts`: `PublicationBase` compartida y dos variantes `Review` y `Post`, identificadas por `kind`. Compartir autor, fecha, texto, aviso de spoilers, etiquetas, likes y comentarios. Las interacciones deben pertenecer al mismo sistema para ambos tipos.
+
+| Tipo | Datos y comportamiento propios |
+| --- | --- |
+| Publicación común | Texto para conversar, preguntar o recomendar, sin puntuación obligatoria ni necesidad de valorar un anime concreto. Puede referenciar animes mediante etiquetas. Imagen opcional en el modelo; su implementación se pospone al apartado final de extras. |
+| Review | Anime asociado, opinión, puntuación y opción de spoilers. Conserva los campos pertinentes del editor actual; el título sigue siendo opcional. |
+
+No se usan clases ni un contexto nuevo. `PublicationsContext.tsx` reemplaza el nombre ReviewsContext y ofrece `publications` (ambos tipos) y `reviews` (solo reviews), para no contar posteos en las misiones ni en los totales de reviews. El editor exige puntuación al publicar una review; los logs sin texto y reviews antiguas sin puntuación siguen siendo compatibles.
+
+Los hashtags sirven para referenciar temas/animes y como señales de Para ti. Ejemplo: «Busco algo parecido a #Frieren, ¿qué recomiendan?». Un hashtag convencional no contiene espacios. Implementado: hashtags libres extraídos del texto, normalizados sin mayúsculas ni tildes; los que coinciden con ID/título normalizado del catálogo se vinculan a ese anime. También hay un buscador para elegir animes mencionados y guardarlos por ID. No se resuelven sinónimos ni apodos arbitrarios. Las menciones abren la ficha y las etiquetas buscan publicaciones.
+
+### Archivos y recorrido de la base social
+
+- `src/publications.ts`: base compartida, variantes, extracción de hashtags e IDs relacionados.
+- `src/feed.ts`: selección y orden de Para ti, Siguiendo y Tendencia.
+- `src/context/PublicationsContext.tsx`: una sola fuente para posteos/reviews, likes y comentarios. Conserva la clave local `ani-ren:reviews:v1` para leer lo anterior; completa tipo, etiquetas y fecha faltantes al cargar. Fechas antiguas sin referencia conocida se ordenan al final, sin inventar la fecha original.
+- `app/crear/posteo.tsx`: publicar/editar texto de 3 a 2000 caracteres, menciones y spoilers. Disponible desde Crear > Posteo. Guardar abre el detalle del posteo.
+- `PublicationCard` y `PublicationContent` permanecen en components.tsx. Ambos tipos usan la ruta existente `/inicio/review/[id]` para el detalle; su título y botón de edición dependen del tipo.
+- Perfil incorpora Posteos (también en perfiles públicos); Likes y Búsqueda > Publicaciones incluyen los dos tipos. Las fichas del anime y las misiones siguen consultando solo reviews.
+- Se persiste el contenido de ambos tipos al publicar/editar. Likes, comentarios y seguimientos siguen siendo estado temporal de la demo; no se agregó persistencia para ellos.
+
+Pruebas manuales pendientes en teléfono: publicar con/sin menciones y con spoilers; abrir desde Perfil, dar like/comentar desde otra cuenta y comprobar el detalle; editar y recargar para verificar texto y autor; seguir a un autor y comprobar su paso a Siguiendo; rechazar un formulario vacío; confirmar que un posteo no suma reviews ni animes vistos. Verificación local: TypeScript/lint y comprobaciones puntuales de filtros, orden, hashtags y migración, sin agregar infraestructura de tests.
+
+### Backend y siguiente paso
+
+Se hará en otro repositorio. La tecnología y requisitos se hablarán en clase la semana siguiente; por ahora se sabe que incluirá integración con usuarios y APIs. No elegir framework, proveedor, endpoints ni esquema definitivo todavía. Primero acordar los campos de las publicaciones y el comportamiento del feed; después coordinar esos contratos con autenticación, catálogo e interacciones. No crear el repositorio ni conectar servicios en esta etapa de planificación.
 
 ## Estado de la revisión del 8 de octubre
 
@@ -22,14 +63,14 @@ Los seis contextos viven en `src/context/`, incluido `AppState.tsx`. Los hooks q
 | `ProfilesContext.tsx` | Nombre visible, biografía e imagen | Editor, avatares y directorio de perfiles |
 | `AppState.tsx` | Vistos, favoritos ordenados, watchlist y recompensas por usuario | Biblioteca, ficha de anime, perfil y misiones |
 | `SocialContext.tsx` | IDs seguidos; deriva seguidores y amistad mutua | Comunidad, perfiles, feed, amigos del anime y ranking |
-| `ReviewsContext.tsx` | Reviews/logs, puntuación, fecha, spoilers, likes, comentarios y publicaciones guardadas | Inicio, detalle, editor, búsqueda, perfil, biblioteca, ficha de anime y mapa |
+| `PublicationsContext.tsx` | Reviews/logs, puntuación, fecha, spoilers, likes y comentarios | Inicio, detalle, editor, búsqueda, perfil, biblioteca, ficha de anime y mapa |
 | `ListsContext.tsx` | Listas con su `animeIds` ordenado y likes | Editor, tarjetas, detalle, perfil, biblioteca, búsqueda y selector del anime |
 | `useMissions.ts` | Hook sin contexto propio; calcula progreso y consulta recompensas en AppState | Aura y Misiones |
 | `missions.ts` | Definición de objetivos y cálculo reutilizable por tipo de misión | Aura y Misiones |
 | `useDirectory.ts` | No almacena estado: compone perfiles y totales actuales | Toda pantalla que muestra personas |
 | `useCurrentUser.ts` | Resuelve el perfil actual a partir del ID de sesión | Pantallas de la cuenta activa |
 
-`useAppState()` conserva una interfaz cómoda para la actividad del anime, pero no guarda otra copia de las reviews ni de las listas: consulta sus contextos. Los textos y puntuaciones se guardan únicamente en `ReviewsContext`; el contenido y orden de las listas, únicamente en `ListsContext`.
+`useAppState()` conserva una interfaz cómoda para la actividad del anime, pero no guarda otra copia de las reviews ni de las listas: consulta sus contextos. Los textos y puntuaciones se guardan únicamente en `PublicationsContext`; el contenido y orden de las listas, únicamente en `ListsContext`.
 
 Hay seis contextos por responsabilidad. Se retiró el provider exclusivo de Aura: sus cálculos no necesitan otro contexto. Los hooks `useMissions`, `useDirectory` y `useCurrentUser` solo consultan/componen datos.
 
@@ -47,7 +88,7 @@ Prueba manual pendiente en teléfono: permitir ubicación y comprobar el país; 
 - Los likes y comentarios son compartidos. Las conversaciones empiezan vacías porque no había comentarios específicos por review; ya no se reutilizan los mismos dos comentarios para todas.
 - Crear/editar una review actualiza Inicio, Perfil, Biblioteca, búsqueda y ficha. Un log sin texto no se publica como review. Si se abre el campo de review, requiere al menos diez caracteres.
 - Las listas guardadas aparecen en todas sus vistas. Agregar un anime desde su ficha lo coloca al final; quitarlo conserva el orden del resto. No se reconstruyen según el catálogo.
-- `ReviewCard` es la tarjeta común. Tocar su cuerpo abre el detalle; no hay botón "Ver review". Likes y otras acciones son independientes. `ReviewContent` y `SpoilerCover` ocultan título y texto con una cubierta gris hasta tocarla; también se usan en el detalle. El formulario ya tiene el interruptor «Contiene spoilers».
+- `PublicationCard` es la tarjeta común. Tocar su cuerpo abre el detalle; no hay botón "Ver review". Likes y otras acciones son independientes. `PublicationContent` y `SpoilerCover` ocultan título y texto con una cubierta gris hasta tocarla; también se usan en el detalle. El formulario ya tiene el interruptor «Contiene spoilers».
 - Misiones: objetivos de demo alcanzables con el catálogo (2 romances, 3 de Acción, 4 géneros, 3 reviews y primer visto). No hay objetivo semanal porque todavía no existe un historial temporal completo. Recompensas solo reclamables con el objetivo completo; se conservan por usuario durante la ejecución. Los decoradores de Rangos siguen siendo una vista previa local.
 - Los providers de datos no se desmontan al salir de la cuenta: permiten ver las mismas modificaciones al visitar ese perfil desde otra cuenta. Se reinician los formularios y la navegación al cambiar el ID activo.
 - **Persistencia:** AsyncStorage recuerda el ID de sesión y las reviews/logs (clave `ani-ren:reviews:v1`), incluyendo texto, título, fecha, puntuación y spoilers. El editor confirma después de escribir y conserva el borrador si falla. La app espera la lectura inicial; si falla, muestra Reintentar sin sobrescribir los datos. Likes, comentarios, listas, perfiles editados, relaciones, recompensas y cambios de colecciones siguen siendo temporales. Los vistos iniciales incluyen los animes de las reviews restauradas. No se escriben archivos del proyecto.
@@ -56,14 +97,21 @@ Prueba manual pendiente en teléfono: permitir ubicación y comprobar el país; 
 
 No hay URLs ni esquema de base de datos definitivo. Estos son contratos de frontend para coordinar con el equipo; una API deberá validar autoría, reglas y errores del lado servidor. Adaptar respuestas en los providers evita reescribir cada tarjeta.
 
+**Cómo encontrar los puntos de integración:** buscar `TODO BACKEND` en todo el proyecto (Ctrl+Shift+F), o ejecutar `rg -n "TODO BACKEND" src app`. Las marcas junto a las funciones de los contextos señalan dónde conectar lecturas y operaciones. Las marcas de pantallas explican el recorrido: no significan que haya que duplicar una llamada de API por cada tarjeta. Mantener los borradores y validaciones de presentación en los formularios.
+
+Para la base social nueva, empezar en `src/context/PublicationsContext.tsx` (`PUBLICACIONES-CARGAR`, `PUBLICACION-ADAPTAR`, `REVIEW-GUARDAR`, `POSTEO-GUARDAR` e interacciones), `src/feed.ts` (`FEED-SELECCION`) y `src/publications.ts` (`PUBLICACION-CONTRATO`). La API debe aportar IDs/fechas y comprobar la identidad desde la sesión; no confiar en el userId enviado por el cliente. Definir caché e invalidación, respuestas de error y carga antes de sustituir AsyncStorage. Las validaciones contra el catálogo/usuarios del mock también deben reemplazarse.
+
 | Dominio | Lecturas y operaciones a reemplazar | Atributos que usa la interfaz |
 | --- | --- | --- |
 | Sesión | `buscarCuenta`, `signIn`, `restore`, `signOut` | ID estable; mecanismo de sesión real por definir. El JSON de contraseñas públicas se retira al integrar autenticación |
+| Registro | `app/login/crear-cuenta.tsx`, función `registrar`; reglas locales en `src/login.ts` | Usuario, contraseña y errores de disponibilidad/validación del servidor; no confirmar un registro real solo con validación local |
 | Perfiles | Carga de `ProfilesContext`, `updateProfile` | `id`, `name`, `handle`, `bio`, imagen; las imágenes locales deberán adaptarse a URLs/archivos |
 | Colecciones | Carga de `AppState`, `updateCollection`, `setFavorites` | `userId`, IDs de anime vistos, favoritos ordenados y watchlist |
 | Relaciones | Carga de `SocialContext`, `toggleFollowing` | `userId`, `otherId`; seguidores y amistad se derivan de los seguimientos |
-| Reviews/logs | Carga de `ReviewsContext`, `saveReview` | `id`, `userId`, `animeId`, `title`, `text`, `rating`, `spoiler`, `date`. Actualmente hay una entrada por usuario/anime; acordar si habrá varias y timestamps antes de integrar |
-| Interacciones | `toggleLike`, `toggleSaved`, `addComment` de Reviews; `toggleLike` de Lists | ID de publicación/lista, ID de usuario; comentarios con `id`, `userId`, `text`, fecha/hora |
+| Reviews/logs | Carga de `PublicationsContext`, `saveReview` | `id`, `userId`, `animeId`, `title`, `text`, `rating`, `spoiler`, `date`. Actualmente hay una entrada por usuario/anime; acordar si habrá varias y timestamps antes de integrar |
+| Posteos | `PublicationsContext.savePost`, adaptación en `readEntry`; formulario `app/crear/posteo.tsx` | Base común `id`, `userId`, `kind`, `text`, `createdAt`, `tags`, `spoiler`; variante post con `animeIds`, sin rating. Persistencia remota y edición con autoría validada |
+| Feeds | `src/feed.ts`, `selectFeed`; consumidor `app/(tabs)/inicio.tsx` | Tipo de feed, usuario autenticado, gustos, etiquetas y watchlist; orden/paginación y exclusión de seguidos/propios en Para ti |
+| Interacciones | `toggleLike`, `addComment` de PublicationsContext; `toggleLike` de ListsContext | ID de publicación/lista, ID de usuario; comentarios con `id`, `userId`, `text`, fecha/hora; totales reales y estado propio |
 | Listas | Carga de `ListsContext`, `saveList`, `toggleAnime` | `id`, `userId`, `title`, `description`, `ordered`, `animeIds` preservando el orden |
 | Aura | Definiciones/progreso de misiones y reclamación de recompensas | ID de misión, criterio, objetivo, progreso y recompensa por usuario; rangos y decoradores requieren reglas acordadas |
 | Catálogo y búsqueda | `anime`, `findAnime`, géneros, temporadas en `mock.ts`; filtros de Búsqueda y Crear | Metadatos del anime y resultados por categoría; paginación/carga/error al integrar |
@@ -74,7 +122,7 @@ Los totales personales se calculan completos para esta demo pequeña. Con backen
 
 ### Validación de esta etapa
 
-`npm.cmd test` ejecuta pruebas de lógica con hooks y almacenamiento simulados, sin servicios externos. Cubre perfiles, cambio de cuenta, relaciones, likes/comentarios, edición y restauración de reviews, errores de almacenamiento, navegación de tarjetas, listas ordenadas, misiones, sesión y cubierta de spoilers. También ejecutar TypeScript, lint y exportación. Falta inspección interactiva en teléfono: especialmente revelar spoilers, teclado, volver de editores, permisos y restaurar sesión.
+Ejecutar TypeScript, lint y exportación. El sistema anterior de tests con hooks simulados ya no está en el proyecto. Falta inspección interactiva en teléfono: spoilers, teclado, volver de editores, permisos y restaurar sesión. Los recorridos de publicaciones están en el apartado del 10 de octubre.
 
 ## 1. Objetivo y alcance
 
@@ -179,9 +227,11 @@ Cada subpantalla tiene una sola ubicación y sigue siendo accesible desde otras 
 
 ### 4.2. Perfil común
 
-Implementado: `src/PerfilView.tsx` concentra el diseño basado en el perfil propio: identidad, estadísticas, insignia Aura, favoritos, actividad reciente, reviews destacadas y pestañas subrayadas Reviews/Listas/Historial/Likes. `app/(tabs)/perfil.tsx` pasa el usuario de ejemplo; `app/perfil/usuario/[id].tsx` resuelve el ID, maneja usuario inexistente y usa esa misma vista en modo público. Justificación: mantener el diseño común una sola vez.
+Implementado: `src/PerfilView.tsx` concentra el diseño basado en el perfil propio: identidad, estadísticas, insignia Aura, favoritos, actividad reciente, reviews destacadas y pestañas subrayadas Posteos/Reviews/Listas/Likes. `app/(tabs)/perfil.tsx` pasa la cuenta activa; `app/perfil/usuario/[id].tsx` resuelve el ID, maneja usuario inexistente y usa esa misma vista en modo público. Justificación: mantener el diseño común una sola vez.
 
-Los accesos a biblioteca personal y edición solo se ofrecen en el perfil propio. El perfil ajeno permite seguir/dejar de seguir y ver conexiones de esa persona; no abre la biblioteca o Aura del usuario actual como si fueran ajenas. Actividad, listas y reviews se derivan del perfil recibido. Likes e historial ajenos consultan las mismas colecciones de cada usuario.
+Actividad reciente y Reviews destacadas son resúmenes sin enlace «Ver todo». Las destacadas muestran hasta dos reviews, ordenadas por la suma de likes y comentarios. Se eliminó la pestaña Historial. La pestaña Reviews muestra las dos más recientes y, si hay más, «Ver todas» abre `app/perfil/reviews.tsx` con el ID del perfil. El contador y el acceso rápido de Reviews también abren esa pantalla. Listas muestra todas; Vistos conserva su acceso a Biblioteca.
+
+Los accesos a biblioteca personal y edición solo se ofrecen en el perfil propio. El perfil ajeno permite seguir/dejar de seguir y ver conexiones de esa persona; no abre la biblioteca o Aura del usuario actual como si fueran ajenas. Actividad, listas, reviews y likes consultan los datos del perfil recibido.
 
 Se reemplazó Iniciar sesión por Cerrar sesión en la fila de Editar perfil y Amigos; la fila puede envolver los botones en pantallas angostas. Ahora elimina el ID guardado y la cuenta activa. El layout vuelve al acceso; la actividad permanece separada por usuario hasta recargar la app. Si falla el almacenamiento, muestra un error para reintentar.
 
@@ -350,3 +400,15 @@ Documentar pruebas de cámara/fototeca y distinguir selección de imágenes de r
 Se actualizaron README, PANTALLAS e INICIO_FRONTEND para indicar escala de 5, cámara/galería reales en Explorar, reconocimiento pendiente, sesión persistente y datos locales compartidos. Las previews de avatar y decoradores siguen identificadas como demostraciones.
 
 Para continuar: leer este documento, el código afectado y los ejemplos del usuario. Explicar qué se cambia y por qué. Hacer cambios pequeños y no confundir propuestas futuras con funciones terminadas ni con autorización para implementarlas ahora.
+
+## Implementaciones extra
+
+Se retiró la función de marcar publicaciones como «Guardadas»: no existe botón, estado ni operación para eso. Esto no cambia el guardado local del contenido al crear/editar. El detalle de posteos/reviews tiene like compacto y Compartir, como el feed. Compartir todavía muestra un aviso de demostración.
+
+- **Enlaces para compartir:** definir enlaces públicos a posteos, reviews y fichas de anime, cómo se abren en web/app y qué puede ver una persona sin sesión. Luego conectar los botones Compartir; no generar ahora enlaces que no tengan un destino público funcional.
+
+Ideas para después del núcleo social; no implementarlas automáticamente:
+
+- **Imagen opcional en publicaciones comunes:** compartir una foto para preguntar «¿A qué anime pertenece?» y recibir respuestas de otras personas. Resolver selección/subida y almacenamiento de imágenes cuando se aborde esta función; no requiere reconocimiento automático ni sensores nuevos.
+- **Openings y endings:** permitir recomendaciones y referencias a estas piezas; formato, fuente de metadatos y reproducción quedan por definir.
+- **Reconocimiento automático de imágenes:** retomar cámara/galería y evaluar trace.moe después de consolidar publicaciones, reviews y feeds. No es la prioridad de la próxima etapa.

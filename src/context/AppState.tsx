@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { librariesByUser, users } from '../mock';
 import { useSession } from './SessionContext';
-import { useReviews, type ReviewEntry } from './ReviewsContext';
+import { usePublications } from './PublicationsContext';
+import type { PublicationEntry } from '../publications';
 import { useLists } from './ListsContext';
 import { useSocial } from './SocialContext';
 
@@ -19,7 +20,8 @@ export type AnimeActivity = {
   listIds: string[];
 };
 const empty: Collection = { watchedIds: [], likedIds: [], watchlistIds: [] };
-const createCollections = (entries: ReviewEntry[]) =>
+const createCollections = (entries: PublicationEntry[]) =>
+  // TODO BACKEND [COLECCIONES-CARGAR]: consultar biblioteca real; no inferir todos los vistos de una página de reviews.
   Object.fromEntries(
     users.map((user) => [
       user.id,
@@ -38,12 +40,13 @@ const createCollections = (entries: ReviewEntry[]) =>
 function useActivityState() {
   const [claimedByUser, setClaimed] = useState<Record<string, string[]>>({});
   function claimReward(userId: string, missionId: string) {
+    // TODO BACKEND [RECOMPENSA-RECLAMAR]: cargar recompensas y validar elegibilidad/reclamo único en servidor.
     setClaimed((previous) => ({
       ...previous,
       [userId]: [...new Set([...(previous[userId] ?? []), missionId])],
     }));
   }
-  const { entries } = useReviews();
+  const { entries } = usePublications();
   const [collections, setCollections] = useState<Record<string, Collection>>(() =>
     createCollections(entries),
   );
@@ -53,6 +56,7 @@ function useActivityState() {
     animeId: string,
     changes: Partial<Pick<AnimeActivity, 'watched' | 'liked' | 'watchlist'>>,
   ) {
+    // TODO BACKEND [COLECCION-GUARDAR]: actualizar vistos/favoritos/watchlist de la cuenta y usar la respuesta confirmada.
     setCollections((previous) => {
       const next = { ...(previous[userId] ?? empty) };
       for (const [flag, key] of [
@@ -69,6 +73,7 @@ function useActivityState() {
     });
   }
   function setFavorites(userId: string, ids: string[]) {
+    // TODO BACKEND [FAVORITOS-ORDEN]: guardar la selección ordenada y sincronizar perfil/biblioteca.
     setCollections((previous) => ({
       ...previous,
       [userId]: { ...(previous[userId] ?? empty), likedIds: [...new Set(ids)] },
@@ -90,7 +95,7 @@ export function useAppState() {
   const { user } = useSession();
   const userId = user?.id ?? '';
   const { getCollection, updateCollection } = useActivities();
-  const { entries, saveReview } = useReviews();
+  const { entries, saveReview } = usePublications();
   const { lists } = useLists();
   const social = useSocial();
   const collection = getCollection(userId);
@@ -101,7 +106,7 @@ export function useAppState() {
       liked: collection.likedIds.includes(animeId),
       watchlist: collection.watchlistIds.includes(animeId),
       rating: entry?.rating,
-      date: entry?.date,
+      date: entry?.kind === 'review' ? entry.date : undefined,
       reviewTitle: entry?.title,
       reviewText: entry?.text,
       spoiler: entry?.spoiler ?? false,

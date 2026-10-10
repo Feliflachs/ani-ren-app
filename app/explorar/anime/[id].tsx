@@ -1,6 +1,6 @@
 import { useDirectory } from '../../../src/useDirectory';
 import { useLists } from '../../../src/context/ListsContext';
-import { useReviews } from '../../../src/context/ReviewsContext';
+import { usePublications } from '../../../src/context/PublicationsContext';
 import { useCurrentUser } from '../../../src/useCurrentUser';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -17,7 +17,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import {
-  ReviewCard,
+  PublicationCard,
   Action,
   Avatar,
   Dialog,
@@ -96,7 +96,7 @@ const streamingPlatforms = [
 export default function DetalleAnime() {
   const { findUser } = useDirectory();
   const { lists, toggleAnime } = useLists();
-  const { reviews } = useReviews();
+  const { reviews } = usePublications();
 
   const currentUser = useCurrentUser();
 
@@ -384,7 +384,7 @@ export default function DetalleAnime() {
         onPress={() => router.push('/perfil/comunidad')}
       />
       {animeReviews.length ? (
-        animeReviews.map((review) => <ReviewCard key={review.id} review={review} />)
+        animeReviews.map((review) => <PublicationCard key={review.id} review={review} />)
       ) : (
         <EmptyState
           title="La primera review puede ser tuya"

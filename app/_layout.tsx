@@ -11,7 +11,7 @@ import { SessionProvider, useSession } from '../src/context/SessionContext';
 import { theme } from '../src/theme';
 import { ProfilesProvider } from '../src/context/ProfilesContext';
 import { SocialProvider } from '../src/context/SocialContext';
-import { ReviewsProvider, useReviews } from '../src/context/ReviewsContext';
+import { PublicationsProvider, usePublications } from '../src/context/PublicationsContext';
 import { ListsProvider } from '../src/context/ListsContext';
 
 SplashScreen.preventAutoHideAsync();
@@ -22,13 +22,13 @@ export default function RootLayout() {
       <SessionProvider>
         <ProfilesProvider>
           <SocialProvider>
-            <ReviewsProvider>
+            <PublicationsProvider>
               <ListsProvider>
                 <AppStateProvider>
                   <SessionNavigation />
                 </AppStateProvider>
               </ListsProvider>
-            </ReviewsProvider>
+            </PublicationsProvider>
           </SocialProvider>
         </ProfilesProvider>
       </SessionProvider>
@@ -38,7 +38,7 @@ export default function RootLayout() {
 
 function SessionNavigation() {
   const { user, ready } = useSession();
-  const { ready: reviewsReady, loadError, loadReviews } = useReviews();
+  const { ready: reviewsReady, loadError, loadPublications } = usePublications();
   const [loaded, error] = useFonts(Ionicons.font);
   useEffect(() => {
     if (ready && reviewsReady && (loaded || error)) SplashScreen.hideAsync();
@@ -55,7 +55,7 @@ function SessionNavigation() {
         }}
       >
         <Text style={{ color: theme.colors.text }}>{loadError}</Text>
-        <Button title="Reintentar" onPress={() => void loadReviews()} />
+        <Button title="Reintentar" onPress={() => void loadPublications()} />
       </View>
     );
   return (
@@ -82,6 +82,7 @@ function SessionNavigation() {
               <Stack.Screen name="aura/rangos" />
               <Stack.Screen name="aura/ranking" />
               <Stack.Screen name="crear/review/escribir" />
+              <Stack.Screen name="crear/posteo" />
               <Stack.Screen name="explorar/anime/[id]" />
               <Stack.Screen name="explorar/busqueda" />
               <Stack.Screen name="explorar/mapa/index" />
@@ -89,6 +90,7 @@ function SessionNavigation() {
               <Stack.Screen name="explorar/tops" />
               <Stack.Screen name="inicio/review/[id]" />
               <Stack.Screen name="perfil/biblioteca" />
+              <Stack.Screen name="perfil/reviews" />
               <Stack.Screen name="perfil/comunidad" />
               <Stack.Screen name="perfil/editar" />
               <Stack.Screen name="perfil/listas/[id]" />

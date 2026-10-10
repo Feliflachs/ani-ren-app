@@ -3,6 +3,7 @@ import { lists as initialLists, type AnimeList } from '../mock';
 
 // animeIds es la fuente del contenido Y del orden de cada lista.
 function useListsState() {
+  // TODO BACKEND [LISTAS-CARGAR]: consultar listas por usuario y detalle por ID; adaptar animeIds conservando el orden.
   const [lists, setLists] = useState(initialLists);
   const [likes, setLikes] = useState<Record<string, string[]>>({});
   function saveList(
@@ -10,6 +11,7 @@ function useListsState() {
     draft: Pick<AnimeList, 'title' | 'description' | 'ordered' | 'animeIds'>,
     id?: string,
   ) {
+    // TODO BACKEND [LISTA-GUARDAR]: crear/editar y devolver el ID confirmado; validar autoría y orden en servidor.
     const listId = id ?? `list-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     setLists((previous) => {
       const existing = previous.find((list) => list.id === listId);
@@ -22,6 +24,7 @@ function useListsState() {
     return listId;
   }
   function toggleAnime(userId: string, listId: string, animeId: string) {
+    // TODO BACKEND [LISTA-CONTENIDO]: agregar/quitar anime en API conservando el orden y sincronizar tarjeta/detalle.
     setLists((previous) =>
       previous.map((list) => {
         if (list.id !== listId || list.userId !== userId) return list;
@@ -35,6 +38,7 @@ function useListsState() {
     );
   }
   function toggleLike(userId: string, listId: string) {
+    // TODO BACKEND [LISTA-LIKE]: enviar like propio y actualizar el total confirmado.
     setLikes((previous) => {
       const ids = previous[userId] ?? [];
       return {

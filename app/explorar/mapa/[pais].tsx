@@ -1,4 +1,4 @@
-import { useReviews } from '../../../src/context/ReviewsContext';
+import { usePublications } from '../../../src/context/PublicationsContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -7,7 +7,7 @@ import {
   AnimeCard,
   EmptyState,
   Progress,
-  ReviewCard,
+  PublicationCard,
   Screen,
   Section,
 } from '../../../src/components';
@@ -33,7 +33,7 @@ const localReviewIds: Record<string, string[]> = {
 };
 
 export default function CountryScreen() {
-  const { reviews } = useReviews();
+  const { reviews } = usePublications();
 
   const params = useLocalSearchParams<{
     pais?: string | string[];
@@ -182,7 +182,7 @@ export default function CountryScreen() {
           </ScrollView>
           <Section title="Reviews del país" />
           {localReviews.map((review) => (
-            <ReviewCard key={review.id} review={review} />
+            <PublicationCard key={review.id} review={review} />
           ))}
         </>
       )}

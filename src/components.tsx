@@ -1,4 +1,5 @@
-import { useReviews } from './context/ReviewsContext';
+import { publicationAnimeIds, type Publication } from './publications';
+import { usePublications } from './context/PublicationsContext';
 import { useDirectory } from './useDirectory';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
@@ -17,7 +18,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { findAnime, type Anime, type AnimeList, type Review, type User } from './mock';
+import { findAnime, type Anime, type AnimeList, type User } from './mock';
 import { theme } from './theme';
 import { useSession } from './context/SessionContext';
 import { useSocial } from './context/SocialContext';
@@ -524,12 +525,47 @@ export function ListCard({ list }: { list: AnimeList }) {
   );
 }
 
-// Reviews: una tarjeta compartida; el feed agrega acciones y la ficha del anime.
+// Acciones sociales sin caja; se usan igual en tarjetas y en el detalle.
+export function SocialAction({
+  icon,
+  label,
+  count,
+  active,
+  disabled = false,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  count?: number;
+  active?: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const color = active ? theme.colors.accentSoft : theme.colors.textSecondary;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={count === undefined ? label : `${label}: ${count}`}
+      accessibilityState={{ disabled, selected: active }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.socialAction,
+        { opacity: disabled ? 0.35 : pressed ? 0.6 : 1 },
+      ]}
+    >
+      <Ionicons name={icon} size={23} color={color} />
+      {count !== undefined && <Text style={{ color, fontSize: 13 }}>{count}</Text>}
+    </Pressable>
+  );
+}
+
+// Publicaciones y reviews: una tarjeta compartida; el feed agrega acciones y la ficha del anime.
 export function SpoilerCover({ onReveal }: { onReveal: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Mostrar review con spoilers"
+      accessibilityLabel="Mostrar publicación con spoilers"
       onPress={(event) => {
         event.stopPropagation();
         onReveal();
@@ -537,18 +573,18 @@ export function SpoilerCover({ onReveal }: { onReveal: () => void }) {
       style={styles.spoilerCover}
     >
       <Ionicons name="eye-off-outline" size={30} color={theme.colors.textSecondary} />
-      <Text style={styles.spoilerLabel}>Esta review podría contener spoilers</Text>
+      <Text style={styles.spoilerLabel}>Esta publicación podría contener spoilers</Text>
       <Text style={styles.meta}>Tocá para mostrar</Text>
     </Pressable>
   );
 }
-export function ReviewContent({
+export function PublicationContent({
   review,
   numberOfLines,
   revealed,
   onReveal,
 }: {
-  review: Review;
+  review: Publication;
   numberOfLines?: number;
   revealed?: boolean;
   onReveal?: () => void;
@@ -558,6 +594,37 @@ export function ReviewContent({
     return <SpoilerCover onReveal={onReveal ?? (() => setVisible(true))} />;
   return (
     <View style={styles.reviewContent}>
+      {publicationAnimeIds(review).map((id) => (
+        <Pressable
+          key={id}
+          accessibilityRole="link"
+          onPress={(event) => {
+            event.stopPropagation();
+            router.push({ pathname: '/explorar/anime/[id]', params: { id } });
+          }}
+        >
+          <Text style={{ color: theme.colors.primarySoft }}>#{findAnime(id)?.title}</Text>
+        </Pressable>
+      ))}
+      {!!review.tags.length && (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {review.tags.map((tag) => (
+            <Pressable
+              key={tag}
+              accessibilityRole="link"
+              onPress={(event) => {
+                event.stopPropagation();
+                router.push({
+                  pathname: '/explorar/busqueda',
+                  params: { type: 'Publicaciones', q: '#' + tag },
+                });
+              }}
+            >
+              <Text style={{ color: theme.colors.primarySoft }}>#{tag}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
       {review.title && <Text style={styles.reviewCardTitle}>{review.title}</Text>}
       <Text numberOfLines={numberOfLines} style={[styles.reviewText, styles.reviewCardBody]}>
         {review.text}
@@ -565,16 +632,15 @@ export function ReviewContent({
     </View>
   );
 }
-export function ReviewCard({ review, feed = false }: { review: Review; feed?: boolean }) {
+export function PublicationCard({ review, feed = false }: { review: Publication; feed?: boolean }) {
   const [sharing, setSharing] = useState(false);
   const { findUser } = useDirectory();
   const { user } = useSession();
-  const { getLikedIds, toggleLike, getSavedIds, toggleSaved } = useReviews();
+  const { getLikedIds, toggleLike } = usePublications();
   const { getFollowingIds, toggleFollowing } = useSocial();
   const author = findUser(review.userId);
   const item = findAnime(review.animeId);
   const liked = user ? getLikedIds(user.id).includes(review.id) : false;
-  const saved = user ? getSavedIds(user.id).includes(review.id) : false;
   const following = user ? getFollowingIds(user.id).includes(review.userId) : false;
   const openReview = () =>
     router.push({ pathname: '/inicio/review/[id]', params: { id: review.id } });
@@ -612,11 +678,11 @@ export function ReviewCard({ review, feed = false }: { review: Review; feed?: bo
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Abrir review"
+        accessibilityLabel="Abrir publicación"
         onPress={openReview}
         style={styles.reviewContent}
       >
-        <ReviewContent
+        <PublicationContent
           key={review.id + String(review.spoiler)}
           review={review}
           numberOfLines={feed ? undefined : 3}
@@ -641,9 +707,9 @@ export function ReviewCard({ review, feed = false }: { review: Review; feed?: bo
         </Pressable>
       )}
       <View style={[styles.reviewHeader, { flexWrap: 'wrap' }]}>
-        <Action
-          label={String(review.likes)}
-          accessibilityLabel={liked ? 'Quitar like' : 'Dar like'}
+        <SocialAction
+          count={review.likes}
+          label={liked ? 'Quitar like' : 'Dar like'}
           icon={liked ? 'heart' : 'heart-outline'}
           active={liked}
           disabled={!user}
@@ -651,20 +717,17 @@ export function ReviewCard({ review, feed = false }: { review: Review; feed?: bo
             if (user) toggleLike(user.id, review.id);
           }}
         />
-        <Action
-          label={String(review.comments)}
-          accessibilityLabel="Ver comentarios"
+        <SocialAction
+          count={review.comments}
+          label="Ver comentarios"
           icon="chatbubble-outline"
           onPress={openReview}
         />
-        {feed && user && (
-          <Action
-            label={saved ? 'Guardada' : 'Guardar'}
-            icon={saved ? 'bookmark' : 'bookmark-outline'}
-            onPress={() => toggleSaved(user.id, review.id)}
-          />
-        )}
-        {feed && <Action label="Compartir" icon="share-outline" onPress={() => setSharing(true)} />}
+        <SocialAction
+          label="Compartir publicación"
+          icon="share-outline"
+          onPress={() => setSharing(true)}
+        />
       </View>
       <Dialog
         visible={sharing}
@@ -677,6 +740,15 @@ export function ReviewCard({ review, feed = false }: { review: Review; feed?: bo
 }
 
 const styles = StyleSheet.create({
+  socialAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minWidth: 44,
+    minHeight: 44,
+    paddingHorizontal: 6,
+  },
   spoilerCover: {
     minHeight: 145,
     padding: 24,

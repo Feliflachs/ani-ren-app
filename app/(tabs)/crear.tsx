@@ -1,25 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import {
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import {
-  Action,
-  Chips,
-  EmptyState,
-  Screen,
-  SearchBar,
-} from '../../src/components';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Action, Chips, EmptyState, Screen, SearchBar } from '../../src/components';
 import { anime } from '../../src/mock';
 import { theme } from '../../src/theme';
 
 export default function Crear() {
-  const [mode, setMode] = useState('Review');
+  const [mode, setMode] = useState('Posteo');
   const [query, setQuery] = useState('');
 
   const normalizedQuery = query.trim().toLowerCase();
@@ -32,26 +20,31 @@ export default function Crear() {
     .slice(0, 8);
 
   return (
-    <Screen
-      title="Crear"
-      subtitle="Compartí tu experiencia con otros fans."
-      avatar={false}
-    >
+    <Screen title="Crear" subtitle="Compartí tu experiencia con otros fans." avatar={false}>
       <Chips
-        options={['Review', 'Lista']}
+        options={['Posteo', 'Review', 'Lista']}
         value={mode}
         onChange={setMode}
         variant="underline"
       />
 
-      {mode === 'Review' ? (
+      {mode === 'Posteo' ? (
+        <>
+          <Text style={styles.heading}>Conversaciones sobre anime</Text>
+          <Text style={styles.description}>
+            Preguntas, recomendaciones y opiniones con hashtags, sin tener que puntuar un anime.
+          </Text>
+          <Action
+            label="Escribir un posteo"
+            primary
+            icon="create-outline"
+            onPress={() => router.push('/crear/posteo')}
+          />
+        </>
+      ) : mode === 'Review' ? (
         <>
           <View style={styles.introduction}>
-            <Ionicons
-              name="create-outline"
-              size={25}
-              color={theme.colors.primarySoft}
-            />
+            <Ionicons name="create-outline" size={25} color={theme.colors.primarySoft} />
 
             <View style={styles.grow}>
               <Text style={styles.heading}>Crear una review</Text>
@@ -61,11 +54,7 @@ export default function Crear() {
             </View>
           </View>
 
-          <SearchBar
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Buscar anime"
-          />
+          <SearchBar value={query} onChangeText={setQuery} placeholder="Buscar anime" />
 
           {candidates.map((item) => (
             <Pressable
@@ -87,34 +76,21 @@ export default function Crear() {
                 <Text style={styles.meta}>
                   {item.year} · {item.genres.slice(0, 2).join(' · ')}
                 </Text>
-                <Text style={styles.rating}>
-                  ★ {item.rating.toFixed(1)}
-                </Text>
+                <Text style={styles.rating}>★ {item.rating.toFixed(1)}</Text>
               </View>
 
-              <Ionicons
-                name="chevron-forward"
-                size={18}
-                color={theme.colors.primarySoft}
-              />
+              <Ionicons name="chevron-forward" size={18} color={theme.colors.primarySoft} />
             </Pressable>
           ))}
 
           {candidates.length === 0 && (
-            <EmptyState
-              title="No encontramos ese anime"
-              text="Probá buscando otro título."
-            />
+            <EmptyState title="No encontramos ese anime" text="Probá buscando otro título." />
           )}
         </>
       ) : (
         <>
           <View style={styles.introduction}>
-            <Ionicons
-              name="albums-outline"
-              size={25}
-              color={theme.colors.primarySoft}
-            />
+            <Ionicons name="albums-outline" size={25} color={theme.colors.primarySoft} />
 
             <View style={styles.grow}>
               <Text style={styles.heading}>Crear una lista</Text>

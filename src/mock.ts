@@ -1,4 +1,6 @@
+import type { PublicationEntry } from './publications';
 import type { ImageSourcePropType } from 'react-native';
+export type { Review } from './publications';
 
 // Datos compartidos porque los mismos animes, autores y listas aparecen en varias pantallas.
 export type Anime = {
@@ -29,18 +31,6 @@ export type User = {
   followers: number;
   following: number;
   favorites: string[];
-};
-export type Review = {
-  id: string;
-  userId: string;
-  title?: string;
-  animeId?: string;
-  rating?: number;
-  text: string;
-  time: string;
-  likes: number;
-  comments: number;
-  spoiler: boolean;
 };
 export type AnimeList = {
   id: string;
@@ -252,9 +242,12 @@ export const users: UserProfile[] = [
 ];
 
 // TODO BACKEND [FEED]: cargar publicaciones, reviews, likes y comentarios según el filtro solicitado.
-export const reviews: Omit<Review, 'likes' | 'comments'>[] = [
+export const reviews: PublicationEntry[] = [
   {
     id: 'review-sofi',
+    kind: 'review',
+    createdAt: '2026-10-10T15:00:00Z',
+    tags: [],
     userId: 'sofi',
     animeId: 'frieren',
     rating: 4.5,
@@ -265,6 +258,9 @@ export const reviews: Omit<Review, 'likes' | 'comments'>[] = [
   },
   {
     id: 'review-nico',
+    kind: 'review',
+    createdAt: '2026-10-10T13:00:00Z',
+    tags: [],
     userId: 'nico',
     animeId: 'vinland-saga',
     rating: 4.5,
@@ -275,6 +271,9 @@ export const reviews: Omit<Review, 'likes' | 'comments'>[] = [
   },
   {
     id: 'review-felipe',
+    kind: 'review',
+    createdAt: '2026-10-10T15:00:00Z',
+    tags: [],
     userId: 'felipe',
     animeId: 'frieren',
     rating: 5,
@@ -285,6 +284,10 @@ export const reviews: Omit<Review, 'likes' | 'comments'>[] = [
   },
   {
     id: 'post-luli',
+    kind: 'post',
+    createdAt: '2026-10-10T11:00:00Z',
+    tags: ['misterio', 'drama'],
+    animeIds: [],
     userId: 'luli',
     title: 'Busco recomendaciones de misterio',
     text: 'Recomienden animes de misterio o psicológicos 🙏 Quiero armar una lista para este fin de semana.',
@@ -293,6 +296,9 @@ export const reviews: Omit<Review, 'likes' | 'comments'>[] = [
   },
   {
     id: 'review-shonen',
+    kind: 'review',
+    createdAt: '2026-10-09T15:00:00Z',
+    tags: [],
     userId: 'shonen',
     animeId: 'blue-lock',
     rating: 4.5,

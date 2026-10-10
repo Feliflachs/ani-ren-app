@@ -41,6 +41,7 @@ export default function Explorar() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [pickingImage, setPickingImage] = useState(false);
   const [notice, setNotice] = useState('');
+  
   const selectImage = async (source: 'gallery' | 'camera') => {
     if (pickingImage) return;
     setPickingImage(true);

@@ -6,12 +6,14 @@ export function friendIdsFor(id: string, following: Record<string, string[]>) {
   return (following[id] ?? []).filter((other) => (following[other] ?? []).includes(id));
 }
 function useSocialState() {
+  // TODO BACKEND [RELACIONES-CARGAR]: consultar seguidos/seguidores/amigos y totales; el grafo completo local es solo de demo.
   const [following, setFollowing] = useState(followingByUser);
   const getFollowingIds = (id: string) => following[id] ?? [];
   const getFollowerIds = (id: string) =>
     Object.keys(following).filter((other) => getFollowingIds(other).includes(id));
   const getFriendIds = (id: string) => friendIdsFor(id, following);
   function toggleFollowing(userId: string, otherId: string) {
+    // TODO BACKEND [RELACION-SEGUIR]: seguir/dejar de seguir en servidor y actualizar relaciones y feeds.
     if (userId === otherId) return;
     setFollowing((previous) => {
       const ids = previous[userId] ?? [];

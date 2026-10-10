@@ -23,6 +23,7 @@ export default function CrearCuentaScreen() {
     const message = validarRegistro(usuario, contrasena, confirmacion);
     setError(message);
     if (message) return;
+    // TODO BACKEND [REGISTRO]: crear la cuenta mediante API antes de confirmar; disponibilidad de usuario y contraseña se validan también en servidor.
     // Solo valida: no guarda una cuenta ni modifica el JSON de usuarios.
     setContrasena('');
     setConfirmacion('');

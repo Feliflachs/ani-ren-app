@@ -36,11 +36,11 @@ El ancho máximo está definido en `theme.layout.maxWidth` y se aplica al Stack 
 
 ## Qué se puede recorrer
 
-Búsqueda de anime, reviews, usuarios y listas; selección real de imágenes desde cámara o galería (reconocimiento pendiente); ficha de anime; biblioteca; creación y edición local de reviews y listas; feed y comentarios; perfiles, edición y comunidad; Aura con misiones calculadas desde la actividad; mapa y detalle de país con métricas ilustrativas.
+Búsqueda de anime, publicaciones, usuarios y listas; selección real de imágenes desde cámara o galería (reconocimiento pendiente); ficha de anime; biblioteca; creación y edición local de posteos de texto, reviews y listas; feed y comentarios; perfiles, edición y comunidad; Aura con misiones calculadas desde la actividad; mapa y detalle de país con métricas ilustrativas.
 
-Login usa cuentas públicas de `src/usuarios-demo.json` y recuerda solo el ID mediante AsyncStorage. El registro valida pero no crea cuentas. El nombre de usuario no se edita. Perfiles, colecciones, reviews, listas, likes, comentarios y relaciones usan contextos separados; los totales personales se derivan de sus datos. Los cambios se comparten entre pantallas y cuentas. Las reviews/logs también se guardan en AsyncStorage y sobreviven a recargar/cerrar; el resto de la actividad se reinicia. No hay backend ni API.
+Login usa cuentas públicas de `src/usuarios-demo.json` y recuerda solo el ID mediante AsyncStorage. El registro valida pero no crea cuentas. El nombre de usuario no se edita. Perfiles, colecciones, reviews, listas, likes, comentarios y relaciones usan contextos separados; los totales personales se derivan de sus datos. Los cambios se comparten entre pantallas y cuentas. Los posteos y reviews/logs también se guardan en AsyncStorage y sobreviven a recargar/cerrar; el resto de la actividad se reinicia. No hay backend ni API.
 
-`npm test` comprueba la lógica local; `npm run typecheck` y `npm run lint` revisan el código. `HANDOFF.md` documenta las responsabilidades, contratos de datos y puntos a conectar con el backend. Falta probar los recorridos interactivos en teléfono.
+`npm run typecheck` y `npm run lint` revisan el código. `HANDOFF.md` documenta las responsabilidades, contratos de datos y puntos a conectar con el backend. Falta probar los recorridos interactivos en teléfono.
 
 En Explorar, «Reconocer anime» permite tomar una foto con permiso de cámara o elegir una imagen con el selector del sistema, y muestra la imagen real. El reconocimiento está pendiente y se informa al pulsar «Reconocer anime». Para comprobarlo en un teléfono, probar cámara, permiso rechazado, galería y cancelación. El selector de avatar de Editar perfil sigue simulado. Las cifras, umbrales, fechas de temporada, actores de voz y disponibilidad de plataformas son datos ilustrativos. Los enlaces de plataformas abren sus sitios oficiales para comprobar disponibilidad.
 
@@ -59,3 +59,5 @@ npx expo export --platform all
 `npm run format` ordena automáticamente el código de `app/` y `src/`. Prettier está configurado en `package.json`, sin otro archivo de configuración.
 
 La revisión inicial incluye estados vacíos, IDs inválidos y recorridos de interacción. La revisión de escritorio cubre las rutas principales a distintos anchos, además de navegación, scroll con mouse, búsqueda con teclado, formularios, diálogos y redimensionado sin recargar. Las capturas y resultados están en `artifacts/`, ignorada por Git. La exportación comprueba los bundles Android/iOS/web; queda la revisión en un teléfono físico del teclado, Safe Area y apertura nativa. Expo Go no reproduce exactamente la apertura de una app compilada.
+
+Base social: Crear ofrece Posteo, Review y Lista. Posteos y reviews comparten tarjetas, detalle, likes, comentarios y spoilers. Para ti excluye seguidos y publicaciones propias y prioriza gustos, etiquetas y watchlist; Siguiendo ordena por fecha. La imagen opcional en posteos y el backend quedan pendientes.

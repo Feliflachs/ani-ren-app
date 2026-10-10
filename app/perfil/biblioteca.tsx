@@ -1,5 +1,5 @@
 import { useLists } from '../../src/context/ListsContext';
-import { useReviews } from '../../src/context/ReviewsContext';
+import { usePublications } from '../../src/context/PublicationsContext';
 import { useCurrentUser } from '../../src/useCurrentUser';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -10,7 +10,7 @@ import {
   Chips,
   EmptyState,
   ListCard,
-  ReviewCard,
+  PublicationCard,
   Screen,
   SearchBar,
   Section,
@@ -21,7 +21,7 @@ import { theme } from '../../src/theme';
 
 export default function BibliotecaScreen() {
   const { lists } = useLists();
-  const { reviews, getLikedIds } = useReviews();
+  const { publications, getLikedIds } = usePublications();
 
   const currentUser = useCurrentUser();
   const currentLikedReviewIds = getLikedIds(currentUser.id);
@@ -50,7 +50,7 @@ export default function BibliotecaScreen() {
       item.userId === currentUser.id &&
       `${item.title} ${item.description}`.toLowerCase().includes(query.toLowerCase().trim()),
   );
-  const likedReviews = reviews.filter(
+  const likedReviews = publications.filter(
     (item) =>
       currentLikedReviewIds.includes(item.id) &&
       `${item.text} ${findAnime(item.animeId)?.title ?? ''}`
@@ -113,7 +113,8 @@ export default function BibliotecaScreen() {
         </View>
       )}
       {tab === 'Listas' && ownLists.map((item) => <ListCard key={item.id} list={item} />)}
-      {tab === 'Likes' && likedReviews.map((item) => <ReviewCard key={item.id} review={item} />)}
+      {tab === 'Likes' &&
+        likedReviews.map((item) => <PublicationCard key={item.id} review={item} />)}
       <View style={styles.note}>
         <Text style={styles.meta}>
           Colecciones de ejemplo. Los cambios se muestran en esta vista.

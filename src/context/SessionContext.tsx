@@ -22,6 +22,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
     async function restore() {
+      // TODO BACKEND [SESION-RESTAURAR]: validar/renovar la sesión real; un ID local no autentica al usuario.
       try {
         const id = await AsyncStorage.getItem(SESSION_KEY);
         const savedUser = cuentas.some((cuenta) => cuenta.id === id)
@@ -43,6 +44,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function signIn(usuario: string, contrasena: string) {
+    // TODO BACKEND [SESION-ENTRAR]: autenticar con API, retirar cuentas JSON y acordar almacenamiento de credenciales de sesión.
     const account = buscarCuenta(usuario, contrasena);
     const profile = account ? findUser(account.id) : undefined;
     if (!profile) return false;
@@ -53,6 +55,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
+    // TODO BACKEND [SESION-SALIR]: cerrar/revocar la sesión según el contrato y limpiar datos privados/cache de la cuenta.
     await AsyncStorage.removeItem(SESSION_KEY);
     setUser(null);
   }

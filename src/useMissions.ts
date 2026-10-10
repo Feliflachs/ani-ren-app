@@ -1,12 +1,13 @@
 import { useSession } from './context/SessionContext';
 import { useActivities } from './context/AppState';
-import { useReviews } from './context/ReviewsContext';
+import { usePublications } from './context/PublicationsContext';
 import { calculateMissions } from './missions';
 
 export function useMissions() {
+  // TODO BACKEND [MISIONES-PROGRESO]: consultar progreso global del usuario; no calcularlo desde páginas incompletas de actividad.
   const { user } = useSession();
   const { getCollection, claimedByUser, claimReward } = useActivities();
-  const { reviews } = useReviews();
+  const { reviews } = usePublications();
   const userId = user?.id ?? '';
   const missions = calculateMissions(
     getCollection(userId).watchedIds,
