@@ -96,11 +96,10 @@ Orden del contenido:
 - Buscador.
 - Explorar por género: Acción, Comedia, Fantasía, Romance y Ver todos.
 - Mapa anime mundial: ilustración, explicación y leyenda de intensidad.
-- Reconocer anime: cámara y galería reales, permisos/cancelación y vista previa. Reconocimiento pendiente, sin coincidencias inventadas.
 - Tendencias globales: fila horizontal de anime con posición y puntuación.
 - Explorar por temporada: Primavera, Verano, Otoño e Invierno de 2026.
 
-Conexiones: anime hacia su detalle; avatar hacia Perfil; buscador, género o temporada hacia Resultados de búsqueda; mapa hacia Mapa anime mundial; acceso a tops hacia Tops de anime. Reconocer anime informa que la integración está pendiente. El mapa usa estadísticas de ejemplo.
+Conexiones: anime hacia su detalle; avatar hacia Perfil; buscador, género o temporada hacia Resultados de búsqueda; mapa hacia Mapa anime mundial; acceso a tops hacia Tops de anime. El mapa usa estadísticas de ejemplo.
 
 ### 3. Crear
 

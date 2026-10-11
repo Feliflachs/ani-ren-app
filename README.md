@@ -36,13 +36,13 @@ El ancho máximo está definido en `theme.layout.maxWidth` y se aplica al Stack 
 
 ## Qué se puede recorrer
 
-Búsqueda de anime, publicaciones, usuarios y listas; selección real de imágenes desde cámara o galería (reconocimiento pendiente); ficha de anime; biblioteca; creación y edición local de posteos de texto, reviews y listas; feed y comentarios; perfiles, edición y comunidad; Aura con misiones calculadas desde la actividad; mapa y detalle de país con métricas ilustrativas.
+Búsqueda de anime, publicaciones, usuarios y listas; ficha de anime; biblioteca; creación y edición local de posteos de texto, reviews y listas; feed y comentarios; perfiles, edición y comunidad; Aura con misiones calculadas desde la actividad; mapa y detalle de país con métricas ilustrativas.
 
 Login usa cuentas públicas de `src/usuarios-demo.json` y recuerda solo el ID mediante AsyncStorage. El registro valida pero no crea cuentas. El nombre de usuario no se edita. Perfiles, colecciones, reviews, listas, likes, comentarios y relaciones usan contextos separados; los totales personales se derivan de sus datos. Los cambios se comparten entre pantallas y cuentas. Los posteos y reviews/logs también se guardan en AsyncStorage y sobreviven a recargar/cerrar; el resto de la actividad se reinicia. No hay backend ni API.
 
 `npm run typecheck` y `npm run lint` revisan el código. `HANDOFF.md` documenta las responsabilidades, contratos de datos y puntos a conectar con el backend. Falta probar los recorridos interactivos en teléfono.
 
-En Explorar, «Reconocer anime» permite tomar una foto con permiso de cámara o elegir una imagen con el selector del sistema, y muestra la imagen real. El reconocimiento está pendiente y se informa al pulsar «Reconocer anime». Para comprobarlo en un teléfono, probar cámara, permiso rechazado, galería y cancelación. El selector de avatar de Editar perfil sigue simulado. Las cifras, umbrales, fechas de temporada, actores de voz y disponibilidad de plataformas son datos ilustrativos. Los enlaces de plataformas abren sus sitios oficiales para comprobar disponibilidad.
+El reconocimiento fue retirado de Explorar y queda como extra opcional en HANDOFF.md. El selector de avatar de Editar perfil sigue simulado. Las cifras, umbrales, fechas de temporada, actores de voz y disponibilidad de plataformas son datos ilustrativos. Los enlaces de plataformas abren sus sitios oficiales para comprobar disponibilidad.
 
 Los puntos para conectar el servidor están marcados con `TODO BACKEND [OPERACIÓN]`, junto a datos y acciones concretas. La integración pendiente de cámara/galería para el avatar está marcada con `TODO DISPOSITIVO`. No se fijaron endpoints ni tecnología de backend.
 

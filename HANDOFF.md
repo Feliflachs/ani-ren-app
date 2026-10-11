@@ -1,10 +1,10 @@
 ﻿# Ani-ren: funcionamiento actual y próximos pasos
 
-Actualizado: 10 de octubre de 2026. Rama de trabajo: `context`.
+Actualizado: 11 de octubre de 2026. Rama de trabajo: `context`.
 
 ## Dirección acordada el 10 de octubre: comunidad y descubrimiento
 
-Base social implementada en el frontend local. Backend e imágenes siguen pendientes. Tienen prioridad sobre las propuestas anteriores cuando se contradigan. La devolución de la entrega orienta Ani-ren hacia una red social para recomendar y descubrir anime. Cámara y reconocimiento pasan a segundo plano. Se implementó la base de publicaciones y los feeds tras la autorización del usuario. No se creó un repositorio de backend.
+Base social implementada en el frontend local. Backend e imágenes siguen pendientes. Tienen prioridad sobre las propuestas anteriores cuando se contradigan. La devolución de la entrega orienta Ani-ren hacia una red social para recomendar y descubrir anime. El reconocimiento queda fuera del frontend actual, como extra opcional. Se implementó la base de publicaciones y los feeds tras la autorización del usuario. No se creó un repositorio de backend.
 
 ### Siguiendo y Para ti
 
@@ -83,7 +83,7 @@ Prueba manual pendiente en teléfono: permitir ubicación y comprobar el país; 
 ### Comportamiento acordado
 
 - El `@usuario` y el ID no se editan. El formulario muestra el usuario como solo lectura; las reglas de alta siguen en `src/login.ts`. No hay que renombrar autores en cada review: se relacionan por ID.
-- Editar nombre/bio/avatar de ejemplo y favoritos actualiza las vistas locales. El selector de avatar sigue siendo una demostración, no acceso al dispositivo; cámara y galería reales están en Explorar.
+- Editar nombre/bio/avatar de ejemplo y favoritos actualiza las vistas locales. El selector de avatar sigue siendo una demostración, no acceso al dispositivo.
 - Los totales de perfil, Aura, comunidad y ranking salen de las colecciones. Se eliminaron los grandes números personales ficticios: ahora una biblioteca de cuatro animes indica cuatro. El catálogo y las métricas globales/por país siguen siendo muestras estáticas.
 - Los likes y comentarios son compartidos. Las conversaciones empiezan vacías porque no había comentarios específicos por review; ya no se reutilizan los mismos dos comentarios para todas.
 - Crear/editar una review actualiza Inicio, Perfil, Biblioteca, búsqueda y ficha. Un log sin texto no se publica como review. Si se abre el campo de review, requiere al menos diez caracteres.
@@ -116,7 +116,6 @@ Para la base social nueva, empezar en `src/context/PublicationsContext.tsx` (`PU
 | Aura | Definiciones/progreso de misiones y reclamación de recompensas | ID de misión, criterio, objetivo, progreso y recompensa por usuario; rangos y decoradores requieren reglas acordadas |
 | Catálogo y búsqueda | `anime`, `findAnime`, géneros, temporadas en `mock.ts`; filtros de Búsqueda y Crear | Metadatos del anime y resultados por categoría; paginación/carga/error al integrar |
 | Rankings y mapa | `getCountryMetric`, `getCountryTop`, `countries`, `localReviewIds` en detalle de país; Tops | País, anime, período, métrica y agregados; no se deducen de la actividad personal actual |
-| Reconocimiento | Selección de imagen en Explorar y futura función de reconocimiento | Imagen de entrada y coincidencias normalizadas; todavía no se consulta ninguna API |
 
 Los totales personales se calculan completos para esta demo pequeña. Con backend y paginación deberá recibirse el total real, no contar únicamente los elementos de una página. Añadir estados de carga/error y confirmar las mutaciones cuando responda el servidor.
 
@@ -201,13 +200,9 @@ Reglas existentes:
 - Amigos significa seguimiento mutuo.
 - Aura tiene reglas y recompensas ilustrativas, no reglas definitivas de servidor.
 
-### Cámara y galería: implementadas en Explorar
+### Reconocimiento retirado de Explorar
 
-Se usa `expo-image-picker`. Sacar foto solicita permiso en móvil y abre la cámara del sistema. Elegir imagen abre el selector del sistema sin solicitar acceso general a toda la fototeca para este recorrido. Muestra la foto seleccionada, maneja cancelación, errores y permiso rechazado. `app.json` configura los permisos y desactiva el de micrófono para esta función. En web el comportamiento depende del navegador/dispositivo.
-
-Reconocer anime muestra un aviso de función pendiente: no envía la imagen a una API ni devuelve resultados ficticios. Editar perfil todavía tiene un selector de avatar simulado.
-
-Justificación: cámara para capturar una imagen y fototeca para seleccionar una captura existente. Son accesos reales al dispositivo; reconocer su contenido es otra función. Falta registrar la prueba en teléfono antes de afirmar que fue verificado en hardware.
+Se eliminaron el apartado de reconocimiento, la captura, el selector, sus permisos y la dependencia exclusiva. Ver Implementaciones extra. El avatar de Editar perfil sigue simulado.
 
 ### Mapa
 
@@ -315,21 +310,9 @@ El mapa debe permitir cambiar de país. Ampliar de seis países a todos necesita
 
 Fuente: [Expo Location](https://docs.expo.dev/versions/latest/sdk/location/).
 
-### 4.7. Reconocimiento gratuito y fanarts
+### 4.7. Reconocimiento
 
-Dirección inicial: probar trace.moe para capturas de escenas en la demo educativa. No está integrado.
-
-Según documentación revisada el 2 de octubre de 2026, tiene 100 búsquedas gratuitas por IP en una ventana de 24 horas, sin cuenta ni clave, con una búsqueda simultánea. Es razonable para una demostración pequeña; dispositivos en el mismo Wi-Fi pueden compartir cuota. Manejar falta de red, cuota agotada y resultados insuficientes.
-
-Fuente: [límites de trace.moe](https://raw.githubusercontent.com/soruly/trace.moe-api/master/docs/limits.md).
-
-Fanarts sigue siendo deseado para después. trace.moe busca coincidencias de escenas; no garantiza reconocer dibujos originales de personajes ni fotos de pantallas. Un dibujo que reproduce casi exactamente una escena es distinto de fanart genérico. La FAQ menciona herramientas de búsqueda de ilustraciones, pero ninguna está seleccionada ni evaluada para esta app.
-
-Fuente: [FAQ de trace.moe](https://trace.moe/faq).
-
-Propuesta técnica simple: una función separada que reciba una imagen y devuelva el resultado que necesita la pantalla. Un cambio de API puede requerir adaptar autenticación, archivos, IDs, respuestas, límites y errores; no siempre alcanza con cambiar la URL. La interfaz puede conservarse si recibe un formato común. Probar cada opción con imágenes representativas.
-
-Google Cloud Vision no está seleccionado. Mantener cero gastos y no activar servicios facturables sin una nueva decisión explícita. Justificación: alcance viable para presentar y posibilidad de ampliar sin reescribir toda la pantalla.
+Fuera del alcance actual. Ver Implementaciones extra; cualquier servicio, sus capacidades y costos se evaluarán si se decide retomar la idea.
 
 ### 4.8. Rendimiento
 
@@ -346,8 +329,7 @@ La información en vivo necesita una fuente de actualizaciones del backend. Cont
 5. Login conectado con cuenta activa y sesión recordada en la rama `context`. Probar en teléfono: entrar con Felipe, cerrar sesión, entrar con Sofi y comprobar perfil/biblioteca; cerrar y abrir la app para comprobar restauración. Persistir actividad por cuenta queda para otra etapa.
 6. Preferencias locales y contextos necesarios.
 7. Ubicación puntual y país de publicación con recorrido acordado.
-8. Reconocimiento de capturas con trace.moe.
-9. Fanarts, traducción de reviews y backend/sincronización en etapas futuras.
+8. Traducciones y backend quedan para otras etapas; reconocimiento solo como extra opcional.
 
 El orden puede cambiar según los ejemplos. La referencia «Nico rocks» sigue pendiente de enlace o aclaración. No avanzar automáticamente con todas estas tareas.
 
@@ -373,7 +355,7 @@ npx.cmd expo export --platform web
 
 La reorganización del 5 de octubre pasó TypeScript, lint global y exportación web/Android/iOS. Se compararon los 28 archivos de código con su versión anterior: únicamente cambiaron ubicación, imports relativos y rutas de navegación. Se verificó que los destinos internos existan y que permanezcan los dos layouts. No se realizó prueba interactiva en teléfono. El handoff anterior registraba problemas de formato preexistentes; no se reformateó código ajeno al cambio.
 
-En teléfono comprobar permiso aceptado/rechazado, cancelación, cámara, galería, vista previa, Probar otra y aviso de reconocimiento pendiente.
+En teléfono comprobar que Explorar mantenga búsqueda, géneros, mapa, tendencias y temporadas, sin el apartado de reconocimiento.
 
 ## 7. Trabajar en una rama
 
@@ -395,9 +377,9 @@ Los commits en esa rama no modifican `main`. Una rama no aísla cambios sin conf
 
 Sprint 1 pide propuesta, sostenibilidad, branding, prototipo público navegable, justificación de al menos dos componentes nativos y frontend con Expo/router. Entrega: un PDF con enlaces públicos al prototipo y repositorio, el 15/10/2026 a las 18:00 UTC-3.
 
-Documentar pruebas de cámara/fototeca y distinguir selección de imágenes de reconocimiento. No presentar datos de ejemplo, login simulado o métricas locales como servicios reales.
+Documentar los componentes nativos que sigan implementados; la captura para reconocimiento fue retirada. No presentar datos de ejemplo, login simulado o métricas locales como servicios reales.
 
-Se actualizaron README, PANTALLAS e INICIO_FRONTEND para indicar escala de 5, cámara/galería reales en Explorar, reconocimiento pendiente, sesión persistente y datos locales compartidos. Las previews de avatar y decoradores siguen identificadas como demostraciones.
+Se actualizaron README, PANTALLAS e INICIO_FRONTEND para indicar escala de 5, reconocimiento retirado de Explorar, sesión persistente y datos locales compartidos. Las previews de avatar y decoradores siguen identificadas como demostraciones.
 
 Para continuar: leer este documento, el código afectado y los ejemplos del usuario. Explicar qué se cambia y por qué. Hacer cambios pequeños y no confundir propuestas futuras con funciones terminadas ni con autorización para implementarlas ahora.
 
@@ -411,4 +393,4 @@ Ideas para después del núcleo social; no implementarlas automáticamente:
 
 - **Imagen opcional en publicaciones comunes:** compartir una foto para preguntar «¿A qué anime pertenece?» y recibir respuestas de otras personas. Resolver selección/subida y almacenamiento de imágenes cuando se aborde esta función; no requiere reconocimiento automático ni sensores nuevos.
 - **Openings y endings:** permitir recomendaciones y referencias a estas piezas; formato, fuente de metadatos y reproducción quedan por definir.
-- **Reconocimiento automático de imágenes:** retomar cámara/galería y evaluar trace.moe después de consolidar publicaciones, reviews y feeds. No es la prioridad de la próxima etapa.
+- **Reconocimiento automático de anime (opcional, sin fecha):** se retiraron de Explorar el apartado, la cámara/galería, la vista previa y los avisos asociados, junto con sus permisos y la dependencia `expo-image-picker`. Solo reconsiderarlo mucho más adelante si queda tiempo y encaja con la app social. En ese momento evaluar si conviene integrar un servicio como trace.moe; no es un compromiso de implementación.

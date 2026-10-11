@@ -1,10 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import { useState, type ComponentProps } from 'react';
 import {
   Platform,
-  Image,
   ImageBackground,
   Pressable,
   ScrollView,
@@ -13,7 +11,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { AnimeCard, Action, Dialog, Screen, SearchBar, Section } from '../../src/components';
+import { AnimeCard, Action, Screen, SearchBar, Section } from '../../src/components';
 import { anime, genres, seasons } from '../../src/mock';
 import { WorldMap } from '../../src/WorldMap';
 import { theme } from '../../src/theme';
@@ -38,39 +36,6 @@ const seasonImages = [
 export default function Explorar() {
   const [query, setQuery] = useState('');
   const [showAllGenres, setShowAllGenres] = useState(false);
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [pickingImage, setPickingImage] = useState(false);
-  const [notice, setNotice] = useState('');
-  
-  const selectImage = async (source: 'gallery' | 'camera') => {
-    if (pickingImage) return;
-    setPickingImage(true);
-    try {
-      if (source === 'camera' && Platform.OS !== 'web') {
-        const permission = await ImagePicker.requestCameraPermissionsAsync();
-        if (!permission.granted) {
-          setNotice(
-            permission.canAskAgain
-              ? 'Necesitamos permiso para usar la cámara. Podés volver a intentarlo.'
-              : 'Activá el permiso de cámara desde los ajustes del teléfono.',
-          );
-          return;
-        }
-      }
-      // El selector del sistema permite elegir una foto sin acceso a toda la fototeca.
-      const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.8 };
-      const result =
-        source === 'camera'
-          ? await ImagePicker.launchCameraAsync(options)
-          : await ImagePicker.launchImageLibraryAsync(options);
-      if (!result.canceled && result.assets[0]) setImageUri(result.assets[0].uri);
-    } catch {
-      setNotice('No pudimos abrir la cámara o la galería. Volvé a intentarlo.');
-    } finally {
-      setPickingImage(false);
-    }
-  };
-  // TODO BACKEND [RECONOCER-ANIME]: enviar la imagen al servicio de reconocimiento y mostrar coincidencias reales.
   const { width: windowWidth } = useWindowDimensions();
   const width = Math.min(windowWidth, theme.layout.maxWidth);
   // TODO BACKEND [EXPLORAR]: consultar tendencias, géneros y temporadas; por ahora catálogo local.
@@ -132,7 +97,9 @@ export default function Explorar() {
           <Text style={styles.new}>NUEVO</Text>
         </View>
         <Text style={styles.description}>Explorá estadísticas y tendencias de anime por país.</Text>
-        <WorldMap onSelect={(id) => router.push({ pathname: '/explorar/mapa', params: { pais: id } })} />
+        <WorldMap
+          onSelect={(id) => router.push({ pathname: '/explorar/mapa', params: { pais: id } })}
+        />
         <Action
           label="Explorar mapa"
           icon="location-outline"
@@ -140,69 +107,11 @@ export default function Explorar() {
           onPress={() => router.push('/explorar/mapa')}
         />
       </View>
-      <View style={styles.recognitionCard}>
-        <View style={styles.mapHeader}>
-          <Text style={styles.mapTitle}>Reconocer anime</Text>
-          <Text style={styles.new}>DEMO</Text>
-        </View>
-        <Text style={styles.description}>
-          Elegí una imagen o sacá una foto. El reconocimiento estará disponible más adelante.
-        </Text>
-        {imageUri ? (
-          <Image
-            source={{ uri: imageUri }}
-            style={styles.selectedImage}
-            resizeMode="contain"
-            accessibilityLabel="Imagen seleccionada"
-          />
-        ) : (
-          <View style={styles.recognitionPreview}>
-            <Ionicons name="scan-outline" size={38} color={theme.colors.primarySoft} />
-            <Text style={styles.previewTitle}>Elegí una imagen para analizar</Text>
-            <Text style={styles.previewText}>Desde tu cámara o galería</Text>
-          </View>
-        )}
-        {imageUri ? (
-          <View style={styles.recognitionActions}>
-            <View style={styles.actionItem}>
-              <Action
-                label="Reconocer anime"
-                icon="scan-outline"
-                primary
-                onPress={() =>
-                  setNotice(
-                    'El reconocimiento todavía no está disponible. Esta función se conectará en una próxima etapa.',
-                  )
-                }
-              />
-            </View>
-            <View style={styles.actionItem}>
-              <Action label="Probar otra" onPress={() => setImageUri(null)} />
-            </View>
-          </View>
-        ) : (
-          <View style={styles.recognitionActions}>
-            <View style={styles.actionItem}>
-              <Action
-                label="Elegir imagen"
-                icon="image-outline"
-                primary
-                disabled={pickingImage}
-                onPress={() => selectImage('gallery')}
-              />
-            </View>
-            <View style={styles.actionItem}>
-              <Action
-                label="Sacar foto"
-                icon="camera-outline"
-                disabled={pickingImage}
-                onPress={() => selectImage('camera')}
-              />
-            </View>
-          </View>
-        )}
-      </View>
-      <Section title="Tendencias globales" action="Ver más" onPress={() => router.push('/explorar/tops')} />
+      <Section
+        title="Tendencias globales"
+        action="Ver más"
+        onPress={() => router.push('/explorar/tops')}
+      />
       <ScrollView
         horizontal
         style={{ flexGrow: 0 }}
@@ -243,12 +152,6 @@ export default function Explorar() {
           </Pressable>
         ))}
       </View>
-      <Dialog
-        visible={notice !== ''}
-        title="Reconocer anime"
-        text={notice}
-        onClose={() => setNotice('')}
-      />
     </Screen>
   );
 }
@@ -293,35 +196,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   description: { color: theme.colors.textSecondary, fontSize: 12, lineHeight: 17 },
-  recognitionCard: {
-    padding: 14,
-    gap: 11,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 14,
-  },
-  recognitionPreview: {
-    minHeight: 135,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: theme.colors.primary,
-    borderRadius: 12,
-    backgroundColor: theme.colors.background,
-  },
-  previewTitle: { color: theme.colors.text, fontSize: 13, fontWeight: '600' },
-  previewText: { color: theme.colors.textSecondary, fontSize: 10 },
-  recognitionActions: { flexDirection: 'row', gap: 8 },
-  actionItem: { flex: 1 },
-  selectedImage: {
-    width: '100%',
-    height: 220,
-    borderRadius: 12,
-    backgroundColor: theme.colors.background,
-  },
   seasonsRow: { flexDirection: 'row', gap: 8 },
   season: {
     flex: 1,

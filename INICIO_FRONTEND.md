@@ -49,7 +49,7 @@ La barra inferior tiene exactamente cinco opciones, siempre en este orden: Inici
 
 Usuarios, anime, reviews, publicaciones, listas, amigos, estadísticas, misiones, decoradores y países utilizan datos de ejemplo. Las acciones muestran respuestas locales y las confirmaciones simuladas se identifican como tales.
 
-La idea de IA se representa con ejemplos predeterminados y una etiqueta clara de demostración. El opening es estático. Cámara y galería tienen selector y vista previa de ejemplo; la captura real no forma parte del primer trabajo visual.
+El reconocimiento de anime fue retirado de Explorar. Queda como extra opcional en HANDOFF.md, solo si hay tiempo y encaja con la app. El opening es estático.
 
 No hay backend durante esta etapa. Login con cuentas de demostración y persistencia local del ID ya están implementados. Contextos separados comparten actividad, perfiles, relaciones, listas y reviews; Aura calcula el progreso con esos datos mediante un hook, sin contexto propio. Las reviews/logs se guardan localmente y se restauran al reiniciar. Autenticación real, base remota, APIs, persistencia del resto de la actividad, IA, chat, notificaciones y animación del logo quedan para después. Consultar el HANDOFF actualizado antes de integrar servicios.
 
@@ -161,7 +161,6 @@ Puntos de integración que deben quedar marcados cuando se construya cada funci�
 | --- | --- | --- |
 | Consultar anime, personajes, voces y puntuaciones | Ficha, Inicio y tops | Obtener datos y conteos reales por id |
 | Buscar anime, reviews, usuarios y listas | Resultados de búsqueda | Consultar resultados con texto y filtros |
-| Reconocer anime desde una imagen | Explorar | Obtener una foto de cámara o galería y consultar un servicio de reconocimiento |
 | Consultar publicaciones y reviews | Inicio y detalle de review | Cargar feed, contenido y comentarios |
 | Publicar o editar una review | Escribir o editar review | Guardar puntuación, texto, fecha y spoilers |
 | Dar like o comentar | Detalle de review e Inicio | Guardar la interacción y recuperar el resultado |
