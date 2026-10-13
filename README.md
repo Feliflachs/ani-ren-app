@@ -1,63 +1,78 @@
-# Ani-ren — Frontend
+# Ani-Ren · frontend
 
-Prototipo visual con Expo SDK 57, React Native y TypeScript. Incluye 21 pantallas navegables, cinco tabs y una apertura estática. La carpeta hermana `backend/` sigue vacía.
+Aplicación de Expo SDK 57, React Native y TypeScript conectada al repositorio hermano `ani-ren-backend`. Mantiene las cinco pestañas, el tema oscuro, los controles compartidos y la columna de hasta 480 px.
 
-## Ejecutar
+## Arrancar en Windows
 
-Las dependencias ya están instaladas en esta computadora. Desde la raíz Ani-ren:
+En una terminal, desde `ani-ren-backend`:
 
 ```powershell
-cd ani-ren-app
-npm start
+npm.cmd ci
+# Solo la primera vez, si no existe .env:
+Copy-Item .env.example .env
+npm.cmd run db:generate
+npm.cmd run db:deploy
+npm.cmd run dev
 ```
 
-Abrir el QR en Expo Go compatible con SDK 57. Pulsar `w` para el navegador. También se puede ejecutar `npm run web`. Si se copia el proyecto a otra computadora, ejecutar primero `npm ci` dentro de `ani-ren-app/`. iOS en simulador requiere macOS; desde Windows se puede usar un iPhone físico con Expo Go.
+No sobrescribas un `.env` existente ni borres `prisma/dev.db`. El backend debe responder en `http://localhost:3000/api/health`.
 
-En computadora la app queda centrada en una columna de hasta 480 px, con espacio a los costados. En ventanas más angostas ocupa el ancho disponible. La barra inferior permanece dentro de la columna; los diálogos también tienen un ancho limitado. Los carruseles muestran barras de desplazamiento en web para poder recorrerlos con mouse.
+En otra terminal, desde `ani-ren-app`:
+
+```powershell
+npm.cmd ci
+Copy-Item .env.example .env.local
+npm.cmd run web
+```
+
+El valor de `EXPO_PUBLIC_API_URL` incluye `/api`:
+
+| Dispositivo | Valor |
+| --- | --- |
+| Navegador en esta PC | `http://localhost:3000/api` |
+| Emulador Android | `http://10.0.2.2:3000/api` |
+| Teléfono físico | `http://IP_LAN_DE_LA_PC:3000/api` |
+
+Para teléfono, ejecutá `npm.cmd start`, usá la misma red y abrí el QR en Expo Go compatible. Reiniciá Expo si cambiás la URL. El túnel de Expo no publica el backend. Para web, su origen debe estar en `CORS_ORIGINS` del backend. No agregues credenciales a variables `EXPO_PUBLIC_*`.
+
+## Sesión y datos
+
+Creá una cuenta desde la pantalla de registro. Las cuentas demo anteriores ya no se usan y sus datos locales no se migran.
+
+En móvil, la credencial se guarda en SecureStore. En web, la sesión vive en memoria: recargar la página requiere volver a entrar. Cerrar sesión revoca la credencial en el servidor; si falla la conexión, se puede reintentar. Un 401 cierra la sesión y desmonta todos sus datos privados. Un fallo de conexión durante la restauración permite reintentar.
+
+La API confirma publicaciones, likes, biblioteca, seguimientos, listas y recompensas antes de mostrarlos como guardados. Los borradores permanecen en la pantalla si falla un envío. Un POST con respuesta incierta conserva cuerpo y clave de idempotencia y bloquea la edición hasta resolverlo con Reintentar. No hay sincronización offline ni persistencia de borradores entre cierres.
 
 ## Estructura
 
-- `app/_layout.tsx`: Stack, Safe Area, carga de iconos y apertura.
-- `app/(tabs)/`: Inicio, Explorar, Crear, Aura y Perfil, en ese orden.
-- El resto de `app/`: pantallas secundarias y formularios, con vuelta al origen.
-- `src/theme.ts`: paleta común tomada de los mockups.
-- `src/components.tsx`: controles y cards que se repiten.
-- `src/mock.ts`: tipos sencillos y datos compartidos con IDs estables.
-- `src/WorldMap.tsx`: mapa SVG local con colores por métrica y país.
-- `assets/`: logo, portadas y siluetas. [Procedencia](assets/FUENTES.md).
+- `src/api.ts`: HTTP, errores, parámetros, deduplicación e idempotencia.
+- `src/models.ts`: tipos de las respuestas.
+- `src/context/SessionContext.tsx`: autenticación y almacenamiento seguro.
+- `src/remote.tsx`: consultas cancelables, paginación y mutaciones; solo recarga pantallas activas.
+- `src/components.tsx` y `src/remote-ui.tsx`: controles, tarjetas y estados de carga/error.
+- `app/`: recorridos de cada pantalla; Expo Router conserva las rutas.
+- `src/theme.ts`: diseño compartido.
+- `assets/`: identidad visual y recursos. Ver `assets/FUENTES.md`.
 
-Cada pantalla contiene su JSX, borradores locales y estilos. Los datos compartidos viven en contextos por responsabilidad. La navegación usa identificadores y la puntuación va de 0,5 a 5 estrellas.
+El servidor calcula promedios, contadores, feeds, rangos y misiones. Las tarjetas usan los animes y autores incluidos en las publicaciones; no consultan el catálogo por tarjeta. Buscar animes exige dos letras y pagina con `nextPage`; las consultas locales usan `nextCursor` y el total remoto.
 
-Expo Router obtiene las rutas de los archivos, por eso se conserva uno por pantalla. `node_modules/`, `.expo/`, `dist/` y `artifacts/` son dependencias o resultados generados; no forman parte del código que hay que mantener.
+## Alcance
 
-Las cards de reviews y listas se reutilizan desde `components.tsx`. Misiones, rangos y métricas del mapa se definen una sola vez en `mock.ts`. El mapa prepara su geometría estática fuera del componente y dibuja siete trazados SVG, conservando las siluetas y los seis países seleccionables.
+Conectados: registro/login/logout, catálogo y extras, reviews, valoraciones sin texto, posteos, edición propia, comentarios, likes, Para ti/Siguiendo, perfiles, comunidad, biblioteca, favoritos ordenados, listas, búsquedas por categoría, misiones y ranking.
 
-El ancho máximo está definido en `theme.layout.maxWidth` y se aplica al Stack desde `app/_layout.tsx`. Las cinco pantallas que calculan tamaños usan `Math.min(windowWidth, theme.layout.maxWidth)`; los perfiles miden su contenedor con `onLayout`. Así, las imágenes se adaptan a la columna incluso al redimensionar el navegador. No hay una segunda versión de las pantallas para computadora.
+Los filtros por género, temporada y año se aplican a publicaciones/listas. No se ofrecen para la búsqueda global de anime, porque esa API no los admite.
 
-## Qué se puede recorrer
+Pendientes en el backend: Tendencia, tops de anime, mapa por país, subida de avatares, equipamiento de decoradores, borrados, desmarcar visto y conversión entre valoración y review. Sus pantallas muestran un estado pendiente o sus acciones están retiradas. Los enlaces de streaming no garantizan disponibilidad en tu país.
 
-Búsqueda de anime, publicaciones, usuarios y listas; ficha de anime; biblioteca; creación y edición local de posteos de texto, reviews y listas; feed y comentarios; perfiles, edición y comunidad; Aura con misiones calculadas desde la actividad; mapa y detalle de país con métricas ilustrativas.
-
-Login usa cuentas públicas de `src/usuarios-demo.json` y recuerda solo el ID mediante AsyncStorage. El registro valida pero no crea cuentas. El nombre de usuario no se edita. Perfiles, colecciones, reviews, listas, likes, comentarios y relaciones usan contextos separados; los totales personales se derivan de sus datos. Los cambios se comparten entre pantallas y cuentas. Los posteos y reviews/logs también se guardan en AsyncStorage y sobreviven a recargar/cerrar; el resto de la actividad se reinicia. No hay backend ni API.
-
-`npm run typecheck` y `npm run lint` revisan el código. `HANDOFF.md` documenta las responsabilidades, contratos de datos y puntos a conectar con el backend. Falta probar los recorridos interactivos en teléfono.
-
-El reconocimiento fue retirado de Explorar y queda como extra opcional en HANDOFF.md. El selector de avatar de Editar perfil sigue simulado. Las cifras, umbrales, fechas de temporada, actores de voz y disponibilidad de plataformas son datos ilustrativos. Los enlaces de plataformas abren sus sitios oficiales para comprobar disponibilidad.
-
-Los puntos para conectar el servidor están marcados con `TODO BACKEND [OPERACIÓN]`, junto a datos y acciones concretas. La integración pendiente de cámara/galería para el avatar está marcada con `TODO DISPOSITIVO`. No se fijaron endpoints ni tecnología de backend.
-
-## Comprobar
+## Verificar
 
 ```powershell
-npm run typecheck
-npm run lint
-npm run format:check
-npx expo install --check
-npx expo export --platform all
+npm.cmd run typecheck
+npm.cmd run lint
+npm.cmd test
+npm.cmd run test:integration
 ```
 
-`npm run format` ordena automáticamente el código de `app/` y `src/`. Prettier está configurado en `package.json`, sin otro archivo de configuración.
+El último comando requiere el backend hermano con sus dependencias instaladas. Usa HTTP y una SQLite temporal creada por la fixture del backend; no modifica `prisma/dev.db`. Comprueba dos cuentas, publicaciones repetidas, reintentos, promedio, permisos, likes, comentarios, feeds, biblioteca, listas, búsqueda, Aura, revocación y persistencia tras reiniciar.
 
-La revisión inicial incluye estados vacíos, IDs inválidos y recorridos de interacción. La revisión de escritorio cubre las rutas principales a distintos anchos, además de navegación, scroll con mouse, búsqueda con teclado, formularios, diálogos y redimensionado sin recargar. Las capturas y resultados están en `artifacts/`, ignorada por Git. La exportación comprueba los bundles Android/iOS/web; queda la revisión en un teléfono físico del teclado, Safe Area y apertura nativa. Expo Go no reproduce exactamente la apertura de una app compilada.
-
-Base social: Crear ofrece Posteo, Review y Lista. Posteos y reviews comparten tarjetas, detalle, likes, comentarios y spoilers. Para ti excluye seguidos y publicaciones propias y prioriza gustos, etiquetas y watchlist; Siguiendo ordena por fecha. La imagen opcional en posteos y el backend quedan pendientes.
+Las pruebas de catálogo de esa fixture son deterministas. La búsqueda real y los extras dependen de los proveedores del backend. La verificación en teléfono físico queda a cargo de una sesión con un dispositivo disponible.

@@ -1,3 +1,4 @@
+import { RemoteProvider } from '../src/remote';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -6,13 +7,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { StyleSheet, View, Text, Button } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AppStateProvider } from '../src/context/AppState';
 import { SessionProvider, useSession } from '../src/context/SessionContext';
 import { theme } from '../src/theme';
-import { ProfilesProvider } from '../src/context/ProfilesContext';
-import { SocialProvider } from '../src/context/SocialContext';
-import { PublicationsProvider, usePublications } from '../src/context/PublicationsContext';
-import { ListsProvider } from '../src/context/ListsContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -20,44 +16,42 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <SessionProvider>
-        <ProfilesProvider>
-          <SocialProvider>
-            <PublicationsProvider>
-              <ListsProvider>
-                <AppStateProvider>
-                  <SessionNavigation />
-                </AppStateProvider>
-              </ListsProvider>
-            </PublicationsProvider>
-          </SocialProvider>
-        </ProfilesProvider>
+        <SessionScope />
       </SessionProvider>
     </SafeAreaProvider>
   );
 }
 
+function SessionScope() {
+  const { token } = useSession();
+  return (
+    <RemoteProvider key={token ?? 'guest'}>
+      <SessionNavigation />
+    </RemoteProvider>
+  );
+}
 function SessionNavigation() {
-  const { user, ready } = useSession();
-  const { ready: reviewsReady, loadError, loadPublications } = usePublications();
+  const { user, ready, restoreError, retry } = useSession();
   const [loaded, error] = useFonts(Ionicons.font);
   useEffect(() => {
-    if (ready && reviewsReady && (loaded || error)) SplashScreen.hideAsync();
-  }, [loaded, error, ready, reviewsReady]);
-  if (!ready || !reviewsReady || (!loaded && !error)) return null;
-  if (loadError)
+    if (ready && (loaded || error)) void SplashScreen.hideAsync();
+  }, [ready, loaded, error]);
+  if (!ready || (!loaded && !error)) return null;
+  if (restoreError)
     return (
       <View
         style={{
           flex: 1,
-          padding: 24,
-          justifyContent: 'center',
           backgroundColor: theme.colors.background,
+          justifyContent: 'center',
+          padding: 24,
         }}
       >
-        <Text style={{ color: theme.colors.text }}>{loadError}</Text>
-        <Button title="Reintentar" onPress={() => void loadPublications()} />
+        <Text style={{ color: theme.colors.text }}>{restoreError}</Text>
+        <Button title="Reintentar sesión" onPress={retry} />
       </View>
     );
+
   return (
     <View key={user?.id ?? 'guest'} style={{ flex: 1 }}>
       <StatusBar style="light" />

@@ -1,549 +1,342 @@
-import { useDirectory } from '../../../src/useDirectory';
-import { useLists } from '../../../src/context/ListsContext';
-import { usePublications } from '../../../src/context/PublicationsContext';
-import { useCurrentUser } from '../../../src/useCurrentUser';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { Text, View, Image, Linking } from 'react-native';
 import {
-  Platform,
-  Image,
-  Linking,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
-import {
-  PublicationCard,
-  Action,
-  Avatar,
-  Dialog,
-  EmptyState,
   Screen,
+  Action,
   Section,
+  PublicationCard,
+  Dialog,
+  StarRating,
+  ListCard,
 } from '../../../src/components';
-import { useAppState } from '../../../src/context/AppState';
-import { findAnime, getParam } from '../../../src/mock';
-import { theme } from '../../../src/theme';
-
-// TODO BACKEND [RATINGS-DISTRIBUCION]: recuperar conteos reales por anime; estos porcentajes son ejemplos.
-const distributions: Record<string, number[]> = {
-  frieren: [86, 10, 2, 1, 1],
-  'solo-leveling': [80, 15, 2, 2, 1],
-  'blue-lock': [72, 20, 5, 2, 1],
-  'vinland-saga': [65, 22, 8, 3, 2],
-  'mob-psycho': [62, 24, 8, 4, 2],
-  haikyuu: [60, 25, 7, 6, 2],
-  'demon-slayer': [58, 25, 9, 5, 3],
-  'spy-family': [54, 28, 9, 7, 2],
-};
-const voiceCast: Record<string, { actor: string; character: string }[]> = {
-  frieren: [
-    { actor: 'Atsumi Tanezaki', character: 'Frieren' },
-    { actor: 'Kana Ichinose', character: 'Fern' },
-    { actor: 'Chiaki Kobayashi', character: 'Stark' },
-  ],
-  'solo-leveling': [
-    { actor: 'Taito Ban', character: 'Sung Jinwoo' },
-    { actor: 'Reina Ueda', character: 'Cha Hae-in' },
-    { actor: 'Genta Nakamura', character: 'Yoo Jinho' },
-  ],
-  'blue-lock': [
-    { actor: 'Kazuki Ura', character: 'Yoichi Isagi' },
-    { actor: 'Tasuku Kaito', character: 'Meguru Bachira' },
-    { actor: 'Koki Uchiyama', character: 'Rin Itoshi' },
-  ],
-  'vinland-saga': [
-    { actor: 'Yuto Uemura', character: 'Thorfinn' },
-    { actor: 'Naoya Uchida', character: 'Askeladd' },
-    { actor: 'Kensho Ono', character: 'Canute' },
-  ],
-  'mob-psycho': [
-    { actor: 'Setsuo Ito', character: 'Shigeo Kageyama' },
-    { actor: 'Takahiro Sakurai', character: 'Arataka Reigen' },
-    { actor: 'Miyu Irino', character: 'Ritsu Kageyama' },
-  ],
-  haikyuu: [
-    { actor: 'Ayumu Murase', character: 'Shoyo Hinata' },
-    { actor: 'Kaito Ishikawa', character: 'Tobio Kageyama' },
-    { actor: 'Satoshi Hino', character: 'Daichi Sawamura' },
-  ],
-  'demon-slayer': [
-    { actor: 'Natsuki Hanae', character: 'Tanjiro Kamado' },
-    { actor: 'Akari Kito', character: 'Nezuko Kamado' },
-    { actor: 'Hiro Shimono', character: 'Zenitsu Agatsuma' },
-  ],
-  'spy-family': [
-    { actor: 'Takuya Eguchi', character: 'Loid Forger' },
-    { actor: 'Atsumi Tanezaki', character: 'Anya Forger' },
-    { actor: 'Saori Hayami', character: 'Yor Forger' },
-  ],
-};
-const ratingVotes = 13700;
-const streamingPlatforms = [
-  {
-    name: 'Crunchyroll',
-    url: 'https://www.crunchyroll.com/',
-    icon: 'play-circle-outline' as const,
-  },
-  { name: 'Netflix', url: 'https://www.netflix.com/', icon: 'film-outline' as const },
-  { name: 'Prime Video', url: 'https://www.primevideo.com/', icon: 'tv-outline' as const },
-];
-
-export default function DetalleAnime() {
-  const { findUser } = useDirectory();
-  const { lists, toggleAnime } = useLists();
-  const { reviews } = usePublications();
-
-  const currentUser = useCurrentUser();
-
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
-  const { width: windowWidth } = useWindowDimensions();
-  const width = Math.min(windowWidth, theme.layout.maxWidth);
-  const id = getParam(params.id) ?? '';
-  const [message, setMessage] = useState('');
-  const [imageFailed, setImageFailed] = useState(false);
+import { useSession } from '../../../src/context/SessionContext';
+import { useMutation, usePage, useQuery } from '../../../src/remote';
+import { query } from '../../../src/api';
+import { AnimeRow, Field, LoadState, Notice, PageEnd, Toggle, ui } from '../../../src/remote-ui';
+import {
+  dateLabel,
+  type Anime,
+  type Publication,
+  type Rating,
+  type Activity,
+  type Favorite,
+  type Extras,
+  type AnimeList,
+} from '../../../src/models';
+export default function AnimeDetail() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return <Detail key={id} id={id} />;
+}
+function Detail({ id }: { id: string }) {
+  const result = useQuery<{ anime: Anime }>('/anime/' + encodeURIComponent(id));
+  const activity = usePage<Rating>('/me/anime/' + encodeURIComponent(id) + '/activity');
+  const favorites = useQuery<{ items: Favorite[] }>('/me/favorites');
+  const reviews = usePage<Publication>(query('/publications', { animeId: id, kind: 'review' }));
+  const lists = usePage<AnimeList>(query('/lists', { animeId: id }));
+  const mutation = useMutation();
   const [listPicker, setListPicker] = useState(false);
-  const { friendIds, getActivity, updateActivity } = useAppState();
-  const activity = getActivity(id);
-  // TODO BACKEND [ANIME-DETALLE]: consultar anime y su elenco por id; manejar carga, error y no encontrado.
-  const item = findAnime(id);
-  if (!item)
-    return (
-      <Screen title="Anime no encontrado" back>
-        <EmptyState
-          title="Este anime no está disponible"
-          text="Volvé al catálogo para elegir otro anime."
-          action="Explorar"
-          onPress={() => router.replace('/explorar')}
-        />
-      </Screen>
-    );
-  const friendReviews = reviews.filter(
-    (review) => review.animeId === item.id && friendIds.includes(review.userId),
-  );
-  const animeReviews = reviews.filter((review) => review.animeId === item.id);
-  const distribution = distributions[item.id];
-  const rating = item.rating;
-  const cast = voiceCast[item.id] ?? [];
-  const title = item.id === 'frieren' ? 'Frieren: Beyond Journey’s End' : item.title;
-  const metadata = [
-    'TV',
-    String(item.year),
-    `${item.episodes} eps`,
-    `${item.duration} min`,
-    'Finalizado',
-  ];
-  const infoRows = [
-    ['Géneros', item.genres.join(', ')],
-    ['Estudio', item.studio],
-    ['Temporada', item.season],
-    ['Duración', `${item.duration} min / episodio`],
-    ['Episodios', String(item.episodes)],
-    ['Estado', 'Finalizado'],
-  ];
-
-  const writeReview = () =>
-    router.push({ pathname: '/crear/review/escribir', params: { animeId: item.id } });
-  const ownLists = lists.filter((list) => list.userId === currentUser.id);
-  const toggleList = (listId: string) => toggleAnime(currentUser.id, listId, item.id);
-  const openStreamingPlatform = (url: string) => {
-    Linking.openURL(url).catch(() =>
-      setMessage('No se pudo abrir el enlace. Probá desde tu navegador.'),
-    );
-  };
-
+  const [editing, setEditing] = useState<Rating | null>(null);
+  const flags = activity.data as Activity | undefined;
+  const anime = result.data?.anime;
+  const favoriteIds = favorites.data?.items.map((item) => item.anime.id) ?? [];
+  const favorite = favoriteIds.includes(id);
+  async function toggleFavorite() {
+    await mutation.run('/me/favorites', {
+      method: 'PUT',
+      body: {
+        animeIds: favorite ? favoriteIds.filter((value) => value !== id) : [...favoriteIds, id],
+      },
+    });
+  }
   return (
-    <Screen
-      title=""
-      back
-      actions={
-        <View style={styles.toolbar}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Compartir anime"
-            onPress={() =>
-              setMessage(
-                `Enlace de ejemplo para compartir ${item.title}. La acción no envía mensajes.`,
-              )
-            }
-          >
-            <Ionicons name="share-outline" size={22} color={theme.colors.textSecondary} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Opciones del anime"
-            onPress={writeReview}
-          >
-            <Ionicons name="ellipsis-horizontal" size={23} color={theme.colors.textSecondary} />
-          </Pressable>
-        </View>
-      }
-    >
-      <View style={styles.hero}>
-        <View style={[styles.posterWrap, { width: (width - 44) * 0.39 }]}>
-          {imageFailed ? (
-            <View style={styles.fallback}>
-              <Ionicons name="image-outline" size={30} color={theme.colors.primarySoft} />
-              <Text style={styles.meta}>Poster no disponible</Text>
-            </View>
-          ) : (
-            <Image source={item.image} onError={() => setImageFailed(true)} style={styles.poster} />
-          )}
-        </View>
-        <View style={styles.heroInfo}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.japanese}>{item.japanese}</Text>
-          <View style={styles.metadata}>
-            {metadata.map((tag) => (
-              <Text key={tag} style={styles.tag}>
-                {tag}
+    <Screen title={anime?.title ?? 'Anime'} back>
+      {anime && !!result.error && (
+        <LoadState loading={false} error={result.error} reload={result.reload} />
+      )}
+      {anime ? (
+        <>
+          <AnimeRow anime={anime} />
+          <View style={ui.card}>
+            <Text style={ui.title}>
+              {anime.statistics?.averageRating == null
+                ? 'Sin puntuaciones'
+                : '★ ' + anime.statistics.averageRating.toFixed(1) + ' / 5'}
+            </Text>
+            <Text style={ui.muted}>
+              {anime.statistics?.ratingCount ?? 0} valoraciones ·{' '}
+              {anime.statistics?.ratingUserCount ?? 0} personas ·{' '}
+              {anime.statistics?.reviewCount ?? 0} reviews en Ani-Ren
+            </Text>
+            <Text style={ui.text}>{anime.synopsis || 'Sin sinopsis disponible.'}</Text>
+            {anime.metadataStale && (
+              <Text style={ui.muted}>Mostramos la última información disponible del catálogo.</Text>
+            )}
+          </View>
+          <Section title="Tu actividad" />
+          <LoadState
+            loading={activity.loading && !flags}
+            error={activity.error}
+            reload={activity.retry}
+          />
+          {flags && (
+            <View style={ui.card}>
+              <Text style={ui.text}>
+                Tu puntuación actual: {flags.currentRating?.rating ?? 'Sin valorar'}
               </Text>
-            ))}
-          </View>
-          <Text style={styles.generalScore}>
-            {rating.toFixed(1)}
-            <Text style={styles.small}> / 5</Text> <Text style={styles.stars}>★★★★★</Text>
-          </Text>
-          <Text style={styles.meta}>{ratingVotes.toLocaleString('es-AR')} votos de ejemplo</Text>
-          <View style={styles.distribution}>
-            {distribution.map((percent, index) => (
-              <View key={index} style={styles.barRow}>
-                <Text style={styles.barLabel}>{5 - index} ★</Text>
-                <View style={styles.barTrack}>
-                  <View style={[styles.bar, { width: `${percent}%` }]} />
-                </View>
-                <Text style={styles.barCount}>
-                  {Math.round((ratingVotes * percent) / 100).toLocaleString('es-AR')}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      </View>
-      <View style={styles.activityActions}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={activity.watched ? 'Quitar de vistos' : 'Marcar como visto'}
-          accessibilityState={{ selected: activity.watched }}
-          onPress={() => updateActivity(item.id, { watched: !activity.watched })}
-          style={styles.activityButton}
-        >
-          <Ionicons
-            name={activity.watched ? 'eye' : 'eye-outline'}
-            size={23}
-            color={activity.watched ? theme.colors.primarySoft : theme.colors.textSecondary}
-          />
-          <Text style={[styles.activityLabel, activity.watched && styles.activityLabelActive]}>
-            Visto
-          </Text>
-        </Pressable>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={activity.liked ? 'Quitar Me gusta' : 'Marcar Me gusta'}
-          accessibilityState={{ selected: activity.liked }}
-          onPress={() => updateActivity(item.id, { liked: !activity.liked })}
-          style={styles.activityButton}
-        >
-          <Ionicons
-            name={activity.liked ? 'heart' : 'heart-outline'}
-            size={23}
-            color={activity.liked ? theme.colors.accentSoft : theme.colors.textSecondary}
-          />
-          <Text style={[styles.activityLabel, activity.liked && styles.activityLabelLiked]}>
-            Me gusta
-          </Text>
-        </Pressable>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={activity.watchlist ? 'Quitar de Watchlist' : 'Guardar en Watchlist'}
-          accessibilityState={{ selected: activity.watchlist }}
-          onPress={() => updateActivity(item.id, { watchlist: !activity.watchlist })}
-          style={styles.activityButton}
-        >
-          <Ionicons
-            name={activity.watchlist ? 'bookmark' : 'bookmark-outline'}
-            size={23}
-            color={activity.watchlist ? theme.colors.primarySoft : theme.colors.textSecondary}
-          />
-          <Text style={[styles.activityLabel, activity.watchlist && styles.activityLabelActive]}>
-            Watchlist
-          </Text>
-        </Pressable>
-      </View>
-      <Action
-        label={
-          activity.listIds.length
-            ? `Agregar a lista · ${activity.listIds.length}`
-            : 'Agregar a lista'
-        }
-        icon="albums-outline"
-        onPress={() => setListPicker(true)}
-      />
-      <Action label="Review" icon="add-circle-outline" primary onPress={writeReview} />
-      <Section title="Dónde ver" />
-      <ScrollView
-        horizontal
-        style={{ flexGrow: 0 }}
-        showsHorizontalScrollIndicator={Platform.OS === 'web'}
-        contentContainerStyle={styles.platforms}
-      >
-        {streamingPlatforms.map((platform) => (
-          <Pressable
-            key={platform.name}
-            accessibilityRole="link"
-            accessibilityLabel={`Abrir ${platform.name}`}
-            onPress={() => openStreamingPlatform(platform.url)}
-            style={styles.platform}
-          >
-            <Ionicons name={platform.icon} size={25} color={theme.colors.accentSoft} />
-            <View>
-              <Text style={styles.platformName}>{platform.name}</Text>
-              <Text style={styles.meta}>Visitar sitio</Text>
-            </View>
-          </Pressable>
-        ))}
-      </ScrollView>
-      <Text style={styles.note}>Plataformas de ejemplo; verificá disponibilidad en tu país.</Text>
-      <View style={[styles.infoColumns, width < 360 && styles.stack]}>
-        <View style={[styles.infoCard, width >= 360 && styles.infoColumn]}>
-          <Text style={styles.cardTitle}>Sinopsis</Text>
-          <Text style={styles.synopsis}>{item.synopsis}</Text>
-        </View>
-        <View style={[styles.infoCard, width >= 360 && styles.infoColumn]}>
-          <Text style={styles.cardTitle}>Información</Text>
-          {infoRows.map(([label, value]) => (
-            <View key={label} style={styles.infoLine}>
-              <Text style={styles.meta}>{label}</Text>
-              <Text style={styles.infoValue}>{value}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-      <Section title="Actores de voz" />
-      <View style={styles.infoCard}>
-        {cast.map(({ actor, character }) => (
-          <Pressable
-            key={character}
-            accessibilityRole="button"
-            onPress={() =>
-              setMessage(
-                `${actor} interpreta a ${character} en la versión japonesa de ${item.title}.`,
-              )
-            }
-            style={styles.voice}
-          >
-            <Ionicons name="mic-outline" size={20} color={theme.colors.primarySoft} />
-            <View style={styles.flex}>
-              <Text style={styles.body}>{character}</Text>
-              <Text style={styles.meta}>{actor} · Japonés</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
-          </Pressable>
-        ))}
-      </View>
-      <Section title="Puntuaciones de amigos" />
-      {friendReviews.length ? (
-        <ScrollView
-          horizontal
-          style={{ flexGrow: 0 }}
-          showsHorizontalScrollIndicator={Platform.OS === 'web'}
-          contentContainerStyle={styles.platforms}
-        >
-          {friendReviews.map((review) => {
-            const author = findUser(review.userId);
-            if (!author) return null;
-            return (
-              <View key={review.id} style={styles.friend}>
-                <Avatar
-                  user={author}
-                  size={44}
+              <View style={ui.wrap}>
+                <Action
+                  label={flags.watched ? 'Visto' : 'Marcar visto'}
+                  icon="eye-outline"
+                  active={flags.watched}
+                  disabled={flags.watched || mutation.pending}
                   onPress={() =>
-                    router.push({ pathname: '/perfil/usuario/[id]', params: { id: author.id } })
+                    void mutation.run('/me/library/' + encodeURIComponent(id), {
+                      method: 'PATCH',
+                      body: { watched: true },
+                    })
                   }
                 />
-                <Text style={styles.meta}>{author.name}</Text>
-                <Text style={styles.friendScore}>★ {(review.rating ?? 0).toFixed(1)}</Text>
+                <Action
+                  label={flags.watchlist ? 'Quitar de watchlist' : 'Watchlist'}
+                  icon="bookmark-outline"
+                  active={flags.watchlist}
+                  disabled={mutation.pending}
+                  onPress={() =>
+                    void mutation.run('/me/library/' + encodeURIComponent(id), {
+                      method: 'PATCH',
+                      body: { watchlist: !flags.watchlist },
+                    })
+                  }
+                />
+                <Action
+                  label={favorite ? 'Quitar favorito' : 'Favorito'}
+                  icon="heart-outline"
+                  active={favorite}
+                  disabled={
+                    mutation.pending ||
+                    favorites.loading ||
+                    !favorites.data ||
+                    (!favorite && favoriteIds.length >= 100)
+                  }
+                  onPress={() => void toggleFavorite()}
+                />
+                <Action
+                  label="Agregar a lista"
+                  icon="list-outline"
+                  onPress={() => setListPicker(true)}
+                />
               </View>
-            );
-          })}
-        </ScrollView>
-      ) : (
-        <Text style={styles.note}>
-          Tus amigos todavía no puntuaron este anime en los datos de ejemplo.
-        </Text>
-      )}
-      <Section
-        title="Reviews destacadas"
-        action="Ver amigos"
-        onPress={() => router.push('/perfil/comunidad')}
-      />
-      {animeReviews.length ? (
-        animeReviews.map((review) => <PublicationCard key={review.id} review={review} />)
-      ) : (
-        <EmptyState
-          title="La primera review puede ser tuya"
-          text="Contanos qué te pareció este anime."
-          action="Escribir review"
-          onPress={writeReview}
-        />
-      )}
-      <Section title="Noticias y novedades" />
-      <Pressable
-        accessibilityRole="button"
-        onPress={() =>
-          setMessage(
-            `Una mirada a ${item.title}: contenido editorial de ejemplo para validar esta sección.`,
-          )
-        }
-        style={styles.news}
-      >
-        <Image source={item.image} style={styles.newsImage} />
-        <View style={styles.flex}>
-          <Text style={styles.username}>NOVEDAD · EJEMPLO</Text>
-          <Text style={styles.body}>Volvé a descubrir el mundo de {item.title}</Text>
-          <Text style={styles.meta}>Historias, personajes y momentos favoritos.</Text>
-        </View>
-      </Pressable>
-      <Action
-        label="Popularidad por país"
-        icon="earth-outline"
-        onPress={() =>
-          router.push({ pathname: '/explorar/mapa', params: { metric: 'anime', animeId: item.id } })
-        }
-      />
-      <Dialog
-        visible={listPicker}
-        title="Agregar a lista"
-        text="Podés elegir más de una."
-        onClose={() => setListPicker(false)}
-      >
-        {ownLists.map((list) => (
+            </View>
+          )}
+          <LoadState loading={false} error={favorites.error} reload={favorites.reload} />
+          <Notice error={mutation.error} />
           <Action
-            key={list.id}
-            label={list.title}
-            icon={activity.listIds.includes(list.id) ? 'checkmark-circle' : 'ellipse-outline'}
-            active={activity.listIds.includes(list.id)}
-            onPress={() => toggleList(list.id)}
+            label="Valorar o escribir review"
+            primary
+            icon="create-outline"
+            onPress={() =>
+              router.push({ pathname: '/crear/review/escribir', params: { animeId: id } })
+            }
           />
-        ))}
-        <Action
-          label="Crear una lista"
-          icon="add-outline"
-          onPress={() => {
-            setListPicker(false);
-            router.push({ pathname: '/perfil/listas/editar', params: { animeId: item.id } });
-          }}
-        />
-      </Dialog>
-      <Dialog
-        visible={message.length > 0}
-        title="Vista previa"
-        text={message}
-        onClose={() => setMessage('')}
-      />
+          <Section title="Dónde ver y personajes" />
+          <AnimeExtras id={id} />
+          <Section title="Tus valoraciones" />
+          {activity.items.map((item) => (
+            <View key={item.id} style={ui.card}>
+              <Text style={ui.accent}>
+                ★ {item.rating} {item.rewatched ? '· Vuelto a ver' : ''}
+              </Text>
+              <Text style={ui.muted}>
+                {dateLabel(item.createdAt)}
+                {item.watchedOn ? ' · Visto ' + item.watchedOn : ''}
+              </Text>
+              {item.updatedAt && <Text style={ui.muted}>Editado {dateLabel(item.updatedAt)}</Text>}
+              <Action
+                label={item.publicationId ? 'Ver review' : 'Editar valoración'}
+                onPress={() =>
+                  item.publicationId
+                    ? router.push({
+                        pathname: '/inicio/review/[id]',
+                        params: { id: item.publicationId },
+                      })
+                    : setEditing(item)
+                }
+              />
+            </View>
+          ))}
+          <PageEnd page={activity} />
+          <Section title="Reviews de la comunidad" />
+          {reviews.items.map((review) => (
+            <PublicationCard key={review.id} review={review} />
+          ))}
+          <PageEnd page={reviews} />
+          <Section title="Listas con este anime" />
+          {lists.items.map((list) => (
+            <ListCard key={list.id} list={list} />
+          ))}
+          <PageEnd page={lists} />
+          <Dialog
+            visible={listPicker}
+            title="Agregar a una lista"
+            onClose={() => setListPicker(false)}
+          >
+            {listPicker && <ListPicker animeId={id} onCreate={() => setListPicker(false)} />}
+          </Dialog>
+          <Dialog visible={!!editing} title="Editar valoración" onClose={() => setEditing(null)}>
+            {editing && (
+              <RatingEditor key={editing.id} rating={editing} onSaved={() => setEditing(null)} />
+            )}
+          </Dialog>
+        </>
+      ) : (
+        <LoadState {...result} />
+      )}
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  toolbar: { flexDirection: 'row', gap: 18, padding: 6 },
-  hero: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  posterWrap: {
-    aspectRatio: 0.68,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: theme.colors.surfaceLight,
-  },
-  poster: { width: '100%', height: '100%' },
-  fallback: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  heroInfo: { flex: 1, minWidth: 0, gap: 7 },
-  title: { color: theme.colors.text, fontSize: 18, fontWeight: '700', lineHeight: 22 },
-  japanese: { color: theme.colors.textSecondary, fontSize: 11 },
-  metadata: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-  tag: {
-    color: theme.colors.textSecondary,
-    fontSize: 9,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 4,
-    padding: 3,
-  },
-  generalScore: { color: theme.colors.primarySoft, fontWeight: '600', fontSize: 22 },
-  small: { fontSize: 12, color: theme.colors.textSecondary },
-  stars: { fontSize: 13 },
-  meta: { color: theme.colors.textSecondary, fontSize: 10, lineHeight: 15 },
-  distribution: { gap: 4, marginTop: 2 },
-  barRow: { flexDirection: 'row', gap: 4, alignItems: 'center' },
-  barLabel: { width: 23, color: theme.colors.textSecondary, fontSize: 9 },
-  barTrack: { flex: 1, height: 4, backgroundColor: theme.colors.surfaceLight, borderRadius: 3 },
-  bar: { height: '100%', backgroundColor: theme.colors.primary, borderRadius: 3 },
-  barCount: { width: 34, color: theme.colors.textSecondary, fontSize: 8, textAlign: 'right' },
-  activityActions: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  activityButton: {
-    flex: 1,
-    minHeight: 65,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 9,
-  },
-  activityLabel: { color: theme.colors.textSecondary, fontSize: 10 },
-  activityLabelActive: { color: theme.colors.primarySoft },
-  activityLabelLiked: { color: theme.colors.accentSoft },
-  platforms: { gap: 10 },
-  platform: {
-    backgroundColor: theme.colors.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 10,
-  },
-  platformName: { color: theme.colors.text, fontSize: 11 },
-  note: { color: theme.colors.textSecondary, fontSize: 11, lineHeight: 17 },
-  infoColumns: { flexDirection: 'row', gap: 10 },
-  stack: { flexDirection: 'column' },
-  infoColumn: { flexGrow: 1, flexBasis: 0 },
-  infoCard: {
-    backgroundColor: theme.colors.surface,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 12,
-    gap: 9,
-  },
-  cardTitle: { color: theme.colors.text, fontSize: 14, fontWeight: '600' },
-  synopsis: { color: theme.colors.textSecondary, fontSize: 12, lineHeight: 18 },
-  infoLine: { gap: 2 },
-  infoValue: { color: theme.colors.text, fontSize: 11, lineHeight: 16 },
-  body: { color: theme.colors.text, fontSize: 12, lineHeight: 18 },
-  voice: { flexDirection: 'row', gap: 10, alignItems: 'center', paddingVertical: 6 },
-  flex: { flex: 1, minWidth: 0 },
-  friend: { alignItems: 'center', gap: 4, width: 70 },
-  friendScore: { color: theme.colors.primarySoft, fontSize: 12 },
-  username: { color: theme.colors.primarySoft, fontSize: 11, fontWeight: '600' },
-  news: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 12,
-    padding: 10,
-  },
-  newsImage: { width: 74, height: 74, borderRadius: 8 },
-});
+function RatingEditor({ rating, onSaved }: { rating: Rating; onSaved: () => void }) {
+  const [value, setValue] = useState<number | undefined>(rating.rating);
+  const [date, setDate] = useState(rating.watchedOn ?? '');
+  const [rewatched, setRewatched] = useState(rating.rewatched);
+  const mutation = useMutation();
+  async function save() {
+    if (
+      await mutation.run('/ratings/' + rating.id, {
+        method: 'PATCH',
+        body: { rating: value, watchedOn: date || null, rewatched },
+      })
+    )
+      onSaved();
+  }
+  return (
+    <>
+      <StarRating
+        value={value}
+        onChange={(v) => {
+          if (!mutation.pending) setValue(v);
+        }}
+      />
+      <Field
+        label="Fecha de visto (AAAA-MM-DD)"
+        value={date}
+        onChange={setDate}
+        disabled={mutation.pending}
+      />
+      <Toggle
+        label="Lo volví a ver"
+        value={rewatched}
+        onChange={setRewatched}
+        disabled={mutation.pending}
+      />
+      <Notice error={mutation.error} />
+      <Action label="Guardar" disabled={!value || mutation.pending} onPress={() => void save()} />
+    </>
+  );
+}
+function ListPicker({ animeId, onCreate }: { animeId: string; onCreate: () => void }) {
+  const { user } = useSession();
+  const lists = usePage<AnimeList>(query('/lists', { userId: user?.id }));
+  const mutation = useMutation();
+  return (
+    <>
+      <Action
+        label="Crear lista"
+        onPress={() => {
+          onCreate();
+          router.push({ pathname: '/perfil/listas/editar', params: { animeId } });
+        }}
+      />
+      {lists.items.map((list) => (
+        <Action
+          key={list.id}
+          label={list.title + (list.animeIds.includes(animeId) ? ' · Agregado' : '')}
+          disabled={
+            mutation.pending || list.animeIds.includes(animeId) || list.animeIds.length >= 100
+          }
+          onPress={() =>
+            void mutation.run('/lists/' + list.id, {
+              method: 'PATCH',
+              body: { animeIds: [...list.animeIds, animeId] },
+            })
+          }
+        />
+      ))}
+      <Notice error={mutation.error} />
+      <PageEnd page={lists} />
+    </>
+  );
+}
+function AnimeExtras({ id }: { id: string }) {
+  const [page, setPage] = useState(1);
+  const result = useQuery<{ extras: Extras }>(
+    query('/anime/' + encodeURIComponent(id) + '/extras', { page }),
+  );
+  const [linkError, setLinkError] = useState('');
+  const extras = result.data?.extras;
+  return (
+    <>
+      <LoadState {...result} />
+      {extras && (
+        <View style={ui.card}>
+          <Text style={ui.muted}>
+            Consultá la disponibilidad en cada plataforma; puede variar según tu país.
+          </Text>
+          {extras.streamingLinks.length === 0 && (
+            <Text style={ui.muted}>No hay enlaces disponibles en esta consulta.</Text>
+          )}
+          {extras.streamingLinks
+            .filter((link) => link.url.startsWith('https://'))
+            .map((link) => (
+              <Action
+                key={link.id}
+                label={link.site}
+                icon="open-outline"
+                onPress={() =>
+                  void Linking.openURL(link.url).catch(() =>
+                    setLinkError('No pudimos abrir el enlace.'),
+                  )
+                }
+              />
+            ))}
+          <Notice error={linkError} />
+          <Text style={ui.title}>Personajes y voces japonesas</Text>
+          {extras.characters.map((entry) => (
+            <View key={entry.character.id} style={ui.row}>
+              {entry.character.imageUrl && (
+                <Image
+                  source={{ uri: entry.character.imageUrl }}
+                  style={{ width: 50, height: 64, borderRadius: 8 }}
+                />
+              )}
+              <View style={ui.grow}>
+                <Text style={ui.text}>{entry.character.name ?? 'Nombre no disponible'}</Text>
+                <Text style={ui.muted}>
+                  {entry.voiceActors.map((actor) => actor.name ?? 'Sin nombre').join(' · ') ||
+                    'Voz sin datos'}
+                </Text>
+              </View>
+            </View>
+          ))}
+          {!extras.characters.length && <Text style={ui.muted}>Sin personajes disponibles.</Text>}
+          <View style={ui.wrap}>
+            {page > 1 && (
+              <Action
+                label="Anteriores"
+                disabled={result.loading}
+                onPress={() => setPage((n) => n - 1)}
+              />
+            )}
+            {extras.nextPage && (
+              <Action
+                label="Más personajes"
+                disabled={result.loading}
+                onPress={() => setPage(extras.nextPage!)}
+              />
+            )}
+          </View>
+        </View>
+      )}
+    </>
+  );
+}

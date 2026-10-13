@@ -1,13 +1,10 @@
-import { useCurrentUser } from '../../src/useCurrentUser';
+import { Avatar } from '../../src/components';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../src/theme';
-import { Image } from 'react-native';
 
 export default function TabLayout() {
-  const currentUser = useCurrentUser();
-
   const insets = useSafeAreaInsets();
   return (
     <Tabs
@@ -68,17 +65,7 @@ export default function TabLayout() {
         name="perfil"
         options={{
           title: 'Perfil',
-          tabBarIcon: ({ focused, size }) => (
-            <Image
-              source={currentUser.image}
-              style={{
-                width: size + 2,
-                height: size + 2,
-                borderRadius: (size + 2) / 2,
-                opacity: focused ? 1 : 0.65,
-              }}
-            />
-          ),
+          tabBarIcon: ({ size }) => <Avatar size={size + 2} />,
         }}
       />
     </Tabs>

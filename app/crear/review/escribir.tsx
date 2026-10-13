@@ -1,338 +1,168 @@
-import { usePublications } from '../../../src/context/PublicationsContext';
-import { useCurrentUser } from '../../../src/useCurrentUser';
-import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Image, Platform, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
-import { Action, Dialog, EmptyState, Screen, StarRating } from '../../../src/components';
-import { useAppState } from '../../../src/context/AppState';
-import { findAnime, getParam } from '../../../src/mock';
-import { theme } from '../../../src/theme';
-
-type ReviewDialog = 'confirmed' | 'discard' | null;
-
-const formatDate = (date: Date) =>
-  `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-
-const isValidSeenDate = (value: string, today: Date) => {
-  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return false;
-  const [day, month, year] = value.split('/').map(Number);
-  const parsedDate = new Date(year, month - 1, day);
-  return (
-    parsedDate.getDate() === day &&
-    parsedDate.getMonth() === month - 1 &&
-    parsedDate.getFullYear() === year &&
-    parsedDate.getTime() <= today.getTime()
+import { Text, View } from 'react-native';
+import { Screen, Action, Chips, StarRating, EmptyState } from '../../../src/components';
+import { useSession } from '../../../src/context/SessionContext';
+import { useMutation, useQuery } from '../../../src/remote';
+import { AnimeRow, Field, LoadState, Notice, Toggle, ui } from '../../../src/remote-ui';
+import type { Anime, Publication, Rating } from '../../../src/models';
+export default function EscribirReview() {
+  const params = useLocalSearchParams<{ id?: string; reviewId?: string; animeId?: string }>();
+  const id = params.id ?? params.reviewId;
+  const publication = useQuery<{ publication: Publication }>(
+    id ? '/publications/' + encodeURIComponent(id) : null,
   );
-};
-
-export default function EscribirReviewScreen() {
-  const { reviews } = usePublications();
-
-  const currentUser = useCurrentUser();
-
-  const params = useLocalSearchParams();
-  const reviewId = getParam(params.id) ?? getParam(params.reviewId);
-  const existing = reviews.find((review) => review.id === reviewId);
-  const item = findAnime(existing?.animeId ?? getParam(params.animeId) ?? 'frieren');
-  const { getActivity, saveActivity } = useAppState();
-  const saved = getActivity(item?.id ?? '');
-  const today = new Date();
-
-  const watched = saved.watched;
-  const liked = saved.liked;
-  const watchlist = saved.watchlist;
-  const [rating, setRating] = useState<number | undefined>(saved.rating);
-  const [reviewOpen, setReviewOpen] = useState(Boolean(existing || saved.reviewText));
-  const [title, setTitle] = useState(saved.reviewTitle ?? '');
-  const [text, setText] = useState(saved.reviewText ?? '');
-  const [date, setDate] = useState(saved.date ?? formatDate(today));
-  const [spoiler, setSpoiler] = useState(saved.spoiler);
-  const listIds = saved.listIds;
-  const [dialog, setDialog] = useState<ReviewDialog>(null);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
-  const [pais, setPais] = useState<string | null>(null);
-  const [touched, setTouched] = useState(false);
-
-  const createsLog = watched || rating !== undefined || reviewOpen;
-  const validDate = !createsLog || isValidSeenDate(date, today);
-  const validText = !reviewOpen || text.trim().length >= 10;
-  const validRating = !reviewOpen || rating !== undefined;
-  const hasActivity = createsLog || liked || watchlist || listIds.length > 0;
-  const valid = hasActivity && validDate && validText && validRating;
-  const goBack = () =>
-    router.canGoBack()
-      ? router.back()
-      : router.replace({ pathname: '/explorar/anime/[id]', params: { id: item?.id ?? 'frieren' } });
-
-  // Como en el ejemplo de clase, pero guardamos solo el pais.
-  const obtenerPais = async () => {
-    if (Platform.OS === 'web') return;
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
-      if (!(await Location.hasServicesEnabledAsync())) return;
-
-      const p = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Low,
-      });
-      const [direccion] = await Location.reverseGeocodeAsync(p.coords);
-      setPais(direccion?.country ?? null);
-    } catch {
-      // Si falla la ubicacion, se puede guardar la review igual.
-      setPais(null);
-    }
-  };
-
-  const save = async () => {
-    setTouched(true);
-    if (!valid || !item || saving) return;
-    setSaving(true);
-    setSaveError('');
-    setPais(null);
-    try {
-      // Por ahora el país solo se muestra en la confirmación, no se persiste.
-      if (reviewOpen) await obtenerPais();
-      // TODO BACKEND [ACTIVIDAD-GUARDAR]: reemplazar esta actualización local por una única operación del usuario y el anime.
-      await saveActivity(item.id, {
-        watched,
-        liked,
-        watchlist,
-        rating,
-        date: createsLog ? date : undefined,
-        reviewTitle: reviewOpen && title.trim() ? title.trim() : undefined,
-        reviewText: reviewOpen && text.trim() ? text.trim() : undefined,
-        spoiler: reviewOpen && spoiler,
-        listIds,
-        logged: reviewOpen,
-      });
-      setDialog('confirmed');
-    } catch {
-      setSaveError(
-        'No pudimos guardar la review en el dispositivo. Tu borrador sigue acá; reintentá.',
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (reviewId && !existing)
-    return (
-      <Screen title="Review" back>
-        <EmptyState title="Review no encontrada" text="No pudimos encontrar esa actividad." />
-      </Screen>
-    );
-
-  if (existing && existing.userId !== currentUser.id)
+  const anime = useQuery<{ anime: Anime }>(
+    !id && params.animeId ? '/anime/' + encodeURIComponent(params.animeId) : null,
+  );
+  const existing = publication.data?.publication;
+  const item = existing?.anime ?? anime.data?.anime;
+  const { user } = useSession();
+  if (id && existing && (existing.userId !== user?.id || existing.kind !== 'review'))
     return (
       <Screen title="Review" back>
         <EmptyState
-          title="Esta review pertenece a otra persona"
+          title="No podés editar esta publicación"
           text="Solo podés editar tus propias reviews."
         />
       </Screen>
     );
-
-  if (!item)
-    return (
-      <Screen title="Review" back>
-        <EmptyState
-          title="Anime no encontrado"
-          text="Elegí un anime antes de registrar tu actividad."
-          action="Buscar anime"
-          onPress={() => router.replace('/explorar/busqueda')}
-        />
-      </Screen>
-    );
-
   return (
-    <Screen title="Review" subtitle="Registrá este anime a tu manera." back>
-      <View style={styles.animeHeader}>
-        <Image source={item.image} style={styles.poster} />
-        <View style={styles.grow}>
-          <Text style={styles.animeTitle}>{item.title}</Text>
-          <Text style={styles.meta}>
-            {item.year} · {item.episodes} episodios
-          </Text>
-          <Text style={styles.meta}>{item.genres.join(' · ')}</Text>
-          <Text style={styles.general}>★ {item.rating.toFixed(1)} / 5</Text>
-        </View>
-      </View>
-
-      <View style={styles.activityPanel}>
-        <Text style={styles.centerLabel}>Tu puntuación</Text>
-        <StarRating value={rating} onChange={setRating} size={38} />
-        <Text style={styles.scoreText}>
-          {rating === undefined ? 'Sin puntuación' : `${rating.toFixed(1)} / 5`}
-        </Text>
-
-        <View style={styles.divider} />
-        <Action
-          label="Review o log"
-          icon="create-outline"
-          active={reviewOpen}
-          onPress={() => setReviewOpen((value) => !value)}
+    <Screen
+      title={id ? 'Editar review' : 'Review'}
+      subtitle="Registrá este anime a tu manera."
+      back
+    >
+      {item && !!(publication.error || anime.error) && (
+        <LoadState
+          loading={false}
+          error={publication.error || anime.error}
+          reload={id ? publication.reload : anime.reload}
         />
-
-        {reviewOpen && (
-          <View style={styles.editor}>
-            {!validRating && (
-              <Text style={styles.error}>
-                Elegí una puntuación para publicar una review. Para conversar sin puntuar, usá Crear
-                → Posteo.
-              </Text>
-            )}
-            <Text style={styles.label}>Título</Text>
-            <TextInput
-              accessibilityLabel="Título de la review"
-              value={title}
-              onChangeText={setTitle}
-              maxLength={100}
-              placeholder="Poné un título a tu review"
-              placeholderTextColor={theme.colors.textSecondary}
-              style={styles.input}
-            />
-            <Text style={styles.meta}>{title.length} / 100 · El título es opcional.</Text>
-            <Text style={styles.label}>Review</Text>
-            <TextInput
-              accessibilityLabel="Texto de tu review"
-              value={text}
-              onChangeText={setText}
-              onBlur={() => setTouched(true)}
-              multiline
-              maxLength={2000}
-              placeholder="Escribí tu review (al menos 10 caracteres)."
-              placeholderTextColor={theme.colors.textSecondary}
-              style={[styles.input, styles.multiline]}
-            />
-            <Text style={styles.meta}>
-              {text.length} / 2000 · Mínimo 10 caracteres para publicar.
-            </Text>
-            {touched && !validText && (
-              <Text style={styles.error}>Si escribís una review, usá al menos 10 caracteres.</Text>
-            )}
-            <View style={styles.switchRow}>
-              <View style={styles.grow}>
-                <Text style={styles.label}>Contiene spoilers</Text>
-                <Text style={styles.meta}>El texto se ocultará antes de leerlo.</Text>
-              </View>
-              <Switch
-                accessibilityLabel="Mi review contiene spoilers"
-                value={spoiler}
-                onValueChange={setSpoiler}
-                trackColor={{ false: theme.colors.surfaceLight, true: theme.colors.primaryDark }}
-                thumbColor={spoiler ? theme.colors.primarySoft : theme.colors.textSecondary}
-              />
-            </View>
-          </View>
-        )}
-
-        {createsLog && (
-          <View style={styles.dateBlock}>
-            <Text style={styles.label}>Fecha</Text>
-            <TextInput
-              accessibilityLabel="Fecha del registro, día mes y año"
-              value={date}
-              onChangeText={setDate}
-              onBlur={() => setTouched(true)}
-              keyboardType="numbers-and-punctuation"
-              maxLength={10}
-              placeholder="DD/MM/AAAA"
-              placeholderTextColor={theme.colors.textSecondary}
-              style={styles.input}
-            />
-            {touched && !validDate && (
-              <Text style={styles.error}>Ingresá una fecha válida hasta hoy.</Text>
-            )}
-          </View>
-        )}
-      </View>
-
-      {!!saveError && (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {saveError}
-        </Text>
       )}
-      <Action
-        label={saving ? 'Guardando…' : 'Listo'}
-        icon="checkmark"
-        primary
-        disabled={!valid || saving}
-        onPress={save}
-      />
-      <Action label="Cancelar" onPress={() => setDialog('discard')} />
-
-      <Dialog
-        visible={dialog === 'confirmed'}
-        title="Actividad guardada"
-        text={
-          createsLog
-            ? `${item.title} ya aparece en tus vistos.`
-            : `Actualizamos tu actividad de ${item.title}.`
-        }
-        onClose={() => setDialog(null)}
-      >
-        {reviewOpen && (
-          <Text style={styles.meta}>
-            {pais
-              ? `País detectado: ${pais}. Por ahora solo se muestra acá.`
-              : Platform.OS === 'web'
-                ? 'La detección del país está disponible en el teléfono.'
-                : 'No pudimos obtener el país. Tu review se guardó igual.'}
-          </Text>
-        )}
-        <Action label="Volver al anime" onPress={goBack} />
-      </Dialog>
-
-      <Dialog
-        visible={dialog === 'discard'}
-        title="¿Descartar los cambios?"
-        text="Los cambios de esta pantalla se perderán."
-        onClose={() => setDialog(null)}
-      >
-        <Action label="Descartar y volver" onPress={goBack} />
-      </Dialog>
+      {item ? (
+        <ReviewForm key={id ?? item.id} anime={item} existing={existing} />
+      ) : (
+        <LoadState
+          loading={publication.loading || anime.loading}
+          error={publication.error || anime.error}
+          reload={id ? publication.reload : anime.reload}
+          empty
+        />
+      )}
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  animeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 4,
-  },
-  poster: { width: 76, height: 106, borderRadius: 7, backgroundColor: theme.colors.surfaceLight },
-  grow: { flex: 1, minWidth: 0, gap: 5 },
-  animeTitle: { color: theme.colors.text, fontSize: 18, fontWeight: '700' },
-  meta: { color: theme.colors.textSecondary, fontSize: 11, lineHeight: 17 },
-  general: { color: theme.colors.primarySoft, fontSize: 13, fontWeight: '600', marginTop: 3 },
-  activityPanel: {
-    gap: 13,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 14,
-    backgroundColor: theme.colors.surface,
-  },
-  divider: { height: 1, backgroundColor: theme.colors.border },
-  centerLabel: { color: theme.colors.textSecondary, fontSize: 12, textAlign: 'center' },
-  scoreText: { color: theme.colors.primarySoft, fontSize: 12, textAlign: 'center' },
-  editor: { gap: 10 },
-  dateBlock: { gap: 8 },
-  label: { color: theme.colors.text, fontSize: 12, fontWeight: '600' },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceLight,
-    borderRadius: 9,
-    color: theme.colors.text,
-    padding: 11,
-    fontSize: 13,
-  },
-  multiline: { minHeight: 115, textAlignVertical: 'top' },
-  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  error: { color: theme.colors.accentSoft, fontSize: 11, lineHeight: 16 },
-});
+function ReviewForm({ anime, existing }: { anime: Anime; existing?: Publication }) {
+  const [kind, setKind] = useState('Review');
+  const [rating, setRating] = useState<number | undefined>(existing?.rating ?? undefined);
+  const [title, setTitle] = useState(existing?.title ?? '');
+  const [text, setText] = useState(existing?.text ?? '');
+  const [date, setDate] = useState(existing?.watchedOn ?? '');
+  const [rewatched, setRewatched] = useState(existing?.rewatched ?? false);
+  const [spoiler, setSpoiler] = useState(existing?.spoiler ?? false);
+  const mutation = useMutation();
+  const locked = mutation.pending || mutation.uncertain;
+  const isReview = kind === 'Review';
+  const valid =
+    rating !== undefined &&
+    (!isReview || text.trim().length >= 10) &&
+    (!date || /^\d{4}-\d{2}-\d{2}$/.test(date));
+  async function save() {
+    const body = {
+      ...(!existing ? { animeId: anime.id } : {}),
+      rating,
+      watchedOn: date || null,
+      rewatched,
+      ...(isReview ? { title: title.trim() || null, text: text.trim(), spoiler } : {}),
+    };
+    const result = await mutation.run<{ publication?: Publication; rating?: Rating }>(
+      existing ? '/reviews/' + existing.id : isReview ? '/reviews' : '/ratings',
+      { method: existing ? 'PATCH' : 'POST', body },
+    );
+    if (result?.publication)
+      router.replace({ pathname: '/inicio/review/[id]', params: { id: result.publication.id } });
+    else if (result?.rating)
+      router.replace({ pathname: '/explorar/anime/[id]', params: { id: anime.id } });
+  }
+  return (
+    <>
+      <AnimeRow anime={anime} />
+      <View style={ui.card}>
+        {!existing && !locked && (
+          <Chips options={['Review', 'Solo valoración']} value={kind} onChange={setKind} />
+        )}
+        <Text style={ui.text}>Tu puntuación</Text>
+        <StarRating
+          value={rating}
+          onChange={(value) => {
+            if (!locked) setRating(value);
+          }}
+        />
+        <Text style={ui.accent}>{rating ? rating + ' / 5' : 'Elegí una puntuación'}</Text>
+        <Field
+          label="Fecha de visto (opcional)"
+          placeholder="AAAA-MM-DD"
+          value={date}
+          onChange={setDate}
+          maxLength={10}
+          disabled={locked}
+        />
+        <Toggle
+          label="Lo volví a ver"
+          value={rewatched}
+          onChange={setRewatched}
+          disabled={locked}
+        />
+      </View>
+      {isReview && (
+        <>
+          <Field
+            label="Título (opcional)"
+            value={title}
+            onChange={setTitle}
+            maxLength={100}
+            disabled={locked}
+          />
+          <Field
+            label="Tu review"
+            value={text}
+            onChange={setText}
+            maxLength={2000}
+            multiline
+            disabled={locked}
+          />
+          <Text style={ui.muted}>{text.length}/2000 · mínimo 10 caracteres</Text>
+          <Toggle
+            label="Contiene spoilers"
+            value={spoiler}
+            onChange={setSpoiler}
+            disabled={locked}
+          />
+        </>
+      )}
+      <Notice error={mutation.error} />
+      {mutation.uncertain && (
+        <Text style={ui.muted}>
+          Conservamos el envío. Reintentá para confirmar si se guardó, sin duplicarlo.
+        </Text>
+      )}
+      <Action
+        label={
+          mutation.pending
+            ? 'Guardando…'
+            : mutation.uncertain
+              ? 'Reintentar el mismo envío'
+              : existing
+                ? 'Guardar cambios'
+                : isReview
+                  ? 'Publicar review'
+                  : 'Guardar valoración'
+        }
+        primary
+        disabled={!valid || mutation.pending}
+        onPress={() => void save()}
+      />
+    </>
+  );
+}

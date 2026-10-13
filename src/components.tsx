@@ -1,6 +1,5 @@
-import { publicationAnimeIds, type Publication } from './publications';
-import { usePublications } from './context/PublicationsContext';
-import { useDirectory } from './useDirectory';
+import { dateLabel, type Publication, type Anime, type AnimeList, type User } from './models';
+import { useMutation } from './remote';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState, type ComponentProps, type ReactNode } from 'react';
@@ -18,10 +17,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { findAnime, type Anime, type AnimeList, type User } from './mock';
 import { theme } from './theme';
 import { useSession } from './context/SessionContext';
-import { useSocial } from './context/SocialContext';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -62,7 +59,7 @@ export function StarRating({
   const selected = value ?? 0;
   const hitSize = size + 10;
   return (
-    <View style={styles.starRating} accessibilityRole="adjustable">
+    <View style={styles.starRating}>
       {Array.from({ length: 5 }, (_, index) => {
         const fullValue = index + 1;
         const halfValue = index + 0.5;
@@ -77,6 +74,7 @@ export function StarRating({
                   key={next}
                   accessibilityRole="button"
                   accessibilityLabel={`Puntuar ${next} de 5`}
+                  accessibilityState={{ selected: selected === next }}
                   onPress={() => onChange(selected === next ? undefined : next)}
                   style={styles.starHalf}
                 />
@@ -99,28 +97,18 @@ export function Avatar({
   size?: number;
   onPress?: () => void;
 }) {
-  const [failedImage, setFailedImage] = useState<User['image'] | null>(null);
   const { user: currentUser } = useSession();
-  const { findUser } = useDirectory();
-  const user = profile ?? findUser(currentUser?.id);
+  const user = profile ?? currentUser;
   if (!user) return null;
   return (
     <Pressable
       disabled={!onPress}
       onPress={onPress}
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={`Perfil de ${user.name}`}
+      accessibilityLabel={'Perfil de ' + user.name}
       style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
     >
-      {failedImage === user.image ? (
-        <Text style={styles.initial}>{user.name.slice(0, 1)}</Text>
-      ) : (
-        <Image
-          source={user.image}
-          onError={() => setFailedImage(user.image)}
-          style={{ width: size, height: size, borderRadius: size / 2 }}
-        />
-      )}
+      <Text style={styles.initial}>{(user.name || user.handle).slice(0, 1).toUpperCase()}</Text>
     </Pressable>
   );
 }
@@ -281,18 +269,24 @@ export function AnimeCard({
           backgroundColor: theme.colors.surfaceLight,
         }}
       >
-        {failed ? (
+        {failed || !item.imageUrl ? (
           <View style={styles.imageFallback}>
             <Ionicons name="image-outline" size={28} color={theme.colors.primarySoft} />
             <Text style={styles.meta}>Imagen no disponible</Text>
           </View>
         ) : (
-          <Image source={item.image} style={styles.poster} onError={() => setFailed(true)} />
+          <Image
+            source={{ uri: item.imageUrl! }}
+            style={styles.poster}
+            onError={() => setFailed(true)}
+          />
         )}
-        <View style={styles.ratingBadge}>
-          <Ionicons name="star" size={11} color={theme.colors.primarySoft} />
-          <Text style={styles.badgeText}>{item.rating.toFixed(1)}</Text>
-        </View>
+        {item.statistics?.averageRating != null && (
+          <View style={styles.ratingBadge}>
+            <Ionicons name="star" size={11} color={theme.colors.primarySoft} />
+            <Text style={styles.badgeText}>{item.statistics?.averageRating?.toFixed(1)}</Text>
+          </View>
+        )}
         {rank !== undefined && (
           <View style={styles.rankBadge}>
             <Text style={styles.badgeText}>#{rank}</Text>
@@ -303,7 +297,7 @@ export function AnimeCard({
         <Text numberOfLines={1} style={styles.animeTitle}>
           {item.title}
         </Text>
-        {landscape && <Text style={styles.smallRating}>★ {item.rating.toFixed(1)}</Text>}
+        {landscape && item.year && <Text style={styles.meta}>{item.year}</Text>}
       </View>
     </Pressable>
   );
@@ -506,8 +500,6 @@ export function Progress({
 
 // Listas: resumen que recibe siempre la colección actualizada del contexto.
 export function ListCard({ list }: { list: AnimeList }) {
-  const { findUser } = useDirectory();
-
   return (
     <Pressable
       accessibilityRole="button"
@@ -516,11 +508,11 @@ export function ListCard({ list }: { list: AnimeList }) {
     >
       <Text style={styles.reviewAuthor}>{list.title}</Text>
       <Text style={styles.meta}>
-        Por {findUser(list.userId)?.name} · {list.animeIds.length} animes ·{' '}
+        Por {list.author.name} · {list.animeIds.length} animes ·{' '}
         {list.ordered ? 'Top personal' : 'Colección'}
       </Text>
       <Text style={styles.reviewText}>{list.description}</Text>
-      <Text style={styles.meta}>♡ {list.likes}</Text>
+      <Text style={styles.meta}>♡ {list.likeCount}</Text>
     </Pressable>
   );
 }
@@ -594,16 +586,16 @@ export function PublicationContent({
     return <SpoilerCover onReveal={onReveal ?? (() => setVisible(true))} />;
   return (
     <View style={styles.reviewContent}>
-      {publicationAnimeIds(review).map((id) => (
+      {(review.anime ? [review.anime] : review.mentionedAnime).map((anime) => (
         <Pressable
-          key={id}
+          key={anime.id}
           accessibilityRole="link"
           onPress={(event) => {
             event.stopPropagation();
-            router.push({ pathname: '/explorar/anime/[id]', params: { id } });
+            router.push({ pathname: '/explorar/anime/[id]', params: { id: anime.id } });
           }}
         >
-          <Text style={{ color: theme.colors.primarySoft }}>#{findAnime(id)?.title}</Text>
+          <Text style={{ color: theme.colors.primarySoft }}>#{anime.title}</Text>
         </Pressable>
       ))}
       {!!review.tags.length && (
@@ -633,54 +625,34 @@ export function PublicationContent({
   );
 }
 export function PublicationCard({ review, feed = false }: { review: Publication; feed?: boolean }) {
-  const [sharing, setSharing] = useState(false);
-  const { findUser } = useDirectory();
-  const { user } = useSession();
-  const { getLikedIds, toggleLike } = usePublications();
-  const { getFollowingIds, toggleFollowing } = useSocial();
-  const author = findUser(review.userId);
-  const item = findAnime(review.animeId);
-  const liked = user ? getLikedIds(user.id).includes(review.id) : false;
-  const following = user ? getFollowingIds(user.id).includes(review.userId) : false;
+  const mutation = useMutation();
+  const author = review.author;
+  const item = review.anime;
   const openReview = () =>
     router.push({ pathname: '/inicio/review/[id]', params: { id: review.id } });
+  const openAuthor = () =>
+    router.push({ pathname: '/perfil/usuario/[id]', params: { id: author.id } });
   return (
     <View style={styles.review}>
       <View style={styles.reviewHeader}>
-        <Avatar
-          user={author}
-          size={feed ? 48 : 34}
-          onPress={() =>
-            router.push({ pathname: '/perfil/usuario/[id]', params: { id: review.userId } })
-          }
-        />
-        <Pressable
-          style={styles.heading}
-          accessibilityRole="button"
-          onPress={() =>
-            router.push({ pathname: '/perfil/usuario/[id]', params: { id: review.userId } })
-          }
-        >
-          <Text style={styles.reviewAuthor}>{author?.name ?? 'Usuario'}</Text>
+        <Avatar user={author} size={feed ? 48 : 34} onPress={openAuthor} />
+        <Pressable style={styles.heading} accessibilityRole="button" onPress={openAuthor}>
+          <Text style={styles.reviewAuthor}>{author.name}</Text>
           <Text style={styles.meta}>
-            {item?.title ?? 'Publicación'} · {review.time}
+            {item?.title ?? 'Posteo'} · {dateLabel(review.createdAt)}
           </Text>
+          {review.updatedAt && (
+            <Text style={styles.meta}>Editado {dateLabel(review.updatedAt)}</Text>
+          )}
         </Pressable>
-        {review.rating !== undefined && (
+        {review.rating != null && (
           <Text style={styles.reviewRating}>★ {review.rating.toFixed(1)}</Text>
-        )}
-        {feed && user && user.id !== review.userId && (
-          <Action
-            label={following ? 'Siguiendo' : 'Seguir'}
-            onPress={() => toggleFollowing(user.id, review.userId)}
-          />
         )}
       </View>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Abrir publicación"
         onPress={openReview}
-        style={styles.reviewContent}
       >
         <PublicationContent
           key={review.id + String(review.spoiler)}
@@ -690,51 +662,49 @@ export function PublicationCard({ review, feed = false }: { review: Publication;
       </Pressable>
       {feed && item && (
         <Pressable
-          accessibilityRole="button"
           onPress={() => router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })}
           style={styles.reviewHeader}
         >
-          <Image source={item.image} style={{ width: 56, height: 80, borderRadius: 8 }} />
+          {item.imageUrl && (
+            <Image
+              source={{ uri: item.imageUrl }}
+              style={{ width: 56, height: 80, borderRadius: 8 }}
+            />
+          )}
           <View style={styles.heading}>
             <Text style={styles.reviewAuthor}>{item.title}</Text>
-            <Text style={styles.meta}>
-              {item.year} · ★ {item.rating.toFixed(1)}
-            </Text>
+            <Text style={styles.meta}>{item.year ?? 'Año sin datos'}</Text>
             <Text style={styles.meta} numberOfLines={3}>
               {item.synopsis}
             </Text>
           </View>
         </Pressable>
       )}
-      <View style={[styles.reviewHeader, { flexWrap: 'wrap' }]}>
+      <View style={styles.reviewHeader}>
         <SocialAction
-          count={review.likes}
-          label={liked ? 'Quitar like' : 'Dar like'}
-          icon={liked ? 'heart' : 'heart-outline'}
-          active={liked}
-          disabled={!user}
-          onPress={() => {
-            if (user) toggleLike(user.id, review.id);
-          }}
+          count={review.likeCount}
+          label={review.likedByMe ? 'Quitar like' : 'Dar like'}
+          icon={review.likedByMe ? 'heart' : 'heart-outline'}
+          active={review.likedByMe}
+          disabled={mutation.pending}
+          onPress={() =>
+            void mutation.run('/publications/' + review.id + '/like', {
+              method: review.likedByMe ? 'DELETE' : 'PUT',
+            })
+          }
         />
         <SocialAction
-          count={review.comments}
+          count={review.commentCount}
           label="Ver comentarios"
           icon="chatbubble-outline"
           onPress={openReview}
         />
-        <SocialAction
-          label="Compartir publicación"
-          icon="share-outline"
-          onPress={() => setSharing(true)}
-        />
       </View>
-      <Dialog
-        visible={sharing}
-        title="Compartir publicación"
-        text="Demostración: esta publicación local todavía no tiene un enlace público para compartir."
-        onClose={() => setSharing(false)}
-      />
+      {!!mutation.error && (
+        <Text accessibilityRole="alert" style={{ color: theme.colors.accent }}>
+          {mutation.error}
+        </Text>
+      )}
     </View>
   );
 }

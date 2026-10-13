@@ -1,141 +1,116 @@
-import { useLists } from '../../src/context/ListsContext';
-import { usePublications } from '../../src/context/PublicationsContext';
-import { useCurrentUser } from '../../src/useCurrentUser';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import {
-  Action,
-  AnimeCard,
-  Chips,
-  EmptyState,
-  ListCard,
-  PublicationCard,
-  Screen,
-  SearchBar,
-  Section,
-} from '../../src/components';
-import { anime, findAnime, getParam } from '../../src/mock';
-import { useAppState } from '../../src/context/AppState';
-import { theme } from '../../src/theme';
-
-export default function BibliotecaScreen() {
-  const { lists } = useLists();
-  const { publications, getLikedIds } = usePublications();
-
-  const currentUser = useCurrentUser();
-  const currentLikedReviewIds = getLikedIds(currentUser.id);
-
-  const params = useLocalSearchParams();
-  const options = ['Watchlist', 'Vistos', 'Favoritos', 'Listas', 'Likes'];
-  const requested =
-    getParam(params.tab) ?? getParam(params.filter) ?? getParam(params.filtro) ?? 'Watchlist';
+import { Text, View } from 'react-native';
+import { Screen, Chips, Action, ListCard } from '../../src/components';
+import { useSession } from '../../src/context/SessionContext';
+import { usePage, useQuery, useMutation } from '../../src/remote';
+import { query } from '../../src/api';
+import { AnimeRow, LoadState, Notice, PageEnd, ui } from '../../src/remote-ui';
+import type { LibraryItem, Favorite, AnimeList } from '../../src/models';
+export default function Biblioteca() {
+  const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState(
-    options.find((option) => option.toLowerCase() === requested.toLowerCase()) ?? 'Watchlist',
+    ['Watchlist', 'Vistos', 'Favoritos', 'Listas'].includes(params.tab ?? '')
+      ? params.tab!
+      : 'Watchlist',
   );
-  const [query, setQuery] = useState('');
-  const { likedIds, updateActivity, watchedIds, watchlistIds } = useAppState();
-  const { width: windowWidth } = useWindowDimensions();
-  const width = Math.min(windowWidth, theme.layout.maxWidth);
-  // TODO BACKEND [BIBLIOTECA]: consultar colecciones y likes de currentUser.id según el selector y texto.
-  const collectionIds =
-    tab === 'Watchlist' ? watchlistIds : tab === 'Vistos' ? watchedIds : likedIds;
-  const results = anime.filter(
-    (item) =>
-      collectionIds.includes(item.id) &&
-      item.title.toLowerCase().includes(query.toLowerCase().trim()),
+  const { user } = useSession();
+  const library = usePage<LibraryItem>(
+    tab === 'Watchlist' || tab === 'Vistos'
+      ? query('/me/library', { collection: tab === 'Vistos' ? 'watched' : 'watchlist' })
+      : null,
   );
-  const ownLists = lists.filter(
-    (item) =>
-      item.userId === currentUser.id &&
-      `${item.title} ${item.description}`.toLowerCase().includes(query.toLowerCase().trim()),
+  const favorites = useQuery<{ items: Favorite[]; total: number }>(
+    tab === 'Favoritos' ? '/me/favorites' : null,
   );
-  const likedReviews = publications.filter(
-    (item) =>
-      currentLikedReviewIds.includes(item.id) &&
-      `${item.text} ${findAnime(item.animeId)?.title ?? ''}`
-        .toLowerCase()
-        .includes(query.toLowerCase().trim()),
-  );
-  const count =
-    tab === 'Listas' ? ownLists.length : tab === 'Likes' ? likedReviews.length : results.length;
-  const removeAnime = (animeId: string) => {
-    // TODO BACKEND [COLECCION-QUITAR]: reemplazar esta actualización local por la operación correspondiente.
-    if (tab === 'Watchlist') updateActivity(animeId, { watchlist: false });
-    if (tab === 'Vistos') updateActivity(animeId, { watched: false });
-    if (tab === 'Favoritos') updateActivity(animeId, { liked: false });
-  };
-
+  const lists = usePage<AnimeList>(tab === 'Listas' ? query('/lists', { userId: user?.id }) : null);
+  const mutation = useMutation();
+  const ids = favorites.data?.items.map((item) => item.anime.id) ?? [];
+  async function move(index: number, delta: number) {
+    const next = [...ids];
+    [next[index], next[index + delta]] = [next[index + delta], next[index]];
+    await mutation.run('/me/favorites', { method: 'PUT', body: { animeIds: next } });
+  }
   return (
     <Screen
       title="Mi biblioteca"
       subtitle="Las historias que viste, guardaste y querés recordar."
       back
     >
-      <Chips options={options} value={tab} onChange={setTab} variant="underline" />
-      <SearchBar
-        value={query}
-        onChangeText={setQuery}
-        placeholder={`Buscar en ${tab.toLowerCase()}`}
+      <Chips
+        options={['Watchlist', 'Vistos', 'Favoritos', 'Listas']}
+        value={tab}
+        onChange={setTab}
+        variant="underline"
       />
-      <Section
-        title={`${count} ${tab === 'Listas' ? 'listas' : tab === 'Likes' ? 'publicaciones' : 'animes'}`}
-        onPress={tab === 'Listas' ? () => router.push('/perfil/listas/editar') : undefined}
-        action="Nueva lista"
-      />
-      {count === 0 && (
-        <EmptyState
-          title={query ? 'Sin coincidencias' : 'Tu colección está vacía'}
-          text={query ? 'Probá con otro nombre.' : 'Descubrí una historia y guardala para después.'}
-          action={query ? 'Limpiar búsqueda' : tab === 'Listas' ? 'Crear lista' : 'Explorar anime'}
-          onPress={() =>
-            query
-              ? setQuery('')
-              : router.push(tab === 'Listas' ? '/perfil/listas/editar' : '/explorar')
-          }
-        />
-      )}
-      {!['Listas', 'Likes'].includes(tab) && (
-        <View style={styles.grid}>
-          {results.map((item) => (
-            <View key={item.id} style={styles.item}>
-              <AnimeCard item={item} width={Math.min(180, (width - 44) / 2)} />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Quitar ${item.title} de ${tab}`}
-                onPress={() => removeAnime(item.id)}
-                style={styles.remove}
-              >
-                <Text style={styles.link}>Quitar de {tab.toLowerCase()}</Text>
-              </Pressable>
-            </View>
+      <Notice error={mutation.error} />
+      {tab === 'Listas' ? (
+        <>
+          <Action
+            label="Crear lista"
+            primary
+            onPress={() => router.push('/perfil/listas/editar')}
+          />
+          {lists.items.map((list) => (
+            <ListCard key={list.id} list={list} />
           ))}
-        </View>
-      )}
-      {tab === 'Listas' && ownLists.map((item) => <ListCard key={item.id} list={item} />)}
-      {tab === 'Likes' &&
-        likedReviews.map((item) => <PublicationCard key={item.id} review={item} />)}
-      <View style={styles.note}>
-        <Text style={styles.meta}>
-          Colecciones de ejemplo. Los cambios se muestran en esta vista.
-        </Text>
-      </View>
-      {tab !== 'Listas' && (
-        <Action
-          label="Organizar una nueva lista"
-          icon="albums-outline"
-          onPress={() => router.push('/perfil/listas/editar')}
-        />
+          <PageEnd page={lists} />
+        </>
+      ) : tab === 'Favoritos' ? (
+        <>
+          <LoadState {...favorites} empty={!!favorites.data && !ids.length} />
+          <Text style={ui.muted}>{favorites.data?.total ?? 0} favoritos</Text>
+          {favorites.data?.items.map((item, index) => (
+            <AnimeRow key={item.anime.id} anime={item.anime}>
+              <View style={ui.wrap}>
+                <Action
+                  label="Quitar"
+                  disabled={mutation.pending}
+                  onPress={() =>
+                    void mutation.run('/me/favorites', {
+                      method: 'PUT',
+                      body: { animeIds: ids.filter((id) => id !== item.anime.id) },
+                    })
+                  }
+                />
+                <Action
+                  label="Subir"
+                  disabled={index === 0 || mutation.pending}
+                  onPress={() => void move(index, -1)}
+                />
+                <Action
+                  label="Bajar"
+                  disabled={index === ids.length - 1 || mutation.pending}
+                  onPress={() => void move(index, 1)}
+                />
+              </View>
+            </AnimeRow>
+          ))}
+        </>
+      ) : (
+        <>
+          {library.data?.total !== undefined && (
+            <Text style={ui.muted}>{library.data.total} animes</Text>
+          )}
+          {library.items.map((item) => (
+            <AnimeRow key={item.anime.id} anime={item.anime}>
+              {tab === 'Watchlist' && (
+                <Action
+                  label="Quitar de watchlist"
+                  disabled={mutation.pending}
+                  onPress={() =>
+                    void mutation.run('/me/library/' + encodeURIComponent(item.anime.id), {
+                      method: 'PATCH',
+                      body: { watchlist: false },
+                    })
+                  }
+                />
+              )}
+            </AnimeRow>
+          ))}
+          <PageEnd page={library} />
+        </>
       )}
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
-  item: { gap: 3 },
-  remove: { paddingVertical: 8 },
-  meta: { color: theme.colors.textSecondary, fontSize: 12, lineHeight: 18 },
-  link: { color: theme.colors.primarySoft, fontSize: 11 },
-  note: { paddingVertical: 8 },
-});

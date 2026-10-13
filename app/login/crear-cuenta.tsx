@@ -1,3 +1,4 @@
+import { request, errorMessage } from '../../src/api';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -10,6 +11,7 @@ export default function CrearCuentaScreen() {
   const [contrasena, setContrasena] = useState('');
   const [confirmacion, setConfirmacion] = useState('');
   const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
   const [validado, setValidado] = useState(false);
 
   useEffect(() => {
@@ -18,16 +20,25 @@ export default function CrearCuentaScreen() {
     return () => clearTimeout(timer);
   }, [validado]);
 
-  const registrar = () => {
-    if (validado) return;
+  const registrar = async () => {
+    if (validado || pending) return;
     const message = validarRegistro(usuario, contrasena, confirmacion);
     setError(message);
     if (message) return;
-    // TODO BACKEND [REGISTRO]: crear la cuenta mediante API antes de confirmar; disponibilidad de usuario y contraseña se validan también en servidor.
-    // Solo valida: no guarda una cuenta ni modifica el JSON de usuarios.
-    setContrasena('');
-    setConfirmacion('');
-    setValidado(true);
+    setPending(true);
+    try {
+      await request('/auth/register', null, {
+        method: 'POST',
+        body: { handle: usuario.trim(), password: contrasena },
+      });
+      setContrasena('');
+      setConfirmacion('');
+      setValidado(true);
+    } catch (error) {
+      setError(errorMessage(error));
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -35,10 +46,10 @@ export default function CrearCuentaScreen() {
       {validado ? (
         <View style={styles.form}>
           <Text accessibilityRole="alert" style={styles.label}>
-            Datos válidos. Registro simulado correctamente; no se creó una cuenta real.
+            Tu cuenta se creó correctamente.
           </Text>
           <Text style={styles.help}>
-            En 3 segundos volvés a iniciar sesión con las cuentas de prueba.
+            En 3 segundos volvés a iniciar sesión con tu nueva cuenta.
           </Text>
         </View>
       ) : (
@@ -102,9 +113,10 @@ export default function CrearCuentaScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={registrar}
+            disabled={pending}
             style={({ pressed }) => [styles.submit, pressed && styles.submitPressed]}
           >
-            <Text style={styles.submitText}>Crear cuenta</Text>
+            <Text style={styles.submitText}>{pending ? 'Creando…' : 'Crear cuenta'}</Text>
           </Pressable>
           <Text style={styles.signIn}>
             ¿Ya tenés cuenta?{' '}

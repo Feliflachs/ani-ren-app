@@ -1,152 +1,56 @@
-import { useDirectory } from '../../../src/useDirectory';
-import { useLists } from '../../../src/context/ListsContext';
-import { useCurrentUser } from '../../../src/useCurrentUser';
 import { router, useLocalSearchParams } from 'expo-router';
-
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Action, AnimeCard, Avatar, EmptyState, Screen, Section } from '../../../src/components';
-
-import { findAnime, getParam } from '../../../src/mock';
-import { theme } from '../../../src/theme';
-
-export default function ListaScreen() {
-  const { findUser } = useDirectory();
-  const { lists, toggleLike: toggleListLike, isLiked } = useLists();
-
-  const currentUser = useCurrentUser();
-
-  const params = useLocalSearchParams();
-
-  // TODO BACKEND [LISTA-DETALLE]: consultar lista por id, autor, pertenencia y orden de animeIds.
-  const list = lists.find((item) => item.id === getParam(params.id));
-  const liked = isLiked(currentUser.id, getParam(params.id) ?? '');
-  if (!list)
-    return (
-      <Screen title="Lista" back>
-        <EmptyState
-          title="Esta lista no está disponible"
-          text="Puede haberse eliminado o el enlace no ser correcto."
-          action="Ver mi biblioteca"
-          onPress={() =>
-            router.replace({ pathname: '/perfil/biblioteca', params: { tab: 'Listas' } })
-          }
-        />
-      </Screen>
-    );
-  const author = findUser(list.userId);
-  const own = list.userId === currentUser.id;
-  const animeIds = list.animeIds;
-  const items = animeIds.map(findAnime).filter((item) => item !== undefined);
-  const toggleLike = () => {
-    // TODO BACKEND [LISTA-LIKE]: hoy cambia un contador local; guardar like de currentUser.id a list.id.
-    toggleListLike(currentUser.id, list.id);
-  };
+import { Text } from 'react-native';
+import { Screen, Action } from '../../../src/components';
+import { useSession } from '../../../src/context/SessionContext';
+import { useQuery, useMutation } from '../../../src/remote';
+import { AnimeRow, LoadState, Notice, UserRow, ui } from '../../../src/remote-ui';
+import { dateLabel, type AnimeList } from '../../../src/models';
+export default function Lista() {
+  const { id } = useLocalSearchParams<{ id: string }>(),
+    { user } = useSession();
+  const result = useQuery<{ list: AnimeList }>('/lists/' + encodeURIComponent(id));
+  const mutation = useMutation(),
+    list = result.data?.list;
   return (
-    <Screen title={list.ordered ? 'Top personal' : 'Lista de anime'} back>
-      <View style={styles.hero}>
-        <Text style={styles.title}>{list.title}</Text>
-        <Text style={styles.body}>{list.description}</Text>
-        <View style={styles.row}>
-          <Avatar
-            user={author}
-            size={38}
-            onPress={() =>
-              router.push({ pathname: '/perfil/usuario/[id]', params: { id: list.userId } })
-            }
-          />
-          <Pressable
-            accessibilityRole="button"
-            onPress={() =>
-              router.push({ pathname: '/perfil/usuario/[id]', params: { id: list.userId } })
-            }
-            style={styles.grow}
-          >
-            <Text style={styles.name}>{author?.name ?? 'Usuario'}</Text>
-            <Text style={styles.meta}>
-              {items.length} animes · {list.ordered ? 'Lista ordenada' : 'Colección'}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-      <View style={styles.actions}>
-        <View style={styles.grow}>
+    <Screen title={list?.title ?? 'Lista'} back>
+      {list && !!result.error && (
+        <LoadState loading={false} error={result.error} reload={result.reload} />
+      )}
+      {list ? (
+        <>
+          <UserRow user={list.author} />
+          <Text style={ui.text}>{list.description}</Text>
+          <Text style={ui.muted}>
+            {list.itemCount} animes · {dateLabel(list.createdAt)}
+          </Text>
+          {list.updatedAt && <Text style={ui.muted}>Editada {dateLabel(list.updatedAt)}</Text>}
           <Action
-            label={`${liked ? 'Te gusta' : 'Me gusta'} · ${list.likes}`}
-            icon={liked ? 'heart' : 'heart-outline'}
-            active={liked}
-            onPress={toggleLike}
+            label={(list.likedByMe ? 'Quitar like' : 'Me gusta') + ' · ' + list.likeCount}
+            icon={list.likedByMe ? 'heart' : 'heart-outline'}
+            active={list.likedByMe}
+            disabled={mutation.pending}
+            onPress={() =>
+              void mutation.run('/lists/' + id + '/like', {
+                method: list.likedByMe ? 'DELETE' : 'PUT',
+              })
+            }
           />
-        </View>
-        {own && (
-          <View style={styles.grow}>
+          <Notice error={mutation.error} />
+          {list.userId === user?.id && (
             <Action
               label="Editar lista"
-              icon="create-outline"
-              onPress={() =>
-                router.push({ pathname: '/perfil/listas/editar', params: { id: list.id } })
-              }
+              onPress={() => router.push({ pathname: '/perfil/listas/editar', params: { id } })}
             />
-          </View>
-        )}
-      </View>
-      <Section title={list.ordered ? 'El orden de mis favoritos' : 'Historias de esta colección'} />
-      {items.length === 0 && (
-        <EmptyState
-          title="Todavía no hay anime"
-          text="Esta colección está esperando su primera historia."
-        />
+          )}
+          {list.items.map((item) => (
+            <AnimeRow key={item.anime.id} anime={item.anime}>
+              {list.ordered && <Text style={ui.accent}>#{item.position + 1}</Text>}
+            </AnimeRow>
+          ))}
+        </>
+      ) : (
+        <LoadState {...result} />
       )}
-      {items.map((item, index) => (
-        <View key={item.id} style={styles.card}>
-          {list.ordered && <Text style={styles.position}>#{index + 1}</Text>}
-          <AnimeCard item={item} width={74} />
-          <Pressable
-            accessibilityRole="button"
-            onPress={() =>
-              router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })
-            }
-            style={styles.grow}
-          >
-            <Text style={styles.name}>{item.title}</Text>
-            <Text style={styles.meta}>
-              {item.year} · {item.episodes} episodios
-            </Text>
-            <Text style={styles.body}>{item.genres.join(' · ')}</Text>
-            <Text style={styles.rating}>★ {item.rating.toFixed(1)}</Text>
-          </Pressable>
-        </View>
-      ))}
-      <Text style={styles.meta}>Lista de ejemplo. Los likes de esta vista son temporales.</Text>
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  hero: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 18,
-    padding: 18,
-    gap: 14,
-  },
-  title: { color: theme.colors.text, fontSize: 23, fontWeight: '700', lineHeight: 29 },
-  body: { color: theme.colors.textSecondary, fontSize: 13, lineHeight: 20 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  actions: { flexDirection: 'row', gap: 8 },
-  grow: { flex: 1, minWidth: 0, gap: 7 },
-  name: { color: theme.colors.text, fontSize: 14, fontWeight: '600' },
-  meta: { color: theme.colors.textSecondary, fontSize: 12, lineHeight: 18 },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    padding: 12,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 14,
-  },
-  position: { color: theme.colors.primarySoft, fontSize: 18, fontWeight: '700', width: 29 },
-  rating: { color: theme.colors.primarySoft, fontSize: 15, fontWeight: '600' },
-});

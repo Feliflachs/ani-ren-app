@@ -1,147 +1,103 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
-import { Action, EmptyState, Screen } from '../../src/components';
-import { usePublications } from '../../src/context/PublicationsContext';
-import { useCurrentUser } from '../../src/useCurrentUser';
-import { anime, getParam } from '../../src/mock';
-import { normalizeTag } from '../../src/publications';
-import { theme } from '../../src/theme';
-
-export default function PosteoScreen() {
-  const { publications, savePost } = usePublications();
-  const user = useCurrentUser();
-  const params = useLocalSearchParams();
-  const id = getParam(params.id);
-  const existing = publications.find((p) => p.id === id && p.kind === 'post');
-  const [text, setText] = useState(existing?.text ?? '');
-  const [spoiler, setSpoiler] = useState(existing?.spoiler ?? false);
-  const [animeIds, setAnimeIds] = useState<string[]>(
-    existing?.kind === 'post' ? existing.animeIds : [],
+import { Text, View } from 'react-native';
+import { Screen, Action, EmptyState } from '../../src/components';
+import { useSession } from '../../src/context/SessionContext';
+import { useMutation, useQuery } from '../../src/remote';
+import { AnimePicker, Field, LoadState, Notice, Toggle, ui } from '../../src/remote-ui';
+import type { Anime, Publication } from '../../src/models';
+export default function Posteo() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const result = useQuery<{ publication: Publication }>(
+    id ? '/publications/' + encodeURIComponent(id) : null,
   );
-  const [query, setQuery] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  async function publish() {
-    // TODO BACKEND [POSTEO-FORMULARIO]: la conexión va en PublicationsContext.savePost; conservar borrador y errores aquí.
-    if (saving || text.trim().length < 3) return;
-    setSaving(true);
-    setError('');
-    try {
-      const postId = await savePost(user.id, { text, spoiler, animeIds }, id);
-      router.replace({ pathname: '/inicio/review/[id]', params: { id: postId } });
-    } catch {
-      setError('No pudimos guardar el posteo. Tu texto sigue acá; volvé a intentarlo.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (id && (!existing || existing.userId !== user.id))
-    return (
-      <Screen title="Posteo" back>
-        <EmptyState text="No encontrás este posteo o no te pertenece." />
-      </Screen>
-    );
-
+  const existing = result.data?.publication;
+  const { user } = useSession();
   return (
-    <Screen
-      title={id ? 'Editar posteo' : 'Crear posteo'}
-      back
-      subtitle="Preguntá, recomendá o compartí una idea."
-    >
-      <TextInput
-        accessibilityLabel="Texto del posteo"
-        value={text}
-        onChangeText={setText}
-        multiline
-        maxLength={2000}
-        editable={!saving}
-        placeholder="Busco algo parecido a #Frieren, ¿qué recomiendan?"
-        placeholderTextColor={theme.colors.textSecondary}
-        style={[styles.input, styles.textarea]}
-      />
-      <Text style={styles.meta}>{text.length} / 2000 · Mínimo 3 caracteres.</Text>
-      <Text style={styles.label}>Animes mencionados (opcional)</Text>
-      <Text style={styles.meta}>
-        Elegí un anime para vincularlo a su ficha. También podés escribir hashtags en el texto.
-      </Text>
-      <View style={styles.tags}>
-        {animeIds.map((animeId) => (
-          <Action
-            key={animeId}
-            label={`#${normalizeTag(animeId)} ×`}
-            active
-            disabled={saving}
-            onPress={() => setAnimeIds((previous) => previous.filter((value) => value !== animeId))}
-          />
-        ))}
-      </View>
-      <TextInput
-        accessibilityLabel="Buscar anime para mencionar"
-        value={query}
-        onChangeText={setQuery}
-        editable={!saving}
-        placeholder="Buscar anime"
-        placeholderTextColor={theme.colors.textSecondary}
-        style={styles.input}
-      />
-      {!!query.trim() &&
-        anime
-          .filter(
-            (item) =>
-              !animeIds.includes(item.id) &&
-              item.title.toLowerCase().includes(query.trim().toLowerCase()),
-          )
-          .map((item) => (
-            <Action
-              key={item.id}
-              label={item.title}
-              disabled={saving}
-              onPress={() => {
-                setAnimeIds((previous) => [...previous, item.id]);
-                setQuery('');
-              }}
-            />
-          ))}
-      <View style={styles.row}>
-        <Text style={styles.label}>Contiene spoilers</Text>
-        <Switch
-          accessibilityLabel="El posteo contiene spoilers"
-          value={spoiler}
-          onValueChange={setSpoiler}
-          disabled={saving}
-        />
-      </View>
-      {!!error && (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {error}
-        </Text>
+    <Screen title={id ? 'Editar posteo' : 'Crear posteo'} back>
+      {existing && !!result.error && (
+        <LoadState loading={false} error={result.error} reload={result.reload} />
       )}
-      <Action
-        label={saving ? 'Guardando…' : id ? 'Guardar cambios' : 'Publicar'}
-        primary
-        disabled={saving || text.trim().length < 3}
-        onPress={publish}
-      />
+      {id && !existing ? (
+        <LoadState {...result} empty />
+      ) : existing && (existing.userId !== user?.id || existing.kind !== 'post') ? (
+        <EmptyState
+          title="No podés editar este posteo"
+          text="Solo podés editar tus propias publicaciones."
+        />
+      ) : (
+        <PostForm key={id ?? 'new'} existing={existing} />
+      )}
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 12,
-    padding: 14,
-    backgroundColor: theme.colors.surfaceLight,
-    color: theme.colors.text,
-  },
-  textarea: { minHeight: 150, textAlignVertical: 'top' },
-  meta: { color: theme.colors.textSecondary, fontSize: 12 },
-  label: { color: theme.colors.text, fontWeight: '600' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  error: { color: theme.colors.accentSoft },
-});
+function PostForm({ existing }: { existing?: Publication }) {
+  const [text, setText] = useState(existing?.text ?? '');
+  const [spoiler, setSpoiler] = useState(existing?.spoiler ?? false);
+  const [animes, setAnimes] = useState<Anime[]>(existing?.mentionedAnime ?? []);
+  const mutation = useMutation();
+  const locked = mutation.pending || mutation.uncertain;
+  async function save() {
+    const result = await mutation.run<{ publication: Publication }>(
+      existing ? '/posts/' + existing.id : '/posts',
+      {
+        method: existing ? 'PATCH' : 'POST',
+        body: { text: text.trim(), spoiler, animeIds: animes.map((a) => a.id) },
+      },
+    );
+    if (result)
+      router.replace({ pathname: '/inicio/review/[id]', params: { id: result.publication.id } });
+  }
+  return (
+    <>
+      <Field
+        label="¿Qué querés compartir?"
+        value={text}
+        onChange={setText}
+        multiline
+        maxLength={2000}
+        disabled={locked}
+      />
+      <Text style={ui.muted}>{text.length}/2000 · mínimo 3 caracteres</Text>
+      <Toggle label="Contiene spoilers" value={spoiler} onChange={setSpoiler} disabled={locked} />
+      <Text style={ui.title}>Animes mencionados ({animes.length}/10)</Text>
+      <View style={ui.wrap}>
+        {animes.map((anime) => (
+          <Action
+            key={anime.id}
+            label={anime.title + ' ×'}
+            disabled={locked}
+            onPress={() => setAnimes((items) => items.filter((a) => a.id !== anime.id))}
+          />
+        ))}
+      </View>
+      {!locked && animes.length < 10 && (
+        <AnimePicker
+          onSelect={(anime) =>
+            setAnimes((items) => (items.some((a) => a.id === anime.id) ? items : [...items, anime]))
+          }
+        />
+      )}
+      <Notice error={mutation.error} />
+      {mutation.uncertain && (
+        <Text style={ui.muted}>
+          Tu envío quedó pendiente de confirmación. Reintentá con el mismo contenido.
+        </Text>
+      )}
+      <Action
+        label={
+          mutation.pending
+            ? 'Publicando…'
+            : mutation.uncertain
+              ? 'Reintentar envío'
+              : existing
+                ? 'Guardar cambios'
+                : 'Publicar'
+        }
+        primary
+        disabled={mutation.pending || text.trim().length < 3}
+        onPress={() => void save()}
+      />
+    </>
+  );
+}

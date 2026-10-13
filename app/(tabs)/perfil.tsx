@@ -1,8 +1,6 @@
-import { useCurrentUser } from '../../src/useCurrentUser';
 import { PerfilView } from '../../src/PerfilView';
-
-export default function PerfilScreen() {
-  const currentUser = useCurrentUser();
-
-  return <PerfilView user={currentUser} />;
+import { useSession } from '../../src/context/SessionContext';
+export default function Perfil() {
+  const { user } = useSession();
+  return user ? <PerfilView id={user.id} /> : null;
 }

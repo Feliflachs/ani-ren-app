@@ -1,3 +1,5 @@
+> Actualización 12/10/2026: el frontend de main está conectado al backend hermano. README.md describe el estado vigente. Las notas siguientes documentan la demo anterior y no deben usarse como contrato de la API.
+
 # Ani-ren — Plan de pantallas
 
 Estado actualizado al 7/10/2026: pantallas navegables en Expo, login con sesión local y datos de ejemplo compartidos por contextos. Inicio integra Social. Ajustes, Tu perfil anime y Solicitar agregar un anime siguen fuera del alcance. Consultar HANDOFF para el estado funcional y los contratos de datos actuales; este documento conserva las especificaciones visuales.

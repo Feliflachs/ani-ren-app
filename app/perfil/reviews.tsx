@@ -1,30 +1,22 @@
 import { useLocalSearchParams } from 'expo-router';
-import { EmptyState, PublicationCard, Screen } from '../../src/components';
-import { usePublications } from '../../src/context/PublicationsContext';
-import { useCurrentUser } from '../../src/useCurrentUser';
-import { useDirectory } from '../../src/useDirectory';
-import { getParam } from '../../src/mock';
-
-export default function ReviewsScreen() {
-  const params = useLocalSearchParams();
-  const currentUser = useCurrentUser();
-  const { findUser } = useDirectory();
-  const { reviews } = usePublications();
-  const user = findUser(getParam(params.id) ?? currentUser.id);
-  // TODO BACKEND [PERFIL-REVIEWS]: consultar reviews por usuario con paginación mediante PublicationsContext.
-  const userReviews = reviews
-    .filter((review) => review.userId === user?.id)
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-
+import { Screen, PublicationCard } from '../../src/components';
+import { useSession } from '../../src/context/SessionContext';
+import { usePage } from '../../src/remote';
+import { query } from '../../src/api';
+import { PageEnd } from '../../src/remote-ui';
+import type { Publication } from '../../src/models';
+export default function Reviews() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { user } = useSession();
+  const page = usePage<Publication>(
+    query('/publications', { userId: id ?? user?.id, kind: 'review' }),
+  );
   return (
-    <Screen title="Reviews" subtitle={user ? `Todas las reviews de ${user.name}` : undefined} back>
-      {!user ? (
-        <EmptyState title="Usuario no encontrado" />
-      ) : userReviews.length === 0 ? (
-        <EmptyState text="Todavía no hay reviews en este perfil." />
-      ) : (
-        userReviews.map((review) => <PublicationCard key={review.id} review={review} />)
-      )}
+    <Screen title="Reviews" back>
+      {page.items.map((review) => (
+        <PublicationCard key={review.id} review={review} />
+      ))}
+      <PageEnd page={page} />
     </Screen>
   );
 }

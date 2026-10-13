@@ -1,39 +1,22 @@
-import { selectFeed } from '../../src/feed';
-import { usePublications } from '../../src/context/PublicationsContext';
-import { useCurrentUser } from '../../src/useCurrentUser';
 import { useState } from 'react';
 import { Image } from 'react-native';
-import { PublicationCard, Chips, EmptyState, Screen } from '../../src/components';
-import { useAppState } from '../../src/context/AppState';
-
+import { Action, Chips, Screen, PublicationCard } from '../../src/components';
+import { usePage } from '../../src/remote';
+import { PageEnd, Pending } from '../../src/remote-ui';
+import type { Publication } from '../../src/models';
 export default function Inicio() {
-  const { publications, getLikedIds } = usePublications();
-
-  const currentUser = useCurrentUser();
-
-  const { followingIds, likedIds, watchlistIds } = useAppState();
-  const [filter, setFilter] = useState('Para ti');
-
-  const feed = selectFeed(
-    publications,
-    filter,
-    currentUser.id,
-    followingIds,
-    likedIds,
-    watchlistIds,
-    getLikedIds(currentUser.id),
+  const [tab, setTab] = useState('Para ti');
+  const page = usePage<Publication>(
+    tab === 'Tendencia' ? null : '/feed?type=' + (tab === 'Siguiendo' ? 'following' : 'for-you'),
   );
-
   return (
     <Screen
       title={
         <>
           Ani-Ren{' '}
           <Image
-            source={require('../../assets/mascota-transparente.png')}
-            style={{ width: 28, height: 28 }}
-            resizeMode="contain"
-            accessibilityLabel="Símbolo de Ani-ren"
+            source={require('../../assets/mascota-login.png')}
+            style={{ width: 42, height: 42 }}
           />
         </>
       }
@@ -42,21 +25,25 @@ export default function Inicio() {
     >
       <Chips
         options={['Para ti', 'Siguiendo', 'Tendencia']}
-        value={filter}
-        onChange={setFilter}
+        value={tab}
+        onChange={setTab}
         variant="underline"
       />
-      {feed.map((item) => (
-        <PublicationCard key={item.id} review={item} feed />
-      ))}
-      {feed.length === 0 && (
-        <EmptyState
-          text={
-            filter === 'Para ti'
-              ? 'Todavía no hay publicaciones de otras personas que no sigas. Probá otro feed.'
-              : 'Todavía no hay publicaciones acá. Seguí a otras personas o probá otro feed.'
-          }
-        />
+      {tab === 'Tendencia' ? (
+        <Pending text="Las tendencias estarán disponibles más adelante." />
+      ) : (
+        <>
+          <Action
+            label="Actualizar"
+            icon="refresh-outline"
+            disabled={page.loading}
+            onPress={page.reload}
+          />
+          {page.items.map((review) => (
+            <PublicationCard key={review.id} review={review} feed />
+          ))}
+          <PageEnd page={page} />
+        </>
       )}
     </Screen>
   );

@@ -1,74 +1,131 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { buscarCuenta } from '../login';
-import { findUser } from '../mock';
-import cuentas from '../usuarios-demo.json';
-
-const SESSION_KEY = 'ani-ren:sesion';
-
-type SessionValue = {
-  user: { id: string } | null;
-  ready: boolean;
-  signIn: (usuario: string, contrasena: string) => Promise<boolean>;
-  signOut: () => Promise<void>;
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+import { ApiError, errorMessage, request, type RequestOptions } from '../api';
+import type { User } from '../models';
+const KEY = 'ani-ren-session-v2';
+let credentialWrite = Promise.resolve();
+const saveToken = (token: string | null) => {
+  if (Platform.OS === 'web') return Promise.resolve();
+  credentialWrite = credentialWrite
+    .catch(() => {})
+    .then(() => (token ? SecureStore.setItemAsync(KEY, token) : SecureStore.deleteItemAsync(KEY)));
+  return credentialWrite;
 };
-
+type SessionValue = {
+  user: User | null;
+  token: string | null;
+  ready: boolean;
+  restoreError: string;
+  retry: () => void;
+  signIn: (handle: string, password: string) => Promise<boolean>;
+  signOut: () => Promise<void>;
+  updateUser: (user: User) => void;
+  api: <T>(path: string, options?: RequestOptions) => Promise<T>;
+};
 const SessionContext = createContext<SessionValue | null>(null);
-
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<{ id: string } | null>(null);
+  const [session, setSession] = useState<{ user: User; token: string } | null>(null);
   const [ready, setReady] = useState(false);
-
+  const [restoreError, setRestoreError] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
+  const generation = useRef(0);
+  const activeToken = useRef<string | null>(null);
   useEffect(() => {
     let active = true;
-    async function restore() {
-      // TODO BACKEND [SESION-RESTAURAR]: validar/renovar la sesión real; un ID local no autentica al usuario.
+    (async () => {
       try {
-        const id = await AsyncStorage.getItem(SESSION_KEY);
-        const savedUser = cuentas.some((cuenta) => cuenta.id === id)
-          ? findUser(id ?? undefined)
-          : undefined;
-        if (id && !savedUser) await AsyncStorage.removeItem(SESSION_KEY);
-        if (active) setUser(savedUser ? { id: savedUser.id } : null);
-      } catch {
-        // Si no se puede leer, la app permite volver a iniciar sesión.
-        if (active) setUser(null);
+        const token = Platform.OS === 'web' ? null : await SecureStore.getItemAsync(KEY);
+        if (token) {
+          const { user } = await request<{ user: User }>('/auth/me', token);
+          if (active) {
+            activeToken.current = token;
+            setSession({ user, token });
+          }
+        }
+      } catch (error) {
+        if (active && error instanceof ApiError && error.status === 401) await saveToken(null);
+        else if (active) setRestoreError(errorMessage(error));
       } finally {
         if (active) setReady(true);
       }
-    }
-    void restore();
+    })();
     return () => {
       active = false;
     };
-  }, []);
-
-  async function signIn(usuario: string, contrasena: string) {
-    // TODO BACKEND [SESION-ENTRAR]: autenticar con API, retirar cuentas JSON y acordar almacenamiento de credenciales de sesión.
-    const account = buscarCuenta(usuario, contrasena);
-    const profile = account ? findUser(account.id) : undefined;
-    if (!profile) return false;
-    // Solo se recuerda el ID de una cuenta de demostración, nunca la contraseña.
-    await AsyncStorage.setItem(SESSION_KEY, profile.id);
-    setUser({ id: profile.id });
+  }, [retryCount]);
+  const token = session?.token ?? null;
+  const api = useCallback(
+    async <T,>(path: string, options?: RequestOptions) => {
+      if (token !== activeToken.current) throw new Error('La sesión cambió.');
+      const current = generation.current;
+      try {
+        const result = await request<T>(path, token, options);
+        if (current !== generation.current) throw new Error('La sesión cambió.');
+        return result;
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401 && current === generation.current) {
+          generation.current++;
+          activeToken.current = null;
+          setSession(null);
+          await saveToken(null);
+        }
+        throw error;
+      }
+    },
+    [token],
+  );
+  async function signIn(handle: string, password: string) {
+    const response = await request<{ user: User; token: string }>('/auth/login', null, {
+      method: 'POST',
+      body: { handle: handle.trim(), password },
+    });
+    await saveToken(response.token);
+    generation.current++;
+    activeToken.current = response.token;
+    setSession(response);
     return true;
   }
-
   async function signOut() {
-    // TODO BACKEND [SESION-SALIR]: cerrar/revocar la sesión según el contrato y limpiar datos privados/cache de la cuenta.
-    await AsyncStorage.removeItem(SESSION_KEY);
-    setUser(null);
+    await api('/auth/logout', { method: 'POST' });
+    await saveToken(null);
+    generation.current++;
+    activeToken.current = null;
+    setSession(null);
   }
-
   return (
-    <SessionContext.Provider value={{ user, ready, signIn, signOut }}>
+    <SessionContext.Provider
+      value={{
+        user: session?.user ?? null,
+        token,
+        ready,
+        restoreError,
+        retry: () => {
+          setReady(false);
+          setRestoreError('');
+          setRetryCount((n) => n + 1);
+        },
+        signIn,
+        signOut,
+        updateUser: (user) =>
+          setSession((current) => (current?.user.id === user.id ? { ...current, user } : current)),
+        api,
+      }}
+    >
       {children}
     </SessionContext.Provider>
   );
 }
-
 export function useSession() {
-  const session = useContext(SessionContext);
-  if (!session) throw new Error('useSession debe usarse dentro de SessionProvider');
-  return session;
+  const value = useContext(SessionContext);
+  if (!value) throw new Error('Falta SessionProvider');
+  return value;
 }

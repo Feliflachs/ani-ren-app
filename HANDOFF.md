@@ -1,3 +1,5 @@
+> Actualización 12/10/2026: el frontend de main está conectado al backend hermano. README.md describe el estado vigente. Las notas siguientes documentan la demo anterior y no deben usarse como contrato de la API.
+
 ﻿# Ani-ren: funcionamiento actual y próximos pasos
 
 Actualizado: 11 de octubre de 2026. Rama de trabajo: `context`.

@@ -1,3 +1,4 @@
+import { errorMessage } from '../../src/api';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -36,8 +37,8 @@ export default function LoginScreen() {
         setError('El usuario o la contraseña son incorrectos.');
       }
       // El layout abre Inicio cuando cambia la sesión.
-    } catch {
-      setError('No pudimos guardar la sesión. Volvé a intentarlo.');
+    } catch (error) {
+      setError(errorMessage(error));
     } finally {
       setPending(false);
     }
