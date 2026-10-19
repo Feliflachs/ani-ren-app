@@ -58,11 +58,11 @@ El servidor calcula promedios, contadores, feeds, rangos y misiones. Las tarjeta
 
 ## Alcance
 
-Conectados: registro/login/logout, catálogo y extras, reviews, valoraciones sin texto, posteos, edición propia, comentarios, likes, Para ti/Siguiendo, perfiles, comunidad, biblioteca, favoritos ordenados, listas, búsquedas por categoría, misiones y ranking.
+Conectados: registro/login/logout, catálogo y extras, reviews, valoraciones sin texto, posteos, edición propia, comentarios, likes, Para ti/Siguiendo/Descubrir, perfiles, comunidad, biblioteca, favoritos ordenados, listas, búsquedas por categoría, misiones y ranking.
 
 Los filtros por género, temporada y año se aplican a publicaciones/listas. No se ofrecen para la búsqueda global de anime, porque esa API no los admite.
 
-Pendientes en el backend: Tendencia, tops de anime, mapa por país, subida de avatares, equipamiento de decoradores, borrados, desmarcar visto y conversión entre valoración y review. Sus pantallas muestran un estado pendiente o sus acciones están retiradas. Los enlaces de streaming no garantizan disponibilidad en tu país.
+Pendientes en el backend: tops de anime, mapa por país, subida de avatares, equipamiento de decoradores, borrados, desmarcar visto y conversión entre valoración y review. Sus pantallas muestran un estado pendiente o sus acciones están retiradas. Los enlaces de streaming no garantizan disponibilidad en tu país.
 
 ## Verificar
 
@@ -76,3 +76,18 @@ npm.cmd run test:integration
 El último comando requiere el backend hermano con sus dependencias instaladas. Usa HTTP y una SQLite temporal creada por la fixture del backend; no modifica `prisma/dev.db`. Comprueba dos cuentas, publicaciones repetidas, reintentos, promedio, permisos, likes, comentarios, feeds, biblioteca, listas, búsqueda, Aura, revocación y persistencia tras reiniciar.
 
 Las pruebas de catálogo de esa fixture son deterministas. La búsqueda real y los extras dependen de los proveedores del backend. La verificación en teléfono físico queda a cargo de una sesión con un dispositivo disponible.
+
+## Rediseño e integración (18/10/2026)
+
+Trabajar en `feature/integracion-backend`; `context` sirve como referencia visual.
+
+- Inicio: Para ti permite vistos y cuentas seguidas; Siguiendo conserva orden cronológico; Descubrir agrupa animes no vistos con portada, puntaje propio y hasta dos reviews de autores distintos.
+- Explorar mantiene búsqueda y consulta general, incluyendo animes vistos. Los tops globales siguen pendientes.
+- El puntaje global utiliza la valoración más reciente realizada o modificada por cada usuario: una persona aporta un voto. Cambiar estrellas actualiza el voto vigente; editar solo texto no. El historial se conserva.
+- Crear ofrece valorar, escribir review, publicar y listas. La barra inferior destaca Crear.
+- Perfil concentra identidad, favoritos y publicaciones; Biblioteca reúne Watchlist y vistos. Aura conserva sus reglas para una etapa posterior.
+- La ficha prioriza acciones, sinopsis y comunidad. Los extras cargan por separado y tienen su propio reintento.
+
+Antes de arrancar el backend actualizado, ejecutar allí `npm.cmd run db:generate` y `npm.cmd run db:deploy`. La migración conserva datos y usa inicialmente la última entrada creada como voto vigente. No requiere reset.
+
+Descubrir usa el catálogo guardado en Ani-Ren: una base nueva puede no tener recomendaciones hasta que se consulten fichas o se registre actividad. No descarga todo el catálogo externo.

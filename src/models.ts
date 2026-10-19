@@ -42,6 +42,12 @@ export type Publication = {
   updatedAt: string | null;
 };
 export type Comment = { id: string; author: User; text: string; createdAt: string };
+export type DiscoveryItem = {
+  id: string;
+  anime: Anime;
+  watchlist: boolean;
+  reviews: Publication[];
+};
 export type Rating = {
   id: string;
   animeId: string;
@@ -88,6 +94,7 @@ export type Profile = User & {
   rank: Rank;
   statistics: {
     watched: number;
+    watchlist: number;
     reviews: number;
     posts: number;
     followers: number;
