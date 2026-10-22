@@ -41,7 +41,7 @@ test('cliente frontend → HTTP backend → SQLite: recorrido completo con dos c
     const second=(await call('/reviews',a.token,'POST',{...body,rating:4.5},randomUUID())).publication;
     assert.notEqual(first.id,second.id);
     const stats=(await call('/anime/mal:1',a.token)).anime.statistics;
-    assert.equal(stats.averageRating,4.5);
+    assert.equal(stats.averageRating,4);
     assert.equal(stats.reviewCount,2);
     assert.equal((await call('/me/anime/mal:1/activity',a.token)).currentRating.rating,4.5);
     await call('/publications/'+first.id+'/like',b.token,'PUT');
@@ -56,7 +56,7 @@ test('cliente frontend → HTTP backend → SQLite: recorrido completo con dos c
     assert.ok(discovery.nextCursor);
     assert.notEqual((await call(api.query('/feed',{type:'for-you',cursor:discovery.nextCursor,limit:1}),b.token)).items[0].id,discovery.items[0].id);
     await call('/me/following/'+a.user.id,b.token,'PUT');
-    assert.equal((await call('/feed?type=for-you',b.token)).total,2);
+    assert.equal((await call('/feed?type=for-you',b.token)).total,0);
     assert.equal((await call('/feed?type=following',b.token)).total,2);
     await call('/me/library/mal:4',a.token,'PATCH',{watchlist:true});
     await call('/me/favorites',a.token,'PUT',{animeIds:['mal:4','mal:1']});

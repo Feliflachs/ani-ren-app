@@ -7,12 +7,7 @@ import { useMutation, useQuery } from '../../../src/remote';
 import { AnimeRow, Field, LoadState, Notice, Toggle, ui } from '../../../src/remote-ui';
 import type { Anime, Publication, Rating } from '../../../src/models';
 export default function EscribirReview() {
-  const params = useLocalSearchParams<{
-    id?: string;
-    reviewId?: string;
-    animeId?: string;
-    mode?: string;
-  }>();
+  const params = useLocalSearchParams<{ id?: string; reviewId?: string; animeId?: string }>();
   const id = params.id ?? params.reviewId;
   const publication = useQuery<{ publication: Publication }>(
     id ? '/publications/' + encodeURIComponent(id) : null,
@@ -34,7 +29,7 @@ export default function EscribirReview() {
     );
   return (
     <Screen
-      title={id ? 'Editar review' : params.mode === 'rating' ? 'Nueva valoración' : 'Nueva review'}
+      title={id ? 'Editar review' : 'Review'}
       subtitle="Registrá este anime a tu manera."
       back
     >
@@ -46,12 +41,7 @@ export default function EscribirReview() {
         />
       )}
       {item ? (
-        <ReviewForm
-          key={id ?? item.id + params.mode}
-          anime={item}
-          existing={existing}
-          ratingOnly={params.mode === 'rating'}
-        />
+        <ReviewForm key={id ?? item.id} anime={item} existing={existing} />
       ) : (
         <LoadState
           loading={publication.loading || anime.loading}
@@ -63,16 +53,8 @@ export default function EscribirReview() {
     </Screen>
   );
 }
-function ReviewForm({
-  anime,
-  existing,
-  ratingOnly,
-}: {
-  anime: Anime;
-  existing?: Publication;
-  ratingOnly: boolean;
-}) {
-  const [kind, setKind] = useState(ratingOnly && !existing ? 'Solo valoración' : 'Review');
+function ReviewForm({ anime, existing }: { anime: Anime; existing?: Publication }) {
+  const [kind, setKind] = useState('Review');
   const [rating, setRating] = useState<number | undefined>(existing?.rating ?? undefined);
   const [title, setTitle] = useState(existing?.title ?? '');
   const [text, setText] = useState(existing?.text ?? '');

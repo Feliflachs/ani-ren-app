@@ -1,16 +1,14 @@
 import { useState } from 'react';
-import { Image, Text } from 'react-native';
+import { Image } from 'react-native';
 import { Action, Chips, Screen, PublicationCard } from '../../src/components';
 import { usePage } from '../../src/remote';
-import { PageEnd, ui } from '../../src/remote-ui';
-import type { Publication, DiscoveryItem } from '../../src/models';
-import { DiscoveryCard } from '../../src/DiscoveryCard';
+import { PageEnd, Pending } from '../../src/remote-ui';
+import type { Publication } from '../../src/models';
 export default function Inicio() {
   const [tab, setTab] = useState('Para ti');
   const page = usePage<Publication>(
-    tab === 'Descubrir' ? null : '/feed?type=' + (tab === 'Siguiendo' ? 'following' : 'for-you'),
+    tab === 'Tendencia' ? null : '/feed?type=' + (tab === 'Siguiendo' ? 'following' : 'for-you'),
   );
-  const discovery = usePage<DiscoveryItem>(tab === 'Descubrir' ? '/discover' : null);
   return (
     <Screen
       title={
@@ -26,32 +24,15 @@ export default function Inicio() {
       headerCentered
     >
       <Chips
-        options={['Para ti', 'Siguiendo', 'Descubrir']}
+        options={['Para ti', 'Siguiendo', 'Tendencia']}
         value={tab}
         onChange={setTab}
         variant="underline"
       />
-      {tab === 'Descubrir' ? (
-        <>
-          <Text style={ui.text}>Encontrá tu próximo anime, con opiniones de la comunidad.</Text>
-          <Action
-            label="Actualizar"
-            icon="refresh-outline"
-            disabled={discovery.loading}
-            onPress={discovery.reload}
-          />
-          {discovery.items.map((item) => (
-            <DiscoveryCard key={item.id} item={item} />
-          ))}
-          <PageEnd page={discovery} />
-        </>
+      {tab === 'Tendencia' ? (
+        <Pending text="Las tendencias estarán disponibles más adelante." />
       ) : (
         <>
-          <Text style={ui.muted}>
-            {tab === 'Siguiendo'
-              ? 'Las últimas conversaciones de las personas que seguís.'
-              : 'Opiniones, descubrimientos y conversaciones para tus gustos.'}
-          </Text>
           <Action
             label="Actualizar"
             icon="refresh-outline"

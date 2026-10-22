@@ -64,10 +64,11 @@ function Detail({ id }: { id: string }) {
                 : '★ ' + anime.statistics.averageRating.toFixed(1) + ' / 5'}
             </Text>
             <Text style={ui.muted}>
-              {anime.statistics?.ratingUserCount ?? 0} votos vigentes ·{' '}
+              {anime.statistics?.ratingCount ?? 0} valoraciones ·{' '}
+              {anime.statistics?.ratingUserCount ?? 0} personas ·{' '}
               {anime.statistics?.reviewCount ?? 0} reviews en Ani-Ren
             </Text>
-            <Text style={ui.muted}>Una valoración vigente por persona.</Text>
+            <Text style={ui.text}>{anime.synopsis || 'Sin sinopsis disponible.'}</Text>
             {anime.metadataStale && (
               <Text style={ui.muted}>Mostramos la última información disponible del catálogo.</Text>
             )}
@@ -81,7 +82,7 @@ function Detail({ id }: { id: string }) {
           {flags && (
             <View style={ui.card}>
               <Text style={ui.text}>
-                Tu puntuación vigente: {flags.currentRating?.rating ?? 'Sin valorar'}
+                Tu puntuación actual: {flags.currentRating?.rating ?? 'Sin valorar'}
               </Text>
               <View style={ui.wrap}>
                 <Action
@@ -97,7 +98,7 @@ function Detail({ id }: { id: string }) {
                   }
                 />
                 <Action
-                  label={flags.watchlist ? 'Quitar de Watchlist' : 'Watchlist'}
+                  label={flags.watchlist ? 'Quitar de watchlist' : 'Watchlist'}
                   icon="bookmark-outline"
                   active={flags.watchlist}
                   disabled={mutation.pending}
@@ -138,13 +139,8 @@ function Detail({ id }: { id: string }) {
               router.push({ pathname: '/crear/review/escribir', params: { animeId: id } })
             }
           />
-          <Section title="Sobre este anime" />
-          <Text style={ui.text}>{anime.synopsis || 'Sin sinopsis disponible.'}</Text>
-          <Section title="Reviews de la comunidad" />
-          {reviews.items.map((review) => (
-            <PublicationCard key={review.id} review={review} />
-          ))}
-          <PageEnd page={reviews} />
+          <Section title="Dónde ver y personajes" />
+          <AnimeExtras id={id} />
           <Section title="Tus valoraciones" />
           {activity.items.map((item) => (
             <View key={item.id} style={ui.card}>
@@ -170,8 +166,11 @@ function Detail({ id }: { id: string }) {
             </View>
           ))}
           <PageEnd page={activity} />
-          <Section title="Dónde ver y personajes" />
-          <AnimeExtras id={id} />
+          <Section title="Reviews de la comunidad" />
+          {reviews.items.map((review) => (
+            <PublicationCard key={review.id} review={review} />
+          ))}
+          <PageEnd page={reviews} />
           <Section title="Listas con este anime" />
           {lists.items.map((list) => (
             <ListCard key={list.id} list={list} />

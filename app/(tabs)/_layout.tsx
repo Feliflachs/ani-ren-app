@@ -49,9 +49,7 @@ export default function TabLayout() {
         name="crear"
         options={{
           title: 'Crear',
-          tabBarIcon: ({ size }) => (
-            <Ionicons name="add-circle" size={size + 12} color={theme.colors.primarySoft} />
-          ),
+          tabBarIcon: ({ color, size }) => <Ionicons name="add" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
