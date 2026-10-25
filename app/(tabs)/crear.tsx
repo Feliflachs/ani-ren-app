@@ -1,24 +1,17 @@
+import { useAnimeSearch, QueryFooter } from '../../src/remote-ui';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Action, Chips, EmptyState, Screen, SearchBar } from '../../src/components';
-import { anime } from '../../src/mock';
 import { theme } from '../../src/theme';
 
 export default function Crear() {
   const [mode, setMode] = useState('Posteo');
   const [query, setQuery] = useState('');
 
-  const normalizedQuery = query.trim().toLowerCase();
-
-  const candidates = anime
-    .filter((item) => {
-      const searchableText = `${item.title} ${item.genres.join(' ')}`.toLowerCase();
-      return searchableText.includes(normalizedQuery);
-    })
-    .slice(0, 8);
-
+  const search = useAnimeSearch(query);
+  const candidates = search.animes;
   return (
     <Screen title="Crear" subtitle="Compartí tu experiencia con otros fans." avatar={false}>
       <Chips
@@ -76,13 +69,16 @@ export default function Crear() {
                 <Text style={styles.meta}>
                   {item.year} · {item.genres.slice(0, 2).join(' · ')}
                 </Text>
-                <Text style={styles.rating}>★ {item.rating.toFixed(1)}</Text>
+                <Text style={styles.rating}>
+                  ★ {item.rating > 0 ? item.rating.toFixed(1) : '—'}
+                </Text>
               </View>
 
               <Ionicons name="chevron-forward" size={18} color={theme.colors.primarySoft} />
             </Pressable>
           ))}
 
+          <QueryFooter query={search} />
           {candidates.length === 0 && (
             <EmptyState title="No encontramos ese anime" text="Probá buscando otro título." />
           )}

@@ -1,5 +1,7 @@
+import { usePage, useQuery } from './context/RemoteContext';
+import { QueryFooter } from './remote-ui';
+import { adaptPublication } from './api/remote';
 import { useLists } from './context/ListsContext';
-import { usePublications } from './context/PublicationsContext';
 import { useCurrentUser } from './useCurrentUser';
 import { useSession } from './context/SessionContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -20,9 +22,9 @@ import {
   Screen,
   Section,
 } from './components';
-import { useAppState, useActivities } from './context/AppState';
+import { useAppState } from './context/AppState';
 import { useSocial } from './context/SocialContext';
-import { findAnime, getRankProgress, type User } from './mock';
+import { findAnime, type User } from './data';
 import { theme } from './theme';
 
 export function PerfilView({
@@ -33,50 +35,48 @@ export function PerfilView({
   publicProfile?: boolean;
 }) {
   const { lists } = useLists();
-  const { publications, reviews, getLikedIds } = usePublications();
 
   const currentUser = useCurrentUser();
   const { signOut } = useSession();
   const [closingSession, setClosingSession] = useState(false);
   const [sessionError, setSessionError] = useState('');
-  const currentLikedReviewIds = getLikedIds(user.id);
   const { getFriendIds } = useSocial();
-  const { getCollection } = useActivities();
 
   const [view, setView] = useState('Reviews');
   const [width, setWidth] = useState(300);
   const [sharing, setSharing] = useState(false);
-  const { likedIds, watchedCount, followingIds, toggleFollowing } = useAppState();
+  const { followingIds, toggleFollowing } = useAppState();
   const isOwnProfile = user.id === currentUser.id;
   const canManage = isOwnProfile && !publicProfile;
   const following = followingIds.includes(user.id);
   const isFriend = getFriendIds(currentUser.id).includes(user.id);
-  const favorites = isOwnProfile ? likedIds : user.favorites;
-  const totalWatched = isOwnProfile ? watchedCount : user.watched;
-  const watchedIds = getCollection(user.id).watchedIds;
+  const favorites = user.favorites;
+  useQuery(`/users/${user.id}`);
+  const libraryPage = usePage(`/users/${user.id}/library`, { collection: 'watched', limit: 1 });
+  const listPage = usePage('/lists', { userId: user.id });
+  const featuredPage = usePage(`/users/${user.id}/publications`, {
+    collection: 'reviews',
+    sort: 'featured',
+    limit: 2,
+  });
+  const publicationPage = usePage(`/users/${user.id}/publications`, {
+    collection: view === 'Likes' ? 'likes' : view === 'Posteos' ? 'posts' : 'reviews',
+  });
+  const watchedIds = libraryPage.items.map((row) => row.anime.id as string);
   const latestAnime = findAnime(watchedIds[watchedIds.length - 1]);
-  // TODO BACKEND [PERFIL-CONSULTAR]: consultar currentUser.id, sus favoritos, actividad, reviews, listas y likes; hoy son datos compartidos de ejemplo.
-  const myReviews = reviews
-    .filter((item) => item.userId === user.id)
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-  const featuredReviews = [...myReviews]
-    .sort(
-      (a, b) =>
-        b.likes + b.comments - (a.likes + a.comments) ||
-        Date.parse(b.createdAt) - Date.parse(a.createdAt),
-    )
-    .slice(0, 2);
+  const myReviews = publicationPage.items.map(adaptPublication);
+  const featuredReviews = featuredPage.items.map(adaptPublication);
   const openReviews = () => router.push({ pathname: '/perfil/reviews', params: { id: user.id } });
-  const myPublications = publications
-    .filter((item) => item.userId === user.id)
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const myPublications = publicationPage.items.map(adaptPublication);
   const latestPublication = myPublications[0];
-  const myLists = lists.filter((item) => item.userId === user.id);
-  const likedReviews = publications.filter((item) => currentLikedReviewIds.includes(item.id));
-  const myPosts = publications.filter((item) => item.kind === 'post' && item.userId === user.id);
-  const shownReviews =
-    view === 'Likes' ? likedReviews : view === 'Posteos' ? myPosts : myReviews.slice(0, 2);
-  const rankProgress = getRankProgress(totalWatched);
+  const myLists = listPage.items
+    .map((row) => lists.find((list) => list.id === row.id)!)
+    .filter(Boolean);
+  const shownReviews = myPublications;
+  const rankProgress = {
+    rank: user.rank ?? 'Novato',
+    total: user.rankProgress?.nextThreshold ?? user.auraPoints ?? 0,
+  };
   const openConnections = (tab: string) =>
     router.push({ pathname: '/perfil/comunidad', params: { id: user.id, tab } });
 
@@ -213,7 +213,12 @@ export function PerfilView({
           <Text style={styles.meta}>
             Rango: <Text style={styles.purple}>{rankProgress.rank}</Text>
           </Text>
-          <Progress value={totalWatched} total={rankProgress.total} label="Animes vistos" />
+          <Progress
+            value={user.auraPoints ?? 0}
+            total={rankProgress.total}
+            progress={user.rankProgress?.progress}
+            label="Puntos Aura"
+          />
         </View>
         {canManage && (
           <Ionicons name="chevron-forward" color={theme.colors.primarySoft} size={16} />
@@ -313,14 +318,14 @@ export function PerfilView({
                   {user.name}
                   {isOwnProfile ? '-kun' : ''} marcó como visto
                 </Text>
-                <Text style={styles.muted}>Actividad de ejemplo · {latestAnime.title}</Text>
+                <Text style={styles.muted}>Actividad · {latestAnime.title}</Text>
               </View>
               <Ionicons name="eye-outline" color={theme.colors.primarySoft} size={18} />
             </Pressable>
           </View>
         )}
         {!latestPublication && !latestAnime && (
-          <Text style={styles.muted}>Sin actividad de ejemplo.</Text>
+          <Text style={styles.muted}>Sin actividad registrada.</Text>
         )}
       </View>
       <Section title="Reviews destacadas" />
@@ -379,10 +384,7 @@ export function PerfilView({
             />
           )}
           {!myLists.length && (
-            <EmptyState
-              title="Sin listas públicas"
-              text="Todavía no hay listas de ejemplo en este perfil."
-            />
+            <EmptyState title="Sin listas públicas" text="Todavía no hay listas en este perfil." />
           )}
         </>
       )}
@@ -392,6 +394,8 @@ export function PerfilView({
         text={`Simulación: compartir el perfil @${user.handle}. No se envió ningún mensaje.`}
         onClose={() => setSharing(false)}
       />
+      <QueryFooter query={publicationPage} />
+      <QueryFooter query={listPage} />
     </Screen>
   );
 }

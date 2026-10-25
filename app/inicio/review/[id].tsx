@@ -1,3 +1,5 @@
+import { usePage, useRemote } from '../../../src/context/RemoteContext';
+import { QueryFooter, withResources } from '../../../src/remote-ui';
 import { useDirectory } from '../../../src/useDirectory';
 import { usePublications } from '../../../src/context/PublicationsContext';
 import { useCurrentUser } from '../../../src/useCurrentUser';
@@ -15,15 +17,14 @@ import {
   Screen,
   Section,
 } from '../../../src/components';
-import { findAnime, getParam } from '../../../src/mock';
+import { findAnime, getParam } from '../../../src/data';
 import { theme } from '../../../src/theme';
 
-export default function ReviewScreen() {
+function ReviewScreen() {
   const { findUser } = useDirectory();
   const {
     publications,
     getLikedIds,
-    getComments,
     toggleLike: toggleReviewLike,
     addComment: saveComment,
   } = usePublications();
@@ -31,7 +32,6 @@ export default function ReviewScreen() {
   const currentUser = useCurrentUser();
 
   const params = useLocalSearchParams();
-  // TODO BACKEND [REVIEW-DETALLE]: consultar publicación, autor, likes y comentarios mediante params.id.
   const review = publications.find((item) => item.id === getParam(params.id));
   const reviewId = getParam(params.id) ?? '';
   const liked = getLikedIds(currentUser.id).includes(reviewId);
@@ -39,7 +39,15 @@ export default function ReviewScreen() {
   const [draft, setDraft] = useState('');
   const commentInput = useRef<TextInput>(null);
   const [sharing, setSharing] = useState(false);
-  const comments = getComments(reviewId);
+  const store = useRemote();
+  const commentsPage = usePage(`/publications/${reviewId}/comments`);
+  const comments = commentsPage.items.map((row) => ({
+    id: row.id as string,
+    userId: row.userId as string,
+    text: row.text as string,
+    time: new Date(row.createdAt).toLocaleDateString('es-AR'),
+  }));
+  const [sending, setSending] = useState(false);
   if (!review)
     return (
       <Screen title="Publicación" back>
@@ -49,20 +57,28 @@ export default function ReviewScreen() {
           action="Ir a Inicio"
           onPress={() => router.replace('/inicio')}
         />
+        <QueryFooter query={commentsPage} />
       </Screen>
     );
   const author = findUser(review.userId);
   const item = findAnime(review.animeId);
   const hidden = review.spoiler && !revealed;
   const toggleLike = () => {
-    // TODO BACKEND [REVIEW-LIKE]: conectar toggleLike del contexto con la API.
     toggleReviewLike(currentUser.id, reviewId);
   };
-  const addComment = () => {
+  const addComment = async () => {
+    if (sending) return;
     const text = draft.trim();
     if (!text) return;
-    // TODO BACKEND [COMENTARIO-CREAR]: conectar addComment del contexto con la API.
-    saveComment(currentUser.id, reviewId, text);
+    setSending(true);
+    try {
+      await saveComment(currentUser.id, reviewId, text);
+    } catch (e) {
+      store.report(e);
+      return;
+    } finally {
+      setSending(false);
+    }
     setDraft('');
   };
   return (
@@ -277,3 +293,5 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
 });
+
+export default withResources(ReviewScreen, (p) => [[`/publications/${p.id}`]]);

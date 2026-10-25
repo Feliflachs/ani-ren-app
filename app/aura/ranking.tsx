@@ -1,30 +1,26 @@
-import { useDirectory } from '../../src/useDirectory';
+import { usePage } from '../../src/context/RemoteContext';
+import { QueryFooter } from '../../src/remote-ui';
+import { adaptUser } from '../../src/api/remote';
 import { useCurrentUser } from '../../src/useCurrentUser';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Avatar, Chips, Screen } from '../../src/components';
-import { useAppState } from '../../src/context/AppState';
-import { getRankProgress } from '../../src/mock';
 import { theme } from '../../src/theme';
 
-// TODO BACKEND [RANKING]: consultar posiciones y relaciones reales por cantidad de anime visto.
-
 export default function RankingScreen() {
-  const { users } = useDirectory();
-
   const currentUser = useCurrentUser();
 
-  const { friendIds } = useAppState();
   const [filter, setFilter] = useState('Global');
-  const ranked = users
-    .filter(
-      (user) => filter === 'Global' || user.id === currentUser.id || friendIds.includes(user.id),
-    )
-    .sort((a, b) => b.watched - a.watched);
-  const currentPosition = ranked.findIndex((user) => user.id === currentUser.id) + 1;
-
+  const page = usePage('/ranking', { scope: filter === 'Global' ? 'global' : 'friends' });
+  const ranked = page.items.map((row) => ({
+    ...adaptUser(row.user),
+    points: row.points as number,
+    position: row.position as number,
+    rank: row.rank.name as string,
+  }));
+  const currentPosition = page.data?.me?.position ?? '—';
   const openProfile = (userId: string) => {
     if (userId === currentUser.id) router.push('/perfil');
     else router.push({ pathname: '/perfil/usuario/[id]', params: { id: userId } });
@@ -38,14 +34,11 @@ export default function RankingScreen() {
         <View style={styles.flex}>
           <Text style={styles.position}>Tu posición: #{currentPosition}</Text>
           <Text style={styles.meta}>
-            {currentUser.watched} animes vistos · {filter.toLowerCase()}
+            {page.data?.me?.points ?? 0} puntos Aura · {filter.toLowerCase()}
           </Text>
         </View>
       </View>
-      <Text style={styles.notice}>
-        Clasificación y amistades de ejemplo. El criterio cuenta animes vistos, no likes ni
-        puntuaciones.
-      </Text>
+      <Text style={styles.notice}>La posición depende de los puntos de misiones reclamadas.</Text>
 
       {ranked.map((user, index) => {
         const isCurrentUser = user.id === currentUser.id;
@@ -54,7 +47,7 @@ export default function RankingScreen() {
             key={user.id}
             onPress={() => openProfile(user.id)}
             accessibilityRole="button"
-            accessibilityLabel={`Posición ${index + 1}, ${user.name}, ${user.watched} animes vistos`}
+            accessibilityLabel={`Posición ${user.position}, ${user.name}, ${user.points} animes vistos`}
             style={[styles.userRow, isCurrentUser && styles.current]}
           >
             <Text style={styles.number}>#{index + 1}</Text>
@@ -64,11 +57,11 @@ export default function RankingScreen() {
                 {user.name}
                 {isCurrentUser ? ' · Vos' : ''}
               </Text>
-              <Text style={styles.meta}>{getRankProgress(user.watched).rank}</Text>
+              <Text style={styles.meta}>{user.rank}</Text>
             </View>
             <View style={styles.count}>
               <Text style={styles.watched}>{user.watched}</Text>
-              <Text style={styles.meta}>vistos</Text>
+              <Text style={styles.meta}>puntos</Text>
             </View>
           </Pressable>
         );
@@ -78,6 +71,7 @@ export default function RankingScreen() {
         Las reglas para contar series, temporadas y películas se definirán al conectar los datos
         reales.
       </Text>
+      <QueryFooter query={page} />
     </Screen>
   );
 }

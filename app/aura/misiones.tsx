@@ -3,15 +3,16 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Action, Chips, Dialog, EmptyState, Progress, Screen } from '../../src/components';
+import { QueryFooter } from '../../src/remote-ui';
 import { useMissions } from '../../src/useMissions';
 import { theme } from '../../src/theme';
 
-// TODO BACKEND [MISIONES]: recuperar misiones, progreso, recompensas y logros por usuario.
 const missionFilters = ['Todas', 'Pendiente', 'En curso', 'Completada'];
 const achievementFilters = ['Todos', 'Obtenidos', 'Bloqueados'];
 
 export default function MissionsScreen() {
-  const { missions: auraMissions, claimedIds, claimReward: receiveReward } = useMissions();
+  const query = useMissions();
+  const { missions: auraMissions, claimedIds } = query;
   const [tab, setTab] = useState('Misiones');
   const [filter, setFilter] = useState('Todas');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -25,12 +26,6 @@ export default function MissionsScreen() {
     if (filter === 'Obtenidos') return claimedIds.includes(mission.id);
     return !claimedIds.includes(mission.id) && mission.state !== 'Completada';
   });
-
-  // TODO BACKEND [RECOMPENSA]: validar la misión por id y confirmar la obtención real del badge.
-  const claimReward = () => {
-    if (!selectedMission || selectedMission.state !== 'Completada') return;
-    receiveReward(selectedMission.id);
-  };
 
   const changeTab = (nextTab: string) => {
     setTab(nextTab);
@@ -49,17 +44,11 @@ export default function MissionsScreen() {
         value={filter}
         onChange={setFilter}
       />
-      <Text style={styles.notice}>
-        El progreso se calcula con tus vistos y reviews de esta demo.
-      </Text>
+      <Text style={styles.notice}>Cada misión completada suma puntos automáticamente.</Text>
 
       {visibleMissions.map((mission) => {
         const rewardClaimed = claimedIds.includes(mission.id);
-        const achievementState = rewardClaimed
-          ? 'Obtenido · simulación'
-          : mission.state === 'Completada'
-            ? 'Listo para recibir'
-            : 'Bloqueado';
+        const achievementState = rewardClaimed ? 'Obtenido' : 'Bloqueado';
 
         return (
           <Pressable
@@ -98,10 +87,11 @@ export default function MissionsScreen() {
         );
       })}
 
-      {visibleMissions.length === 0 && (
+      <QueryFooter query={query} />
+      {!query.loading && !query.error && visibleMissions.length === 0 && (
         <EmptyState
           title="Sin objetivos en este filtro"
-          text="Probá otro estado para ver las misiones de ejemplo."
+          text="Probá otro estado para ver las misiones."
         />
       )}
 
@@ -112,24 +102,14 @@ export default function MissionsScreen() {
         }
         text={
           selectedMission
-            ? `${selectedMission.description} Recompensa decorativa: ${selectedMission.reward}. Estado: ${selectedMission.state}.`
+            ? `${selectedMission.description} Recompensa: ${selectedMission.reward}. Estado: ${selectedMission.state}.`
             : ''
         }
         onClose={() => setSelectedId(null)}
       >
         {selectedMission?.state === 'Completada' ? (
           <>
-            <Action
-              label={
-                claimedIds.includes(selectedMission.id)
-                  ? 'Badge recibido · simulación'
-                  : 'Recibir badge de ejemplo'
-              }
-              icon="ribbon-outline"
-              disabled={claimedIds.includes(selectedMission.id)}
-              onPress={claimReward}
-            />
-            <Text style={styles.meta}>La recompensa se conserva mientras la app siga abierta.</Text>
+            <Text style={styles.meta}>Los puntos se sumaron automáticamente a tu cuenta.</Text>
           </>
         ) : selectedMission ? (
           <Text style={styles.body}>

@@ -1,11 +1,14 @@
+import { usePage } from '../../src/context/RemoteContext';
+import { QueryFooter, withResources } from '../../src/remote-ui';
+import { adaptAnime, genreIds } from '../../src/api/remote';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AnimeCard, Chips, EmptyState, Screen, Section } from '../../src/components';
-import { anime, genres, getParam } from '../../src/mock';
+import { genres, getParam } from '../../src/data';
 import { theme } from '../../src/theme';
 
-export default function TopsScreen() {
+function TopsScreen() {
   const params = useLocalSearchParams();
   const criterionOptions = ['Mejor puntuados', 'Más vistos', 'Más populares'];
   const requestedCriterion = getParam(params.criterion);
@@ -14,22 +17,22 @@ export default function TopsScreen() {
   );
   const [period, setPeriod] = useState('Esta semana');
   const [genre, setGenre] = useState('Todos los géneros');
-  // TODO BACKEND [TOPS]: consultar ranking por período, género y criterio; el recorte actual representa conjuntos de ejemplo.
-  const periodItems =
-    period === 'Esta semana'
-      ? anime.slice(0, 5)
-      : period === 'Este mes'
-        ? anime.slice(0, 7)
-        : anime;
-  const results = periodItems
-    .filter((item) => genre === 'Todos los géneros' || item.genres.includes(genre))
-    .sort((a, b) =>
+  const page = usePage('/explore/tops', {
+    criterion:
       criterion === 'Mejor puntuados'
-        ? b.rating - a.rating
+        ? 'rating'
         : criterion === 'Más vistos'
-          ? b.watched - a.watched
-          : b.popularity - a.popularity,
-    );
+          ? 'views'
+          : 'trending',
+    period: period === 'Esta semana' ? 'week' : period === 'Este mes' ? 'month' : 'all',
+    genre: genreIds.get(genre),
+  });
+  const results = page.items.map((row) => ({
+    ...adaptAnime(row.anime),
+    rating: row.averageRating ?? 0,
+    watched: row.views,
+    popularity: row.popularity,
+  }));
   return (
     <Screen title="Tops de anime" subtitle="Las historias que más conversación generan." back>
       <Chips options={criterionOptions} value={criterion} onChange={setCriterion} />
@@ -53,13 +56,16 @@ export default function TopsScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Ver ${item.title}`}
-            onPress={() => router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })}
+            onPress={() =>
+              router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })
+            }
             style={styles.info}
           >
             <Text style={styles.title}>{item.title}</Text>
             <Text style={styles.meta}>{item.genres.slice(0, 2).join(' · ')}</Text>
             <Text style={styles.rating}>
-              ★ {item.rating.toFixed(1)} <Text style={styles.meta}>/ 5</Text>
+              ★ {item.rating > 0 ? item.rating.toFixed(1) : '—'}{' '}
+              <Text style={styles.meta}>/ 5</Text>
             </Text>
             <Text style={styles.meta}>{item.watched.toLocaleString('es-AR')} vistos</Text>
             {criterion === 'Más populares' && (
@@ -68,7 +74,8 @@ export default function TopsScreen() {
           </Pressable>
         </View>
       ))}
-      <Text style={styles.disclaimer}>Ranking y períodos con datos de ejemplo.</Text>
+      <Text style={styles.disclaimer}>Actividad registrada en Ani-Ren.</Text>
+      <QueryFooter query={page} />
     </Screen>
   );
 }
@@ -97,3 +104,5 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
 });
+
+export default withResources(TopsScreen, () => [['/explore']]);

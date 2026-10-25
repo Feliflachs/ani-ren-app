@@ -12,6 +12,7 @@
     "web": { "bundler": "metro", "output": "single", "favicon": "./assets/mascota.png" },
     "plugins": [
       "expo-router",
+      "expo-secure-store",
       ["expo-location", { "locationWhenInUsePermission": "Ani-ren usa tu ubicación para detectar el país al guardar una review." }],
       ["expo-splash-screen", { "image": "./assets/mascota.png", "imageWidth": 180, "resizeMode": "contain", "backgroundColor": "#0D0D12" }]
     ]

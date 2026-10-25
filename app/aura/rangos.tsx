@@ -1,3 +1,4 @@
+import { useMissions } from '../../src/useMissions';
 import { useCurrentUser } from '../../src/useCurrentUser';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams } from 'expo-router';
@@ -5,7 +6,7 @@ import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Action, Avatar, Chips, Dialog, RankInsignia, Screen, Section } from '../../src/components';
 import { useAppState } from '../../src/context/AppState';
-import { getParam, getRankProgress, ranks } from '../../src/mock';
+import { getParam, ranks } from '../../src/data';
 import { theme } from '../../src/theme';
 
 // TODO BACKEND [DECORADORES]: consultar catálogo y desbloqueos por id de usuario; no son reglas definitivas.
@@ -59,8 +60,8 @@ const tabs = ['Rangos', 'Títulos', 'Sufijos', 'Insignias'];
 export default function RanksScreen() {
   const currentUser = useCurrentUser();
 
-  const { watchedCount } = useAppState();
-  const rankProgress = getRankProgress(watchedCount);
+  useAppState();
+  const { rankProgress, points } = useMissions();
   const currentRankIndex = ranks.indexOf(rankProgress.rank);
   const params = useLocalSearchParams<{ titulo?: string | string[] }>();
   const suggested = getParam(params.titulo);
@@ -143,7 +144,7 @@ export default function RanksScreen() {
                   accessibilityRole="button"
                   onPress={() =>
                     setMessage(
-                      `${isCurrent ? 'Este es tu rango actual.' : isLocked ? 'Rango todavía bloqueado.' : 'Rango disponible como insignia de ejemplo.'} Los rangos se representan por cantidad de animes vistos; los umbrales no son definitivos.`,
+                      `${isCurrent ? 'Este es tu rango actual.' : isLocked ? 'Rango todavía bloqueado.' : 'Rango disponible como insignia de ejemplo.'} Los rangos se obtienen con los puntos de misiones reclamadas.`,
                     )
                   }
                   style={[styles.rank, isCurrent && styles.selected]}
@@ -158,11 +159,11 @@ export default function RanksScreen() {
             })}
           </ScrollView>
           <View style={styles.explanation}>
-            <Text style={styles.cardTitle}>{watchedCount} animes vistos</Text>
+            <Text style={styles.cardTitle}>{points} puntos Aura</Text>
             <Text style={styles.body}>
               {rankProgress.nextRank
-                ? `Tu siguiente referencia visual es ${rankProgress.nextRank}, con ${rankProgress.total} vistos de ejemplo.`
-                : 'Ya alcanzaste el último rango de ejemplo.'}{' '}
+                ? `Tu siguiente referencia visual es ${rankProgress.nextRank}, con ${rankProgress.total} puntos.`
+                : 'Ya alcanzaste el último rango.'}{' '}
               Los títulos por gustos y las misiones son decoradores independientes del ranking.
             </Text>
           </View>

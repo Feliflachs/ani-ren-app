@@ -36,8 +36,10 @@ export default function LoginScreen() {
         setError('El usuario o la contraseña son incorrectos.');
       }
       // El layout abre Inicio cuando cambia la sesión.
-    } catch {
-      setError('No pudimos guardar la sesión. Volvé a intentarlo.');
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : 'No pudimos iniciar sesión. Volvé a intentarlo.',
+      );
     } finally {
       setPending(false);
     }

@@ -1,3 +1,4 @@
+import { withResources, useAnimeSearch, QueryFooter } from '../../../src/remote-ui';
 import { useLists } from '../../../src/context/ListsContext';
 import { useCurrentUser } from '../../../src/useCurrentUser';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -13,19 +14,18 @@ import {
   SearchBar,
   Section,
 } from '../../../src/components';
-import { anime, findAnime, getParam } from '../../../src/mock';
+import { findAnime, getParam } from '../../../src/data';
 import { theme } from '../../../src/theme';
 
 type ListDialog = 'confirmed' | 'discard' | null;
 
-export default function EditarListaScreen() {
+function EditarListaScreen() {
   const { lists, saveList } = useLists();
 
   const currentUser = useCurrentUser();
 
   const params = useLocalSearchParams();
   const id = getParam(params.id);
-  // TODO BACKEND [LISTA-EDITAR-CONSULTA]: recuperar lista por id y verificar permisos de currentUser.id.
   const existing = lists.find((item) => item.id === id);
   const [savedId, setSavedId] = useState(existing?.id);
   const [title, setTitle] = useState(existing?.title ?? '');
@@ -38,9 +38,8 @@ export default function EditarListaScreen() {
   const [query, setQuery] = useState('');
   const [dialog, setDialog] = useState<ListDialog>(null);
   const [titleTouched, setTitleTouched] = useState(false);
-  const normalizedQuery = query.trim().toLowerCase();
-  // TODO BACKEND [LISTA-ANIME-BUSCAR]: reemplazar el filtro del catálogo mock por una búsqueda de anime con normalizedQuery.
-  const candidates = anime.filter((item) => item.title.toLowerCase().includes(normalizedQuery));
+  const search = useAnimeSearch(query);
+  const candidates = search.animes;
   const selected = animeIds.map(findAnime).filter((item) => item !== undefined);
   const valid = title.trim().length >= 3 && selected.length > 0;
   const goBack = () =>
@@ -62,18 +61,27 @@ export default function EditarListaScreen() {
   const removeAnime = (animeId: string) => {
     setAnimeIds((previous) => previous.filter((item) => item !== animeId));
   };
-  const save = () => {
-    if (!valid) return;
-    // TODO BACKEND [LISTA-GUARDAR]: conectar saveList con la API conservando el orden de animeIds.
-    // El contexto valida el autor; por ahora guarda en memoria.
-    setSavedId(
-      saveList(
-        currentUser.id,
-        { title: title.trim(), description: description.trim(), ordered, animeIds },
-        savedId,
-      ),
-    );
-    setDialog('confirmed');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const save = async () => {
+    if (!valid || saving) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      // El contexto valida el autor; por ahora guarda en memoria.
+      setSavedId(
+        await saveList(
+          currentUser.id,
+          { title: title.trim(), description: description.trim(), ordered, animeIds },
+          savedId,
+        ),
+      );
+      setDialog('confirmed');
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'No pudimos guardar.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (id && !existing)
@@ -85,6 +93,12 @@ export default function EditarListaScreen() {
           action="Crear mi lista"
           onPress={() => router.replace('/perfil/listas/editar')}
         />
+        {!!saveError && (
+          <Text accessibilityRole="alert" style={styles.meta}>
+            {saveError}
+          </Text>
+        )}
+        <QueryFooter query={search} />
       </Screen>
     );
   if (existing && existing.userId !== currentUser.id)
@@ -320,3 +334,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
   },
 });
+
+export default withResources(EditarListaScreen, (p) =>
+  p.id ? [[`/lists/${p.id}`]] : p.animeId ? [[`/anime/${p.animeId}`]] : [],
+);

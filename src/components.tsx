@@ -1,3 +1,4 @@
+import { useQuery, RemoteNotice } from './context/RemoteContext';
 import { publicationAnimeIds, type Publication } from './publications';
 import { usePublications } from './context/PublicationsContext';
 import { useDirectory } from './useDirectory';
@@ -18,7 +19,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { findAnime, type Anime, type AnimeList, type User } from './mock';
+import { findAnime, type Anime, type AnimeList, type User } from './data';
 import { theme } from './theme';
 import { useSession } from './context/SessionContext';
 import { useSocial } from './context/SocialContext';
@@ -177,6 +178,7 @@ export function Screen({
             {actions ??
               (avatar && !back ? <Avatar onPress={() => router.push('/perfil')} /> : null)}
           </View>
+          <RemoteNotice />
           {children}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -291,7 +293,7 @@ export function AnimeCard({
         )}
         <View style={styles.ratingBadge}>
           <Ionicons name="star" size={11} color={theme.colors.primarySoft} />
-          <Text style={styles.badgeText}>{item.rating.toFixed(1)}</Text>
+          <Text style={styles.badgeText}>{item.rating > 0 ? item.rating.toFixed(1) : '—'}</Text>
         </View>
         {rank !== undefined && (
           <View style={styles.rankBadge}>
@@ -303,7 +305,9 @@ export function AnimeCard({
         <Text numberOfLines={1} style={styles.animeTitle}>
           {item.title}
         </Text>
-        {landscape && <Text style={styles.smallRating}>★ {item.rating.toFixed(1)}</Text>}
+        {landscape && (
+          <Text style={styles.smallRating}>★ {item.rating > 0 ? item.rating.toFixed(1) : '—'}</Text>
+        )}
       </View>
     </Pressable>
   );
@@ -477,15 +481,17 @@ export function Dialog({
 
 // Indicadores: representación visual de un progreso ya calculado.
 export function Progress({
+  progress,
   value,
   total,
   label,
 }: {
   value: number;
   total: number;
+  progress?: number;
   label?: string;
 }) {
-  const percent = Math.min(100, Math.max(0, total > 0 ? (value / total) * 100 : 0));
+  const percent = Math.min(100, Math.max(0, (progress ?? (total > 0 ? value / total : 0)) * 100));
   return (
     <View style={styles.progressWrap}>
       {label && (
@@ -641,6 +647,7 @@ export function PublicationCard({ review, feed = false }: { review: Publication;
   const author = findUser(review.userId);
   const item = findAnime(review.animeId);
   const liked = user ? getLikedIds(user.id).includes(review.id) : false;
+  useQuery(user && user.id !== review.userId ? `/users/${review.userId}` : undefined);
   const following = user ? getFollowingIds(user.id).includes(review.userId) : false;
   const openReview = () =>
     router.push({ pathname: '/inicio/review/[id]', params: { id: review.id } });
@@ -698,7 +705,7 @@ export function PublicationCard({ review, feed = false }: { review: Publication;
           <View style={styles.heading}>
             <Text style={styles.reviewAuthor}>{item.title}</Text>
             <Text style={styles.meta}>
-              {item.year} · ★ {item.rating.toFixed(1)}
+              {item.year} · ★ {item.rating > 0 ? item.rating.toFixed(1) : '—'}
             </Text>
             <Text style={styles.meta} numberOfLines={3}>
               {item.synopsis}

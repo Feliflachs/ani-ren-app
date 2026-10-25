@@ -1,3 +1,7 @@
+import { useQuery } from '../../../src/context/RemoteContext';
+import { useAnimeSearch, QueryFooter } from '../../../src/remote-ui';
+import { adaptCountry, metricCode } from '../../../src/map-data';
+import { adaptAnime } from '../../../src/api/remote';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -5,14 +9,12 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import { Action, AnimeCard, Chips, Screen, SearchBar, Section } from '../../../src/components';
 import {
   anime,
-  countries,
   findAnime,
   getCountryMetric,
-  getCountryTop,
   getMapMetric,
   getParam,
   mapMetrics,
-} from '../../../src/mock';
+} from '../../../src/data';
 import { theme } from '../../../src/theme';
 import { WorldMap } from '../../../src/WorldMap';
 
@@ -23,31 +25,65 @@ export default function MapScreen() {
     pais?: string | string[];
   }>();
   const incomingMetric = getParam(params.metric);
-  const initialAnime = findAnime(getParam(params.animeId)) ?? anime[0];
+  const initialAnime = findAnime(getParam(params.animeId));
   const [metric, setMetric] = useState(
     getMapMetric(incomingMetric, getParam(params.animeId) ? 'anime' : 'reviews'),
   );
-  const [selectedAnimeId, setSelectedAnimeId] = useState(initialAnime.id);
-  const [animeQuery, setAnimeQuery] = useState(initialAnime.title);
-  const [selectedCountryId, setSelectedCountryId] = useState(
-    countries.find((item) => item.id === getParam(params.pais))?.id ?? countries[0].id,
+  const [selectedAnimeId, setSelectedAnimeId] = useState(
+    initialAnime?.id ?? getParam(params.animeId) ?? '',
   );
+  const [animeQuery, setAnimeQuery] = useState(initialAnime?.title ?? '');
+  const map = useQuery(metric === 'anime' && !selectedAnimeId ? undefined : '/explore/map', {
+    metric: metricCode(metric),
+    ...(metric === 'anime' ? { animeId: selectedAnimeId } : {}),
+    period: 'all',
+  });
+  const countries = (map.data?.items ?? []).map(
+    adaptCountry,
+  ) as import('../../../src/data').Country[];
+  const [selectedCountryId, setSelectedCountryId] = useState(getParam(params.pais) ?? 'argentina');
   const selectedCountry = countries.find((item) => item.id === selectedCountryId) ?? countries[0];
+  const detail = useQuery(
+    selectedCountry ? `/explore/countries/${selectedCountry.id}` : undefined,
+    { ...(metric === 'anime' && selectedAnimeId ? { animeId: selectedAnimeId } : {}) },
+  );
+  useQuery(selectedAnimeId ? `/anime/${selectedAnimeId}` : undefined);
+  const search = useAnimeSearch(animeQuery);
   const selectedAnime = findAnime(selectedAnimeId);
   const searchedTitle = selectedAnime?.title ?? (animeQuery.trim() || 'Anime');
-  const animeMatches = anime
-    .filter((item) => item.title.toLowerCase().includes(animeQuery.trim().toLowerCase()))
-    .slice(0, 4);
+  const animeMatches = search.animes;
   const metricValue = (country: (typeof countries)[number]) =>
     getCountryMetric(country, metric, selectedAnime?.id);
   const sorted = countries.slice().sort((a, b) => metricValue(b) - metricValue(a));
-  const countryTop = getCountryTop(selectedCountry, metric);
+  const countryTop = (
+    (metric === 'popularidad' ? detail.data?.trending : detail.data?.topRated) ?? []
+  ).map((row: import('../../../src/api/remote').Wire) =>
+    adaptAnime({
+      ...row.anime,
+      views: row.views,
+      averageRating: row.averageRating,
+      popularity: row.popularity,
+    }),
+  ) as import('../../../src/data').Anime[];
   const valueLabel =
-    metric === 'reviews'
-      ? 'reviews'
-      : metric === 'popularidad'
-        ? 'índice ilustrativo / 100'
-        : 'vistos';
+    metric === 'reviews' ? 'reviews' : metric === 'popularidad' ? 'popularidad / 100' : 'vistos';
+  if (!selectedCountry)
+    return (
+      <Screen title="Mapa anime mundial" back>
+        <QueryFooter query={map} />
+        <SearchBar value={animeQuery} onChangeText={setAnimeQuery} />
+        {animeMatches.map((item) => (
+          <Action
+            key={item.id}
+            label={item.title}
+            onPress={() => {
+              setSelectedAnimeId(item.id);
+              setAnimeQuery(item.title);
+            }}
+          />
+        ))}
+      </Screen>
+    );
   return (
     <Screen
       title="Mapa anime mundial"
@@ -56,7 +92,7 @@ export default function MapScreen() {
     >
       <View style={styles.notice}>
         <Ionicons name="information-circle-outline" size={19} color={theme.colors.primarySoft} />
-        <Text style={styles.noticeText}>Datos de ejemplo · sin geolocalización</Text>
+        <Text style={styles.noticeText}>Visualizaciones registradas por país</Text>
       </View>
       <Chips
         options={Object.values(mapMetrics)}
@@ -103,9 +139,7 @@ export default function MapScreen() {
         </>
       )}
       {getParam(params.animeId) && !findAnime(getParam(params.animeId)) && (
-        <Text style={styles.meta}>
-          El anime solicitado no está disponible. Podés elegir uno de los ejemplos.
-        </Text>
+        <Text style={styles.meta}>El anime solicitado no está disponible. Buscá otro título.</Text>
       )}
       <View style={styles.mapCard}>
         <WorldMap
@@ -192,6 +226,7 @@ export default function MapScreen() {
         La popularidad, los colores y los conteos son ilustrativos; no constituyen estadísticas
         reales.
       </Text>
+      <QueryFooter query={map} />
     </Screen>
   );
 }

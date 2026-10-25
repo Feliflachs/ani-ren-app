@@ -1,3 +1,6 @@
+import { useQuery, usePage } from '../../../src/context/RemoteContext';
+import { QueryFooter, withResources } from '../../../src/remote-ui';
+import { adaptPublication, type Wire } from '../../../src/api/remote';
 import { useDirectory } from '../../../src/useDirectory';
 import { useLists } from '../../../src/context/ListsContext';
 import { usePublications } from '../../../src/context/PublicationsContext';
@@ -26,74 +29,10 @@ import {
   Section,
 } from '../../../src/components';
 import { useAppState } from '../../../src/context/AppState';
-import { findAnime, getParam } from '../../../src/mock';
+import { findAnime, getParam } from '../../../src/data';
 import { theme } from '../../../src/theme';
 
-// TODO BACKEND [RATINGS-DISTRIBUCION]: recuperar conteos reales por anime; estos porcentajes son ejemplos.
-const distributions: Record<string, number[]> = {
-  frieren: [86, 10, 2, 1, 1],
-  'solo-leveling': [80, 15, 2, 2, 1],
-  'blue-lock': [72, 20, 5, 2, 1],
-  'vinland-saga': [65, 22, 8, 3, 2],
-  'mob-psycho': [62, 24, 8, 4, 2],
-  haikyuu: [60, 25, 7, 6, 2],
-  'demon-slayer': [58, 25, 9, 5, 3],
-  'spy-family': [54, 28, 9, 7, 2],
-};
-const voiceCast: Record<string, { actor: string; character: string }[]> = {
-  frieren: [
-    { actor: 'Atsumi Tanezaki', character: 'Frieren' },
-    { actor: 'Kana Ichinose', character: 'Fern' },
-    { actor: 'Chiaki Kobayashi', character: 'Stark' },
-  ],
-  'solo-leveling': [
-    { actor: 'Taito Ban', character: 'Sung Jinwoo' },
-    { actor: 'Reina Ueda', character: 'Cha Hae-in' },
-    { actor: 'Genta Nakamura', character: 'Yoo Jinho' },
-  ],
-  'blue-lock': [
-    { actor: 'Kazuki Ura', character: 'Yoichi Isagi' },
-    { actor: 'Tasuku Kaito', character: 'Meguru Bachira' },
-    { actor: 'Koki Uchiyama', character: 'Rin Itoshi' },
-  ],
-  'vinland-saga': [
-    { actor: 'Yuto Uemura', character: 'Thorfinn' },
-    { actor: 'Naoya Uchida', character: 'Askeladd' },
-    { actor: 'Kensho Ono', character: 'Canute' },
-  ],
-  'mob-psycho': [
-    { actor: 'Setsuo Ito', character: 'Shigeo Kageyama' },
-    { actor: 'Takahiro Sakurai', character: 'Arataka Reigen' },
-    { actor: 'Miyu Irino', character: 'Ritsu Kageyama' },
-  ],
-  haikyuu: [
-    { actor: 'Ayumu Murase', character: 'Shoyo Hinata' },
-    { actor: 'Kaito Ishikawa', character: 'Tobio Kageyama' },
-    { actor: 'Satoshi Hino', character: 'Daichi Sawamura' },
-  ],
-  'demon-slayer': [
-    { actor: 'Natsuki Hanae', character: 'Tanjiro Kamado' },
-    { actor: 'Akari Kito', character: 'Nezuko Kamado' },
-    { actor: 'Hiro Shimono', character: 'Zenitsu Agatsuma' },
-  ],
-  'spy-family': [
-    { actor: 'Takuya Eguchi', character: 'Loid Forger' },
-    { actor: 'Atsumi Tanezaki', character: 'Anya Forger' },
-    { actor: 'Saori Hayami', character: 'Yor Forger' },
-  ],
-};
-const ratingVotes = 13700;
-const streamingPlatforms = [
-  {
-    name: 'Crunchyroll',
-    url: 'https://www.crunchyroll.com/',
-    icon: 'play-circle-outline' as const,
-  },
-  { name: 'Netflix', url: 'https://www.netflix.com/', icon: 'film-outline' as const },
-  { name: 'Prime Video', url: 'https://www.primevideo.com/', icon: 'tv-outline' as const },
-];
-
-export default function DetalleAnime() {
+function DetalleAnime() {
   const { findUser } = useDirectory();
   const { lists, toggleAnime } = useLists();
   const { reviews } = usePublications();
@@ -105,11 +44,19 @@ export default function DetalleAnime() {
   const width = Math.min(windowWidth, theme.layout.maxWidth);
   const id = getParam(params.id) ?? '';
   const [message, setMessage] = useState('');
+  const [expandedSynopsisId, setExpandedSynopsisId] = useState<string | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
   const [listPicker, setListPicker] = useState(false);
   const { friendIds, getActivity, updateActivity } = useAppState();
   const activity = getActivity(id);
-  // TODO BACKEND [ANIME-DETALLE]: consultar anime y su elenco por id; manejar carga, error y no encontrado.
+  const detail = useQuery(`/anime/${id}`);
+  const extras = usePage(`/anime/${id}/extras`, { page: 1 }, 'characters');
+  const reviewPage = usePage('/publications', { animeId: id, kind: 'review' });
+  const statistics = detail.data?.anime?.statistics;
+  const ratingVotes = statistics?.ratingUserCount ?? 0;
+  const streamingPlatforms: { name: string; url: string; icon: 'play-circle-outline' }[] = (
+    extras.data?.streamingLinks ?? []
+  ).map((link: Wire) => ({ name: link.site, url: link.url, icon: 'play-circle-outline' as const }));
   const item = findAnime(id);
   if (!item)
     return (
@@ -120,16 +67,32 @@ export default function DetalleAnime() {
           action="Explorar"
           onPress={() => router.replace('/explorar')}
         />
+        <QueryFooter query={reviewPage} />
+        <QueryFooter query={extras} />
       </Screen>
     );
   const friendReviews = reviews.filter(
     (review) => review.animeId === item.id && friendIds.includes(review.userId),
   );
-  const animeReviews = reviews.filter((review) => review.animeId === item.id);
-  const distribution = distributions[item.id];
+  const animeReviews = reviewPage.items.map(adaptPublication);
+  const distribution: number[] = statistics?.distributionBands?.map(
+    (row: Wire) => row.percentage,
+  ) ?? [0, 0, 0, 0, 0];
   const rating = item.rating;
-  const cast = voiceCast[item.id] ?? [];
-  const title = item.id === 'frieren' ? 'Frieren: Beyond Journey’s End' : item.title;
+  const cast: { actor: string; character: string }[] = extras.items.flatMap((row: Wire) =>
+    (row.voiceActors ?? []).map((actor: Wire) => ({
+      actor: actor.name,
+      character: row.character.name,
+    })),
+  );
+  const synopsis = item.synopsis.trim();
+  const synopsisIsLong = synopsis.length > 300;
+  const synopsisExpanded = expandedSynopsisId === id;
+  const synopsisPreview = synopsis
+    .slice(0, 300)
+    .replace(/\s+\S*$/, '')
+    .trimEnd();
+  const title = item.title;
   const metadata = [
     'TV',
     String(item.year),
@@ -208,7 +171,7 @@ export default function DetalleAnime() {
             {rating.toFixed(1)}
             <Text style={styles.small}> / 5</Text> <Text style={styles.stars}>★★★★★</Text>
           </Text>
-          <Text style={styles.meta}>{ratingVotes.toLocaleString('es-AR')} votos de ejemplo</Text>
+          <Text style={styles.meta}>{ratingVotes.toLocaleString('es-AR')} votos</Text>
           <View style={styles.distribution}>
             {distribution.map((percent, index) => (
               <View key={index} style={styles.barRow}>
@@ -309,11 +272,29 @@ export default function DetalleAnime() {
           </Pressable>
         ))}
       </ScrollView>
-      <Text style={styles.note}>Plataformas de ejemplo; verificá disponibilidad en tu país.</Text>
+      <Text style={styles.note}>
+        Enlaces del catálogo; la disponibilidad puede variar por país.
+      </Text>
       <View style={[styles.infoColumns, width < 360 && styles.stack]}>
         <View style={[styles.infoCard, width >= 360 && styles.infoColumn]}>
           <Text style={styles.cardTitle}>Sinopsis</Text>
-          <Text style={styles.synopsis}>{item.synopsis}</Text>
+          {synopsisIsLong ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={synopsisExpanded ? 'Contraer sinopsis' : 'Expandir sinopsis'}
+              accessibilityState={{ expanded: synopsisExpanded }}
+              onPress={() => setExpandedSynopsisId(synopsisExpanded ? null : id)}
+            >
+              <Text style={styles.synopsis}>
+                {synopsisExpanded ? synopsis : synopsisPreview + '…'}
+                <Text style={{ color: theme.colors.primarySoft }}>
+                  {synopsisExpanded ? ' Ver menos' : ' Ver más'}
+                </Text>
+              </Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.synopsis}>{synopsis}</Text>
+          )}
         </View>
         <View style={[styles.infoCard, width >= 360 && styles.infoColumn]}>
           <Text style={styles.cardTitle}>Información</Text>
@@ -375,7 +356,7 @@ export default function DetalleAnime() {
         </ScrollView>
       ) : (
         <Text style={styles.note}>
-          Tus amigos todavía no puntuaron este anime en los datos de ejemplo.
+          No hay puntuaciones de tus amigos entre las reviews cargadas.
         </Text>
       )}
       <Section
@@ -396,18 +377,14 @@ export default function DetalleAnime() {
       <Section title="Noticias y novedades" />
       <Pressable
         accessibilityRole="button"
-        onPress={() =>
-          setMessage(
-            `Una mirada a ${item.title}: contenido editorial de ejemplo para validar esta sección.`,
-          )
-        }
+        onPress={() => setMessage('Esta sección todavía no tiene una fuente editorial conectada.')}
         style={styles.news}
       >
         <Image source={item.image} style={styles.newsImage} />
         <View style={styles.flex}>
-          <Text style={styles.username}>NOVEDAD · EJEMPLO</Text>
-          <Text style={styles.body}>Volvé a descubrir el mundo de {item.title}</Text>
-          <Text style={styles.meta}>Historias, personajes y momentos favoritos.</Text>
+          <Text style={styles.username}>NOVEDADES</Text>
+          <Text style={styles.body}>Todavía no hay noticias disponibles.</Text>
+          <Text style={styles.meta}>La fuente editorial está pendiente.</Text>
         </View>
       </Pressable>
       <Action
@@ -547,3 +524,9 @@ const styles = StyleSheet.create({
   },
   newsImage: { width: 74, height: 74, borderRadius: 8 },
 });
+
+export default withResources(DetalleAnime, (p, u) => [
+  [`/anime/${p.id}`],
+  [`/me/anime/${p.id}/activity`],
+  ['/lists', { userId: u }],
+]);

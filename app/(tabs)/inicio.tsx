@@ -1,28 +1,17 @@
-import { selectFeed } from '../../src/feed';
-import { usePublications } from '../../src/context/PublicationsContext';
-import { useCurrentUser } from '../../src/useCurrentUser';
+import { usePage } from '../../src/context/RemoteContext';
+import { QueryFooter } from '../../src/remote-ui';
+import { adaptPublication } from '../../src/api/remote';
 import { useState } from 'react';
 import { Image } from 'react-native';
 import { PublicationCard, Chips, EmptyState, Screen } from '../../src/components';
-import { useAppState } from '../../src/context/AppState';
 
 export default function Inicio() {
-  const { publications, getLikedIds } = usePublications();
-
-  const currentUser = useCurrentUser();
-
-  const { followingIds, likedIds, watchlistIds } = useAppState();
   const [filter, setFilter] = useState('Para ti');
 
-  const feed = selectFeed(
-    publications,
-    filter,
-    currentUser.id,
-    followingIds,
-    likedIds,
-    watchlistIds,
-    getLikedIds(currentUser.id),
-  );
+  const page = usePage('/feed', {
+    type: filter === 'Para ti' ? 'for-you' : filter === 'Siguiendo' ? 'following' : 'trending',
+  });
+  const feed = page.items.map(adaptPublication);
 
   return (
     <Screen
@@ -58,6 +47,7 @@ export default function Inicio() {
           }
         />
       )}
+      <QueryFooter query={page} />
     </Screen>
   );
 }

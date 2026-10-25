@@ -1,3 +1,7 @@
+import { useQuery, usePage } from '../../../src/context/RemoteContext';
+import { QueryFooter } from '../../../src/remote-ui';
+import { adaptCountry } from '../../../src/map-data';
+import { adaptAnime, adaptPublication } from '../../../src/api/remote';
 import { usePublications } from '../../../src/context/PublicationsContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -11,29 +15,12 @@ import {
   Screen,
   Section,
 } from '../../../src/components';
-import {
-  countries,
-  findAnime,
-  getCountryMetric,
-  getCountryTop,
-  getMapMetric,
-  getParam,
-  mapMetrics,
-} from '../../../src/mock';
+import { findAnime, getCountryMetric, getMapMetric, getParam, mapMetrics } from '../../../src/data';
 import { theme } from '../../../src/theme';
 import { WorldMap } from '../../../src/WorldMap';
 
-// TODO BACKEND [REVIEWS-PAIS]: recuperar reviews locales por país; estas asociaciones son solo ejemplos.
-const localReviewIds: Record<string, string[]> = {
-  argentina: ['review-felipe', 'review-nico'],
-  japon: ['review-sofi', 'review-shonen'],
-  brasil: ['review-shonen', 'review-sofi'],
-  espana: ['review-nico', 'review-felipe'],
-  'estados-unidos': ['review-sofi', 'review-shonen'],
-};
-
 export default function CountryScreen() {
-  const { reviews } = usePublications();
+  usePublications();
 
   const params = useLocalSearchParams<{
     pais?: string | string[];
@@ -41,8 +28,29 @@ export default function CountryScreen() {
     animeId?: string | string[];
     origin?: string | string[];
   }>();
-  const country = countries.find((item) => item.id === getParam(params.pais));
+  const detail = useQuery(`/explore/countries/${getParam(params.pais)}`, {
+    animeId: getParam(params.animeId),
+  });
+  const page = usePage(`/explore/countries/${getParam(params.pais)}/reviews`, {
+    animeId: getParam(params.animeId),
+  });
+  const countries = (detail.data?.comparison ?? []).map(
+    adaptCountry,
+  ) as import('../../../src/data').Country[];
+  const country = detail.data
+    ? {
+        ...adaptCountry({
+          ...detail.data.country,
+          ...detail.data.comparison?.find(
+            (row: import('../../../src/api/remote').Wire) => row.code === detail.data?.country.code,
+          ),
+          ...detail.data.statistics,
+        }),
+        top: [],
+      }
+    : undefined;
   const metric = getMapMetric(getParam(params.metric));
+  useQuery(getParam(params.animeId) ? `/anime/${getParam(params.animeId)}` : undefined);
   const selectedAnime = findAnime(getParam(params.animeId));
   const mapParams = {
     metric,
@@ -59,24 +67,32 @@ export default function CountryScreen() {
       <Screen title="País no encontrado" back>
         <EmptyState
           title="No encontramos este país"
-          text="Elegí un país del mapa de ejemplo para consultar su actividad."
+          text="Elegí un país del mapa para consultar su actividad."
           action="Ir al mapa"
           onPress={() => router.replace({ pathname: '/explorar/mapa', params: mapParams })}
         />
+        <QueryFooter query={detail} />
+        <QueryFooter query={page} />
       </Screen>
     );
-  // TODO BACKEND [PAIS-DETALLE]: consultar estadísticas, top 5 y vistos según país, métrica y animeId.
   const animeViews = (item: (typeof countries)[number]) =>
     getCountryMetric(item, 'anime', selectedAnime?.id);
-  const top = getCountryTop(country, metric);
-  const localReviews = reviews.filter((review) =>
-    (localReviewIds[country.id] ?? []).includes(review.id),
-  );
+  const top = (
+    (metric === 'popularidad' ? detail.data?.trending : detail.data?.topRated) ?? []
+  ).map((row: import('../../../src/api/remote').Wire) =>
+    adaptAnime({
+      ...row.anime,
+      views: row.views,
+      averageRating: row.averageRating,
+      popularity: row.popularity,
+    }),
+  ) as import('../../../src/data').Anime[];
+  const localReviews = page.items.map(adaptPublication);
   const comparison = countries.slice().sort((a, b) => animeViews(b) - animeViews(a));
   const maxViews = Math.max(1, ...comparison.map(animeViews));
   return (
     <Screen title={`${country.flag} ${country.name}`} subtitle={mapMetrics[metric]} back>
-      <Text style={styles.notice}>Datos de ejemplo · métricas y reviews locales simuladas</Text>
+      <Text style={styles.notice}>Actividad registrada por país</Text>
       <View style={styles.map}>
         <WorldMap
           selectedId={country.id}
@@ -90,7 +106,7 @@ export default function CountryScreen() {
       {country.reviews === 0 && country.watched === 0 ? (
         <EmptyState
           title="Este país todavía no tiene datos"
-          text="En este conjunto de ejemplo no hay vistos, rankings ni reviews disponibles."
+          text="Todavía no hay visualizaciones ni reviews registradas en este país."
           action="Elegir otro país"
           onPress={returnToMap}
         />
@@ -117,7 +133,7 @@ export default function CountryScreen() {
                     {animeViews(country).toLocaleString('es-AR')}
                   </Text>
                   <Text style={styles.body}>
-                    Vistos de {selectedAnime.title} en {country.name} · ejemplo
+                    Vistos de {selectedAnime.title} en {country.name}
                   </Text>
                   <Action
                     label="Ver ficha del anime"
@@ -169,12 +185,11 @@ export default function CountryScreen() {
               <View key={item.id} style={styles.topItem}>
                 <AnimeCard item={item} rank={index + 1} />
                 {metric === 'popularidad' && (
-                  <Text style={styles.meta}>Índice de ejemplo: {item.popularity}/100</Text>
+                  <Text style={styles.meta}>Popularidad: {item.popularity}/100</Text>
                 )}
                 {metric === 'vistos' && (
                   <Text style={styles.meta}>
-                    {getCountryMetric(country, 'anime', item.id).toLocaleString('es-AR')} vistos ·
-                    ejemplo
+                    {item.watched.toLocaleString('es-AR')} vistos · ejemplo
                   </Text>
                 )}
               </View>

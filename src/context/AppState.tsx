@@ -1,13 +1,8 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import { librariesByUser, users } from '../mock';
+import { Fragment, type ReactNode } from 'react';
 import { useSession } from './SessionContext';
+import { useRemote } from './RemoteContext';
 import { usePublications } from './PublicationsContext';
-import type { PublicationEntry } from '../publications';
-import { useLists } from './ListsContext';
-import { useSocial } from './SocialContext';
-
-// Solo colecciones de anime. Textos/puntuaciones y listas pertenecen a sus contextos.
-type Collection = { watchedIds: string[]; likedIds: string[]; watchlistIds: string[] };
+import { users } from '../data';
 export type AnimeActivity = {
   watched: boolean;
   liked: boolean;
@@ -19,126 +14,105 @@ export type AnimeActivity = {
   spoiler: boolean;
   listIds: string[];
 };
-const empty: Collection = { watchedIds: [], likedIds: [], watchlistIds: [] };
-const createCollections = (entries: PublicationEntry[]) =>
-  // TODO BACKEND [COLECCIONES-CARGAR]: consultar biblioteca real; no inferir todos los vistos de una página de reviews.
-  Object.fromEntries(
-    users.map((user) => [
-      user.id,
-      {
-        watchedIds: [
-          ...new Set([
-            ...(librariesByUser[user.id]?.Vistos ?? []),
-            ...entries.filter((r) => r.userId === user.id && r.animeId).map((r) => r.animeId!),
-          ]),
-        ],
-        likedIds: [...user.favorites],
-        watchlistIds: [...(librariesByUser[user.id]?.Watchlist ?? [])],
-      },
-    ]),
-  );
-function useActivityState() {
-  const [claimedByUser, setClaimed] = useState<Record<string, string[]>>({});
-  function claimReward(userId: string, missionId: string) {
-    // TODO BACKEND [RECOMPENSA-RECLAMAR]: cargar recompensas y validar elegibilidad/reclamo único en servidor.
-    setClaimed((previous) => ({
-      ...previous,
-      [userId]: [...new Set([...(previous[userId] ?? []), missionId])],
-    }));
-  }
-  const { entries } = usePublications();
-  const [collections, setCollections] = useState<Record<string, Collection>>(() =>
-    createCollections(entries),
-  );
-  const getCollection = (id: string) => collections[id] ?? empty;
-  function updateCollection(
-    userId: string,
-    animeId: string,
-    changes: Partial<Pick<AnimeActivity, 'watched' | 'liked' | 'watchlist'>>,
-  ) {
-    // TODO BACKEND [COLECCION-GUARDAR]: actualizar vistos/favoritos/watchlist de la cuenta y usar la respuesta confirmada.
-    setCollections((previous) => {
-      const next = { ...(previous[userId] ?? empty) };
-      for (const [flag, key] of [
-        ['watched', 'watchedIds'],
-        ['liked', 'likedIds'],
-        ['watchlist', 'watchlistIds'],
-      ] as const) {
-        if (changes[flag] !== undefined)
-          next[key] = changes[flag]
-            ? [...new Set([...next[key], animeId])]
-            : next[key].filter((id) => id !== animeId);
-      }
-      return { ...previous, [userId]: next };
-    });
-  }
-  function setFavorites(userId: string, ids: string[]) {
-    // TODO BACKEND [FAVORITOS-ORDEN]: guardar la selección ordenada y sincronizar perfil/biblioteca.
-    setCollections((previous) => ({
-      ...previous,
-      [userId]: { ...(previous[userId] ?? empty), likedIds: [...new Set(ids)] },
-    }));
-  }
-  return { getCollection, updateCollection, setFavorites, claimedByUser, claimReward };
-}
-const ActivityContext = createContext<ReturnType<typeof useActivityState> | null>(null);
 export function AppStateProvider({ children }: { children: ReactNode }) {
-  return <ActivityContext.Provider value={useActivityState()}>{children}</ActivityContext.Provider>;
+  return <Fragment>{children}</Fragment>;
 }
 export function useActivities() {
-  const value = useContext(ActivityContext);
-  if (!value) throw new Error('Falta AppStateProvider');
-  return value;
+  const store = useRemote();
+  const getCollection = (id: string) => {
+    const collect = (collection: string) =>
+      (store.get(JSON.stringify([`/users/${id}/library`, { collection }]))?.items ?? []).map(
+        (item: any) => item.anime.id,
+      ) as string[];
+    return {
+      watchedIds: collect('watched'),
+      watchlistIds: collect('watchlist'),
+      likedIds: users.find((user) => user.id === id)?.favorites ?? [],
+    };
+  };
+  async function setFavorites(_userId: string, animeIds: string[]) {
+    await store.mutate('/me/favorites', { method: 'PUT', body: { animeIds } });
+  }
+  async function updateCollection(
+    userId: string,
+    animeId: string,
+    changes: Partial<AnimeActivity>,
+  ) {
+    try {
+      if (changes.liked !== undefined) {
+        const ids = getCollection(userId).likedIds;
+        await setFavorites(
+          userId,
+          changes.liked ? [...new Set([...ids, animeId])] : ids.filter((id) => id !== animeId),
+        );
+      }
+      if (changes.watched !== undefined || changes.watchlist !== undefined)
+        await store.mutate(`/me/library/${encodeURIComponent(animeId)}`, {
+          method: 'PATCH',
+          body: {
+            ...(changes.watched !== undefined ? { watched: changes.watched } : {}),
+            ...(changes.watchlist !== undefined ? { watchlist: changes.watchlist } : {}),
+          },
+        });
+    } catch (e) {
+      store.report(e);
+    }
+  }
+  return { getCollection, setFavorites, updateCollection };
 }
-// Compatibilidad para las pantallas de actividad: combina datos sin duplicar su almacenamiento.
 export function useAppState() {
   const { user } = useSession();
-  const userId = user?.id ?? '';
+  const store = useRemote();
+  const { saveReview } = usePublications();
   const { getCollection, updateCollection } = useActivities();
-  const { entries, saveReview } = usePublications();
-  const { lists } = useLists();
-  const social = useSocial();
+  const userId = user?.id ?? '';
   const collection = getCollection(userId);
-  function getActivity(animeId: string): AnimeActivity {
-    const entry = entries.find((r) => r.userId === userId && r.animeId === animeId);
+  function getActivity(id: string): AnimeActivity {
+    const data = store.activity.get(id);
+    const current = data?.currentRating;
     return {
-      watched: collection.watchedIds.includes(animeId),
-      liked: collection.likedIds.includes(animeId),
-      watchlist: collection.watchlistIds.includes(animeId),
-      rating: entry?.rating,
-      date: entry?.kind === 'review' ? entry.date : undefined,
-      reviewTitle: entry?.title,
-      reviewText: entry?.text,
-      spoiler: entry?.spoiler ?? false,
-      listIds: lists
-        .filter((l) => l.userId === userId && l.animeIds.includes(animeId))
-        .map((l) => l.id),
+      watched: data?.watched ?? collection.watchedIds.includes(id),
+      liked: data?.favoritePosition != null || collection.likedIds.includes(id),
+      watchlist: data?.watchlist ?? collection.watchlistIds.includes(id),
+      rating: current?.rating,
+      date: current?.watchedOn?.split('-').reverse().join('/'),
+      spoiler: false,
+      listIds: data?.listIds ?? [],
     };
-  }
-  async function saveActivity(animeId: string, draft: AnimeActivity & { logged: boolean }) {
-    await saveReview(userId, {
-      animeId,
-      rating: draft.rating,
-      date: draft.date,
-      title: draft.reviewTitle,
-      text: draft.reviewText ?? '',
-      spoiler: draft.spoiler,
-    });
-    updateCollection(userId, animeId, {
-      watched: draft.watched || draft.rating !== undefined || draft.logged,
-      liked: draft.liked,
-      watchlist: draft.watchlist,
-    });
   }
   return {
     ...collection,
-    watchedCount: collection.watchedIds.length,
+    watchedCount: users.find((row) => row.id === userId)?.watched ?? 0,
     getActivity,
-    saveActivity,
+    saveActivity: async (
+      animeId: string,
+      draft: AnimeActivity & { logged: boolean; reviewId?: string; countryCode?: string | null },
+    ) => {
+      await saveReview(
+        userId,
+        {
+          animeId,
+          rating: draft.rating,
+          title: draft.reviewTitle,
+          text: draft.reviewText ?? '',
+          spoiler: draft.spoiler,
+          date: draft.date,
+          countryCode: draft.countryCode,
+        },
+        draft.reviewId,
+      );
+    },
     updateActivity: (id: string, changes: Partial<AnimeActivity>) =>
       updateCollection(userId, id, changes),
-    followingIds: social.getFollowingIds(userId),
-    friendIds: social.getFriendIds(userId),
-    toggleFollowing: (id: string) => social.toggleFollowing(userId, id),
+    followingIds: users.filter((row) => row.isFollowing).map((row) => row.id),
+    friendIds: users.filter((row) => row.isFriend).map((row) => row.id),
+    toggleFollowing: async (id: string) => {
+      try {
+        const raw = (await store.load(`/users/${id}`, {}, true)).user;
+        await store.action(`/me/following/${id}`, { method: raw?.isFollowing ? 'DELETE' : 'PUT' });
+      } catch (e) {
+        store.report(e);
+      }
+    },
   };
 }

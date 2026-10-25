@@ -1,30 +1,33 @@
-import { useProfiles } from '../../src/context/ProfilesContext';
 import { useActivities } from '../../src/context/AppState';
-import { useDirectory } from '../../src/useDirectory';
+import { useAnimeSearch, QueryFooter } from '../../src/remote-ui';
+import { useQuery } from '../../src/context/RemoteContext';
+import { useProfiles } from '../../src/context/ProfilesContext';
 import { useCurrentUser } from '../../src/useCurrentUser';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Action, Avatar, Dialog, Screen, Section } from '../../src/components';
-import { anime, findAnime } from '../../src/mock';
+import { findAnime } from '../../src/data';
 import { theme } from '../../src/theme';
 
 type ProfileDialog = 'avatar' | 'favorites' | 'saved' | 'cancel' | null;
 
 export default function EditarPerfilScreen() {
-  const { users } = useDirectory();
-
   const currentUser = useCurrentUser();
 
   // Borrador local: solo Guardar modifica los datos compartidos.
   const [name, setName] = useState(currentUser.name);
+  useQuery(`/users/${currentUser.id}`);
+  const search = useAnimeSearch('');
+  const { setFavorites: saveFavorites } = useActivities();
   const handle = currentUser.handle;
   const { updateProfile } = useProfiles();
-  const { setFavorites: saveFavorites } = useActivities();
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [bio, setBio] = useState(currentUser.bio);
   const [favorites, setFavorites] = useState(currentUser.favorites);
-  const [avatar, setAvatar] = useState(currentUser.image);
+  const [avatar] = useState(currentUser.image);
   const [dialog, setDialog] = useState<ProfileDialog>(null);
   const [avatarNotice, setAvatarNotice] = useState('');
   const [attempted, setAttempted] = useState(false);
@@ -39,21 +42,25 @@ export default function EditarPerfilScreen() {
     favorites,
   };
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/perfil'));
-  const save = () => {
+  const save = async () => {
     setAttempted(true);
-    if (!canSave) return;
-    // TODO BACKEND [PERFIL-EDITAR-GUARDAR]: confirmar nombre, bio y avatar mediante ProfilesContext; el handle no se edita.
-    // TODO BACKEND [AVATAR-SUBIR]: subir la imagen seleccionada y guardar su referencia en el perfil después de la respuesta del servidor.
-    setName(name.trim());
-    updateProfile(currentUser.id, { name: name.trim(), bio: bio.trim(), image: avatar });
-    saveFavorites(currentUser.id, favorites);
-    setDialog('saved');
+    if (!canSave || saving) return;
+    setSaveError('');
+    setSaving(true);
+    try {
+      await updateProfile(currentUser.id, { name: name.trim(), bio: bio.trim(), image: avatar });
+      await saveFavorites(currentUser.id, favorites);
+      setName(name.trim());
+      setDialog('saved');
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'No pudimos guardar el perfil.');
+    } finally {
+      setSaving(false);
+    }
   };
-  const chooseImage = (source: 'Cámara' | 'Galería') => {
-    // TODO DISPOSITIVO [AVATAR-SELECCIONAR]: solicitar permiso contextual de cámara/galería y obtener la imagen real; hoy elige una imagen mock.
-    setAvatar(users[source === 'Cámara' ? 1 : 3].image);
+  const chooseImage = (_source: 'Cámara' | 'Galería') => {
     setAvatarNotice(
-      `${source}: vista previa de ejemplo. No se abrió el dispositivo ni se pidió permiso.`,
+      'La subida de avatares todavía no está disponible. Conservás tu imagen actual.',
     );
     setDialog(null);
   };
@@ -171,11 +178,19 @@ export default function EditarPerfilScreen() {
         icon="sparkles-outline"
         onPress={() => router.push('/aura/rangos')}
       />
-      <Action label="Guardar cambios" primary icon="checkmark-outline" onPress={save} />
+      {!!saveError && (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {saveError}
+        </Text>
+      )}
+      <Action
+        label={saving ? 'Guardando…' : 'Guardar cambios'}
+        primary
+        icon="checkmark-outline"
+        onPress={save}
+      />
       <Action label="Cancelar" onPress={() => setDialog('cancel')} />
-      <Text style={styles.meta}>
-        Los cambios se comparten entre pantallas y se reinician al recargar la app.
-      </Text>
+      <Text style={styles.meta}>El nombre y la bio se guardan en tu cuenta.</Text>
       <Dialog
         visible={dialog === 'avatar'}
         title="Cambiar avatar"
@@ -214,7 +229,7 @@ export default function EditarPerfilScreen() {
         onClose={() => setDialog(null)}
       >
         <ScrollView style={styles.pickerList}>
-          {anime.map((item) => (
+          {search.animes.map((item) => (
             <Pressable
               key={item.id}
               onPress={() => toggleFavorite(item.id)}
@@ -231,11 +246,12 @@ export default function EditarPerfilScreen() {
             </Pressable>
           ))}
         </ScrollView>
+        <QueryFooter query={search} />
       </Dialog>
       <Dialog
         visible={dialog === 'saved'}
-        title="Cambios preparados"
-        text="Tu perfil se actualizó en esta demostración local."
+        title="Cambios guardados"
+        text="Tu perfil y tus favoritos se actualizaron en tu cuenta."
         onClose={() => setDialog(null)}
       />
       <Dialog

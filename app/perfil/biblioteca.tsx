@@ -1,3 +1,6 @@
+import { usePage } from '../../src/context/RemoteContext';
+import { QueryFooter } from '../../src/remote-ui';
+import { adaptAnime, adaptPublication } from '../../src/api/remote';
 import { useLists } from '../../src/context/ListsContext';
 import { usePublications } from '../../src/context/PublicationsContext';
 import { useCurrentUser } from '../../src/useCurrentUser';
@@ -15,16 +18,15 @@ import {
   SearchBar,
   Section,
 } from '../../src/components';
-import { anime, findAnime, getParam } from '../../src/mock';
+import { getParam } from '../../src/data';
 import { useAppState } from '../../src/context/AppState';
 import { theme } from '../../src/theme';
 
 export default function BibliotecaScreen() {
   const { lists } = useLists();
-  const { publications, getLikedIds } = usePublications();
+  usePublications();
 
   const currentUser = useCurrentUser();
-  const currentLikedReviewIds = getLikedIds(currentUser.id);
 
   const params = useLocalSearchParams();
   const options = ['Watchlist', 'Vistos', 'Favoritos', 'Listas', 'Likes'];
@@ -34,33 +36,35 @@ export default function BibliotecaScreen() {
     options.find((option) => option.toLowerCase() === requested.toLowerCase()) ?? 'Watchlist',
   );
   const [query, setQuery] = useState('');
-  const { likedIds, updateActivity, watchedIds, watchlistIds } = useAppState();
+  const { updateActivity } = useAppState();
   const { width: windowWidth } = useWindowDimensions();
   const width = Math.min(windowWidth, theme.layout.maxWidth);
-  // TODO BACKEND [BIBLIOTECA]: consultar colecciones y likes de currentUser.id según el selector y texto.
-  const collectionIds =
-    tab === 'Watchlist' ? watchlistIds : tab === 'Vistos' ? watchedIds : likedIds;
-  const results = anime.filter(
-    (item) =>
-      collectionIds.includes(item.id) &&
-      item.title.toLowerCase().includes(query.toLowerCase().trim()),
+  const page = usePage(
+    tab === 'Listas'
+      ? '/lists'
+      : tab === 'Likes'
+        ? `/users/${currentUser.id}/publications`
+        : `/users/${currentUser.id}/library`,
+    tab === 'Listas'
+      ? { userId: currentUser.id, q: query }
+      : tab === 'Likes'
+        ? { collection: 'likes', q: query }
+        : {
+            collection:
+              tab === 'Watchlist' ? 'watchlist' : tab === 'Vistos' ? 'watched' : 'favorites',
+            q: query,
+          },
   );
-  const ownLists = lists.filter(
-    (item) =>
-      item.userId === currentUser.id &&
-      `${item.title} ${item.description}`.toLowerCase().includes(query.toLowerCase().trim()),
-  );
-  const likedReviews = publications.filter(
-    (item) =>
-      currentLikedReviewIds.includes(item.id) &&
-      `${item.text} ${findAnime(item.animeId)?.title ?? ''}`
-        .toLowerCase()
-        .includes(query.toLowerCase().trim()),
-  );
+  const results =
+    tab === 'Listas' || tab === 'Likes' ? [] : page.items.map((row) => adaptAnime(row.anime));
+  const ownLists =
+    tab === 'Listas'
+      ? page.items.map((row) => lists.find((list) => list.id === row.id)!).filter(Boolean)
+      : [];
+  const likedReviews = tab === 'Likes' ? page.items.map(adaptPublication) : [];
   const count =
     tab === 'Listas' ? ownLists.length : tab === 'Likes' ? likedReviews.length : results.length;
   const removeAnime = (animeId: string) => {
-    // TODO BACKEND [COLECCION-QUITAR]: reemplazar esta actualización local por la operación correspondiente.
     if (tab === 'Watchlist') updateActivity(animeId, { watchlist: false });
     if (tab === 'Vistos') updateActivity(animeId, { watched: false });
     if (tab === 'Favoritos') updateActivity(animeId, { liked: false });
@@ -116,9 +120,7 @@ export default function BibliotecaScreen() {
       {tab === 'Likes' &&
         likedReviews.map((item) => <PublicationCard key={item.id} review={item} />)}
       <View style={styles.note}>
-        <Text style={styles.meta}>
-          Colecciones de ejemplo. Los cambios se muestran en esta vista.
-        </Text>
+        <Text style={styles.meta}>Tus colecciones se guardan en tu cuenta.</Text>
       </View>
       {tab !== 'Listas' && (
         <Action
@@ -127,6 +129,7 @@ export default function BibliotecaScreen() {
           onPress={() => router.push('/perfil/listas/editar')}
         />
       )}
+      <QueryFooter query={page} />
     </Screen>
   );
 }

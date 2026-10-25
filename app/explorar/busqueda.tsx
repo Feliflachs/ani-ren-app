@@ -1,7 +1,7 @@
-import { publicationAnimeIds } from '../../src/publications';
-import { useDirectory } from '../../src/useDirectory';
+import { usePage } from '../../src/context/RemoteContext';
+import { QueryFooter, withResources } from '../../src/remote-ui';
+import { adaptAnime, adaptPublication, adaptUser, genreIds } from '../../src/api/remote';
 import { useLists } from '../../src/context/ListsContext';
-import { usePublications } from '../../src/context/PublicationsContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -17,13 +17,11 @@ import {
   SearchBar,
   Section,
 } from '../../src/components';
-import { anime, findAnime, genres, getParam, getRankProgress, seasons } from '../../src/mock';
+import { genres, getParam, seasons } from '../../src/data';
 import { theme } from '../../src/theme';
 
-export default function BusquedaScreen() {
-  const { findUser, users } = useDirectory();
+function BusquedaScreen() {
   const { lists } = useLists();
-  const { publications } = usePublications();
 
   const params = useLocalSearchParams();
   const { width: windowWidth } = useWindowDimensions();
@@ -44,49 +42,47 @@ export default function BusquedaScreen() {
   const [season, setSeason] = useState(
     requestedSeason && seasons.includes(requestedSeason) ? requestedSeason : 'Todas las temporadas',
   );
-  const [status, setStatus] = useState(getParam(params.state) ?? 'ready');
-  const normalize = (value: string) =>
-    value
-      .toLocaleLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-  const normalizedQuery = normalize(query.trim());
-  const matches = (value: string) => normalize(value).includes(normalizedQuery);
-  // TODO BACKEND [BUSQUEDA]: hoy se filtran datos de ejemplo; consultar texto, categoría, géneros (cualquiera de los elegidos) y una temporada.
-  const matchingAnime = anime.filter(
-    (item) =>
-      matches(`${item.title} ${item.japanese} ${item.genres.join(' ')}`) &&
-      (selectedGenres.length === 0 ||
-        selectedGenres.some((genre) => item.genres.includes(genre))) &&
-      (season === 'Todas las temporadas' || item.season === season),
-  );
-  const matchesContext = (animeId: string | undefined) => {
-    const item = findAnime(animeId);
-    return (
-      (selectedGenres.length === 0 ||
-        selectedGenres.some((genre) => item?.genres.includes(genre))) &&
-      (season === 'Todas las temporadas' || item?.season === season)
-    );
+  const [seasonName, year] = season.split(' ');
+  const seasonCode: Record<string, string> = {
+    Primavera: 'spring',
+    Verano: 'summer',
+    Otoño: 'fall',
+    Invierno: 'winter',
   };
-  const matchingReviews = publications.filter(
-    (item) =>
-      matches(
-        `${item.text} ${item.tags.map((tag) => '#' + tag).join(' ')} ${findUser(item.userId)?.name ?? ''} ${publicationAnimeIds(
-          item,
-        )
-          .map((id) => findAnime(id)?.title ?? '')
-          .join(' ')}`,
-      ) &&
-      ((selectedGenres.length === 0 && season === 'Todas las temporadas') ||
-        publicationAnimeIds(item).some(matchesContext)),
-  );
-  const matchingUsers = users.filter((item) => matches(`${item.name} ${item.handle} ${item.bio}`));
-  const matchingLists = lists.filter(
-    (item) =>
-      matches(`${item.title} ${item.description}`) &&
-      ((selectedGenres.length === 0 && season === 'Todas las temporadas') ||
-        item.animeIds.some(matchesContext)),
-  );
+  const page = usePage('/search', {
+    type:
+      category === 'Anime'
+        ? 'anime'
+        : category === 'Publicaciones'
+          ? 'publications'
+          : category === 'Usuarios'
+            ? 'users'
+            : 'lists',
+    q: query,
+    ...(category === 'Anime' ? { page: 1 } : {}),
+    ...(category === 'Usuarios'
+      ? {}
+      : {
+          genres:
+            selectedGenres
+              .map((name) => genreIds.get(name))
+              .filter(Boolean)
+              .join(',') || undefined,
+          season: seasonCode[seasonName],
+          year: seasonCode[seasonName] ? Number(year) : undefined,
+        }),
+  });
+  const status = page.loading ? 'loading' : page.error ? 'error' : 'ready';
+  const setStatus = (_status: string) => {
+    if (page.error) page.reload();
+  };
+  const matchingAnime = category === 'Anime' ? page.items.map(adaptAnime) : [];
+  const matchingReviews = category === 'Publicaciones' ? page.items.map(adaptPublication) : [];
+  const matchingUsers = category === 'Usuarios' ? page.items.map(adaptUser) : [];
+  const matchingLists =
+    category === 'Listas'
+      ? page.items.map((row) => lists.find((list) => list.id === row.id)!).filter(Boolean)
+      : [];
   const count =
     category === 'Anime'
       ? matchingAnime.length
@@ -250,7 +246,7 @@ export default function BusquedaScreen() {
                 <View style={styles.grow}>
                   <Text style={styles.title}>{item.name}</Text>
                   <Text style={styles.meta}>
-                    @{item.handle} · {getRankProgress(item.watched).rank}
+                    @{item.handle} · {item.rank ?? '—'}
                   </Text>
                   <Text numberOfLines={2} style={styles.body}>
                     {item.bio}
@@ -263,6 +259,7 @@ export default function BusquedaScreen() {
             matchingLists.map((item) => <ListCard key={item.id} list={item} />)}
         </>
       )}
+      <QueryFooter query={{ ...page, loading: false, error: '' }} />
     </Screen>
   );
 }
@@ -354,3 +351,5 @@ const styles = StyleSheet.create({
   meta: { color: theme.colors.textSecondary, fontSize: 12 },
   body: { color: theme.colors.text, fontSize: 13, lineHeight: 20 },
 });
+
+export default withResources(BusquedaScreen, () => [['/explore']]);
