@@ -71,7 +71,6 @@ function SessionNavigation() {
         {/* El mismo contenedor limita pantallas y tabs en ventanas grandes. */}
         <View style={styles.app}>
           <Stack
-            initialRouteName="index"
             screenOptions={{
               headerShown: false,
               contentStyle: { backgroundColor: theme.colors.background },
@@ -120,3 +119,5 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 });
+
+export const unstable_settings = { initialRouteName: 'index' };

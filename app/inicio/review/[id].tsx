@@ -4,7 +4,7 @@ import { useDirectory } from '../../../src/useDirectory';
 import { usePublications } from '../../../src/context/PublicationsContext';
 import { useCurrentUser } from '../../../src/useCurrentUser';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useRef, useState, type ComponentRef } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
@@ -37,7 +37,7 @@ function ReviewScreen() {
   const liked = getLikedIds(currentUser.id).includes(reviewId);
   const [revealed, setRevealed] = useState(false);
   const [draft, setDraft] = useState('');
-  const commentInput = useRef<TextInput>(null);
+  const commentInput = useRef<ComponentRef<typeof TextInput>>(null);
   const [sharing, setSharing] = useState(false);
   const store = useRemote();
   const commentsPage = usePage(`/publications/${reviewId}/comments`);

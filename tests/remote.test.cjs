@@ -103,3 +103,20 @@ test('late activity reads cannot overwrite activity refreshed after a write', as
   await old;
   assert.equal(store.activity.get('mal:1').rating, 5);
 });
+
+test('feed metadata preserves a previously loaded Spanish synopsis', async () => {
+  const { adaptAnime } = load('remote');
+  const row = {
+    id: 'mal:6',
+    externalId: 6,
+    title: 'Trigun',
+    synopsis: 'English [Written by MAL Rewrite]',
+    synopsisEs: 'Sinopsis castellana',
+    genres: [],
+  };
+  const store = createRemoteStore({ request: async () => ({ anime: row }) });
+  store.activate();
+  await store.load('/anime/mal:6');
+  assert.equal(adaptAnime({ ...row, synopsisEs: undefined }).synopsis, 'Sinopsis castellana');
+  assert.equal(adaptAnime({ ...row, synopsisEs: null }).synopsis, 'English');
+});

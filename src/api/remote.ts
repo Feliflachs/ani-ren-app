@@ -54,7 +54,15 @@ export function adaptAnime(row: Wire): Anime {
     studio: (typeof row.studios === 'string' ? JSON.parse(row.studios) : (row.studios ?? [])).join(
       ' · ',
     ),
-    synopsis: row.synopsis ?? '',
+    synopsisEs: row.synopsisEs === undefined ? previous?.synopsisEs : row.synopsisEs,
+    synopsis: (
+      row.synopsisEs ??
+      (row.synopsisEs === undefined ? previous?.synopsisEs : null) ??
+      row.synopsis ??
+      ''
+    )
+      .replace(/\s*\[Written by MAL Rewrite\]\s*$/i, '')
+      .trim(),
     watched: metadata.watched ?? row.views ?? previous?.watched ?? 0,
     popularity: row.popularity ?? previous?.popularity ?? 0,
   };

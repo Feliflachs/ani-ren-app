@@ -1,3 +1,5 @@
+import { useViewingCountry, viewingCountries } from '../../../src/location/useViewingCountry';
+import { SvgUri } from 'react-native-svg';
 import { useQuery, usePage } from '../../../src/context/RemoteContext';
 import { QueryFooter, withResources } from '../../../src/remote-ui';
 import { adaptPublication, type Wire } from '../../../src/api/remote';
@@ -27,6 +29,7 @@ import {
   EmptyState,
   Screen,
   Section,
+  SearchBar,
 } from '../../../src/components';
 import { useAppState } from '../../../src/context/AppState';
 import { findAnime, getParam } from '../../../src/data';
@@ -44,6 +47,13 @@ function DetalleAnime() {
   const width = Math.min(windowWidth, theme.layout.maxWidth);
   const id = getParam(params.id) ?? '';
   const [message, setMessage] = useState('');
+  const country = useViewingCountry();
+  const [countryPicker, setCountryPicker] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+  const [credits, setCredits] = useState(false);
+  const streaming = useQuery(country.loading ? undefined : `/anime/${id}/streaming`, {
+    country: country.code ?? undefined,
+  });
   const [expandedSynopsisId, setExpandedSynopsisId] = useState<string | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
   const [listPicker, setListPicker] = useState(false);
@@ -54,9 +64,19 @@ function DetalleAnime() {
   const reviewPage = usePage('/publications', { animeId: id, kind: 'review' });
   const statistics = detail.data?.anime?.statistics;
   const ratingVotes = statistics?.ratingUserCount ?? 0;
-  const streamingPlatforms: { name: string; url: string; icon: 'play-circle-outline' }[] = (
-    extras.data?.streamingLinks ?? []
-  ).map((link: Wire) => ({ name: link.site, url: link.url, icon: 'play-circle-outline' as const }));
+  const streamingPlatforms: {
+    id: string;
+    name: string;
+    url: string;
+    offer: string;
+    icon: 'play-circle-outline';
+  }[] = (streaming.data?.links ?? []).map((link: Wire) => ({
+    id: link.id,
+    name: link.site,
+    url: link.url,
+    offer: link.offer,
+    icon: 'play-circle-outline' as const,
+  }));
   const item = findAnime(id);
   if (!item)
     return (
@@ -250,6 +270,18 @@ function DetalleAnime() {
       />
       <Action label="Review" icon="add-circle-outline" primary onPress={writeReview} />
       <Section title="Dónde ver" />
+      <Action
+        label={
+          country.loading
+            ? 'Detectando país…'
+            : country.name
+              ? 'País: ' + country.name
+              : 'Elegir país'
+        }
+        icon="location-outline"
+        onPress={() => setCountryPicker(true)}
+      />
+      {!!country.message && <Text style={styles.note}>{country.message}</Text>}
       <ScrollView
         horizontal
         style={{ flexGrow: 0 }}
@@ -258,7 +290,7 @@ function DetalleAnime() {
       >
         {streamingPlatforms.map((platform) => (
           <Pressable
-            key={platform.name}
+            key={platform.id}
             accessibilityRole="link"
             accessibilityLabel={`Abrir ${platform.name}`}
             onPress={() => openStreamingPlatform(platform.url)}
@@ -267,17 +299,32 @@ function DetalleAnime() {
             <Ionicons name={platform.icon} size={25} color={theme.colors.accentSoft} />
             <View>
               <Text style={styles.platformName}>{platform.name}</Text>
-              <Text style={styles.meta}>Visitar sitio</Text>
+              <Text style={styles.meta}>
+                {platform.offer} ·{' '}
+                {streaming.data?.source === 'tmdb' ? 'Ver opciones' : 'Visitar sitio'}
+              </Text>
             </View>
           </Pressable>
         ))}
       </ScrollView>
-      <Text style={styles.note}>
-        Enlaces del catálogo; la disponibilidad puede variar por país.
-      </Text>
+      <QueryFooter query={streaming} />
+      {streaming.data?.status !== 'regional' && !!streaming.data?.message && (
+        <Text style={styles.note}>{streaming.data.message}</Text>
+      )}
+      {streaming.data?.status === 'unavailable' && (
+        <Action label="Reintentar opciones" onPress={streaming.reload} />
+      )}
+      <Pressable accessibilityRole="button" onPress={() => setCredits(true)}>
+        <Text style={styles.note}>Créditos</Text>
+      </Pressable>
       <View style={[styles.infoColumns, width < 360 && styles.stack]}>
         <View style={[styles.infoCard, width >= 360 && styles.infoColumn]}>
           <Text style={styles.cardTitle}>Sinopsis</Text>
+          {item.synopsisEs === null && !!synopsis && (
+            <Text style={styles.note}>
+              Sin versión en castellano disponible. Se muestra el texto original.
+            </Text>
+          )}
           {synopsisIsLong ? (
             <Pressable
               accessibilityRole="button"
@@ -394,6 +441,75 @@ function DetalleAnime() {
           router.push({ pathname: '/explorar/mapa', params: { metric: 'anime', animeId: item.id } })
         }
       />
+      <Dialog
+        visible={countryPicker}
+        title="País para ver anime"
+        text="Se usa para consultar plataformas; elegirlo no registra vistas en el mapa."
+        onClose={() => setCountryPicker(false)}
+      >
+        <Action
+          label="Usar mi ubicación actual"
+          icon="location-outline"
+          disabled={country.loading}
+          onPress={() => {
+            setCountryPicker(false);
+            void country.locate();
+          }}
+        />
+        <SearchBar
+          value={countrySearch}
+          onChangeText={setCountrySearch}
+          placeholder="Buscar país"
+        />
+        {viewingCountries
+          .filter((item) =>
+            item.name
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase()
+              .includes(
+                countrySearch
+                  .normalize('NFD')
+                  .replace(/[\u0300-\u036f]/g, '')
+                  .toLowerCase(),
+              ),
+          )
+          .map((item) => (
+            <Action
+              key={item.code}
+              label={item.name}
+              active={item.code === country.code}
+              onPress={() => {
+                country.choose(item.code);
+                setCountryPicker(false);
+                setCountrySearch('');
+              }}
+            />
+          ))}
+      </Dialog>
+      <Dialog visible={credits} title="Créditos" onClose={() => setCredits(false)}>
+        <SvgUri
+          width={120}
+          height={20}
+          uri="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"
+        />
+        <Text style={styles.note}>
+          This product uses the TMDB API but is not endorsed or certified by TMDB.
+        </Text>
+        <Text style={styles.note}>
+          Disponibilidad proporcionada por JustWatch a través de TMDB. Los enlaces abren las
+          opciones de reproducción en TMDB.
+        </Text>
+        <Text style={styles.note}>
+          Sinopsis en castellano: TMDB. Texto original del catálogo: MyAnimeList; algunas sinopsis
+          fueron redactadas por MAL Rewrite.
+        </Text>
+        <Action label="TMDB" onPress={() => openStreamingPlatform('https://www.themoviedb.org/')} />
+        <Action
+          label="JustWatch"
+          onPress={() => openStreamingPlatform('https://www.justwatch.com/')}
+        />
+      </Dialog>
       <Dialog
         visible={listPicker}
         title="Agregar a lista"

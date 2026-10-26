@@ -20,7 +20,7 @@ async function main() {
       voiceActorLanguage: 'JAPANESE',
       page,
     }),
-  });
+  }, { get: async (_id, _identity, country) => ({ status: 'regional', links: [{ id: country, site: 'Plataforma ' + country, url: 'https://www.themoviedb.org/tv/1/watch', offer: 'Suscripción' }] }) });
   const other = await fixtureServer.account('otro_usuario');
   await fixtureServer.request('/reviews', other, {
     method: 'POST',
@@ -123,6 +123,18 @@ async function main() {
       );
       console.log('PASS route', route);
     }
+    await go('/explorar/anime/mal%3A1');
+    await page.getByRole('button', { name: 'Elegir país', exact: true }).click();
+    await page.getByRole('button', { name: 'Argentina', exact: true }).click();
+    await expect(page.getByText('Plataforma AR', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'País: Argentina', exact: true }).click();
+    await page.getByRole('textbox', { name: 'Buscar país', exact: true }).fill('España');
+    await page.getByRole('button', { name: 'España', exact: true }).click();
+    await expect(page.getByText('Plataforma ES', { exact: true })).toBeVisible();
+    await expect(page.getByText('Plataforma AR', { exact: true })).toHaveCount(0);
+    const viewingUser = await fixtureServer.db.user.findUniqueOrThrow({ where: { normalizedHandle: 'browser_user' } });
+    if (await fixtureServer.db.ratingEntry.count({ where: { userId: viewingUser.id } }) !== 0) throw Error('Viewing country created a rating');
+    if (await fixtureServer.db.libraryEntry.count({ where: { userId: viewingUser.id } }) !== 0) throw Error('Viewing country created library activity');
     await go('/crear/review/escribir?animeId=mal%3A1');
     await page.getByRole('button', { name: 'Puntuar 4 de 5', exact: true }).click();
     await page.getByRole('button', { name: 'Listo', exact: true }).click();

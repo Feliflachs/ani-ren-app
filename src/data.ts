@@ -15,6 +15,7 @@ export type Anime = {
   season: string;
   studio: string;
   synopsis: string;
+  synopsisEs?: string | null;
   watched: number;
   popularity: number;
 };

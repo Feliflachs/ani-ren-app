@@ -61,8 +61,14 @@ Los recorridos integrales web y de contratos pasan. Falta probar permisos de ubi
 
 Las claves de idempotencia se conservan mientras vive la sesión de la app; no se implementó una cola offline persistente. Si falla una operación de un guardado compuesto (perfil/favoritos), no se anuncia éxito global y el borrador permanece disponible.
 
-## Próximo bloque acordado: dónde verlo
+## Dónde verlo por país (26/10/2026)
 
-Toda la integración de proveedores queda en el backend. AniList será respaldo si el proveedor principal no responde, sin afirmar disponibilidad regional cuando solo haya enlaces generales. Al entrar a la ficha se solicitará ubicación para consultar streaming en el país actual; si no hay permiso, se ofrecerá elegir país. Ese país de consulta no genera vistos ni reemplaza el país histórico de una valoración. Este bloque todavía no está implementado; falta configurar el proveedor regional.
+Implementado: GET /anime/:id/streaming?country=AR consulta TMDB y usa AniList como respaldo. La ficha detecta el país en teléfono y ofrece selección manual (también en web). Solo envía ISO2; consultar o elegir país no registra vistos. TMDB devuelve opciones de reproducción en su sitio, no enlaces directos a cada plataforma. API Key o Read Access Token van exclusivamente en el .env del backend.
 
 Verificación del cambio de recompensas automáticas: 61 pruebas backend, TypeScript de ambos proyectos, lint, exportación web y recorridos de navegador/contratos aprobados. No se modificaron estilos.
+
+La detección usa permiso foreground, un límite de 12 segundos y caché de país de 10 minutos; denegación, GPS apagado o fallo permiten seleccionar manualmente. La elección manual es de esa ficha y no cambia el país de una review. La caché TMDB vive en memoria durante 6 horas y está acotada; título/año/formato/animación deben coincidir de forma única. OVA/ONA y temporadas que no se puedan asociar con certeza conservan enlaces generales de AniList. No se afirma que un resultado vacío signifique indisponibilidad absoluta.
+
+Verificado: credencial TMDB real, regiones y Naruto en Argentina; tests de proveedor con respuestas controladas, cambio Argentina/España en navegador sin crear actividad. Pendiente validar el permiso y geocodificación en teléfono.
+
+Castellano (26/10/2026): la ficha prefiere synopsisEs del backend y conserva esa traducción frente a respuestas parciales del feed. Si es null muestra el original con aviso. Géneros localizados por el backend sin cambiar IDs. Atribuciones reunidas en Créditos; sin nota regional de éxito ni firma MAL Rewrite dentro de la sinopsis.
