@@ -1,4 +1,5 @@
-import { useQuery, RemoteNotice } from './context/RemoteContext';
+import { useQuery, useRemote, RemoteNotice } from './context/RemoteContext';
+import { adaptPublication } from './api/remote';
 import { publicationAnimeIds, type Publication } from './publications';
 import { usePublications } from './context/PublicationsContext';
 import { useDirectory } from './useDirectory';
@@ -12,6 +13,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -135,6 +137,8 @@ export function Screen({
   actions,
   avatar = true,
   headerCentered = false,
+  onRefresh,
+  refreshing = false,
 }: {
   title: ReactNode;
   subtitle?: string;
@@ -143,6 +147,8 @@ export function Screen({
   actions?: ReactNode;
   avatar?: boolean;
   headerCentered?: boolean;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }) {
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/inicio'));
   return (
@@ -155,6 +161,15 @@ export function Screen({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
+          refreshControl={
+            onRefresh ? (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={theme.colors.primarySoft}
+              />
+            ) : undefined
+          }
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
@@ -638,7 +653,16 @@ export function PublicationContent({
     </View>
   );
 }
-export function PublicationCard({ review, feed = false }: { review: Publication; feed?: boolean }) {
+export function PublicationCard({
+  review: suppliedReview,
+  feed = false,
+}: {
+  review: Publication;
+  feed?: boolean;
+}) {
+  const store = useRemote();
+  const current = store.rawPublications.get(suppliedReview.id);
+  const review = current ? adaptPublication(current) : suppliedReview;
   const [sharing, setSharing] = useState(false);
   const { findUser } = useDirectory();
   const { user } = useSession();

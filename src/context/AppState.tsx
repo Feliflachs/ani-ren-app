@@ -88,7 +88,7 @@ export function useAppState() {
       animeId: string,
       draft: AnimeActivity & { logged: boolean; reviewId?: string; countryCode?: string | null },
     ) => {
-      await saveReview(
+      return await saveReview(
         userId,
         {
           animeId,

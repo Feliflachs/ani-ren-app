@@ -81,7 +81,7 @@ export function usePage(
   const pendingPage = useRef<string | null>(null);
   const store = useRemote();
   const [retry, setRetry] = useState(0);
-  const revision = store.revision;
+  const revision = store.pageRevision(route);
   const key = JSON.stringify([route, query, revision, retry]);
   const args = useMemo(
     () => JSON.parse(key) as [string | undefined, RequestOptions['query']],
@@ -110,7 +110,20 @@ export function usePage(
       active = false;
     };
   }, [store, key, args, route, retry, revision, itemField]);
-  const current = state.key === key ? state : { key, items: [], loading: !!route, error: '' };
+  // Keep mounted comment threads and their expanded state while refreshing the same query.
+  const sameQuery =
+    state.key &&
+    JSON.stringify(JSON.parse(state.key).slice(0, 2)) === JSON.stringify([route, query]);
+  const current =
+    state.key === key
+      ? state
+      : {
+          key,
+          items: sameQuery ? state.items : [],
+          data: sameQuery ? state.data : undefined,
+          loading: !!route,
+          error: '',
+        };
   async function more() {
     if (!route || current.loading || pendingPage.current === key) return;
     const next = current.data?.nextCursor ?? current.data?.nextPage;

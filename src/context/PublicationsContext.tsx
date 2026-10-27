@@ -21,10 +21,14 @@ export function usePublications() {
       watchedOn: date ? date.split('/').reverse().join('-') : null,
       ...(text.trim() ? { title: title ?? null, text, spoiler } : {}),
     };
-    await store.mutate(id ? `/reviews/${id}` : text.trim() ? '/reviews' : '/ratings', {
-      method: id ? 'PATCH' : 'POST',
-      body: id ? body : { ...body, animeId, countryCode },
-    });
+    const result = await store.mutate(
+      id ? `/reviews/${id}` : text.trim() ? '/reviews' : '/ratings',
+      {
+        method: id ? 'PATCH' : 'POST',
+        body: id ? body : { ...body, animeId, countryCode },
+      },
+    );
+    return result.publication?.id as string | undefined;
   }
   async function savePost(_userId: string, draft: PostDraft, id?: string) {
     const result = await store.mutate(id ? `/posts/${id}` : '/posts', {
@@ -54,8 +58,11 @@ export function usePublications() {
               store.ingest({ ...raw, likedByMe: result.likedByMe, likeCount: result.likeCount });
           }
         }),
-    addComment: async (_userId: string, id: string, text: string) => {
-      await store.mutate(`/publications/${id}/comments`, { method: 'POST', body: { text } });
+    addComment: async (_userId: string, id: string, text: string, parentId?: string) => {
+      await store.mutate(`/publications/${id}/comments`, {
+        method: 'POST',
+        body: { text, ...(parentId ? { parentId } : {}) },
+      });
     },
     getLikedIds: (_id: string) =>
       [...store.rawPublications.values()]

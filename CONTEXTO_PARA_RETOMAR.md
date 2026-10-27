@@ -2,6 +2,15 @@
 
 Actualizado: 26/10/2026. Leer este archivo y PROXIMOS_BLOQUES.md antes de continuar.
 
+## Actualización: auditoría social del segundo sprint
+- Export web e iOS/Hermes del bloque social pasaron. Hermes requirió ejecución fuera del sandbox (código 6 dentro). Capturas de QA local en artifacts/social-discover.png y artifacts/social-replies.png. Falta teléfono real.
+- **Actualización posterior:** ya implementados Descubrir (reemplaza Tendencia en Inicio), ranking sin afinidad con ventana 14 días/semivida 3 días, reviews destacadas por frescura/participantes únicos, likes sin reinicio del feed, respuestas paginadas/desplegables, DELETE de publicaciones solo autor y navegación directa al guardar reviews. Borrar review conserva estrellas/visto y lo explica en confirmación. Migración aditiva de respuestas aplicada a dev.db, sin reset. Reglas detalladas en backend docs/REGLAS_SOCIALES.md. Backend 74/74, app 31/31, tipos/lint y recorrido Chromium pasaron. Los puntos siguientes describen la auditoría inicial; mapa/tops, imágenes, compartir público y base pequeña siguen pendientes.
+- Ver AUDITORIA_SOCIAL.md: auditoría terminada sin cambiar comportamiento. Prioridad actual: social, luego base pequeña accesible para pruebas; personalización/noticias quedan después.
+- Hallazgos: Descubrir existe en API pero no en pantallas y usa afinidad; mapa/tops de actividad cuentan registros repetidos; cada mutación reinicia páginas del feed; comentarios carecen de paginación visible; no existe borrado de publicaciones; persisten confirmaciones y compartir de demo.
+- Regla acordada: una contribución por usuario/anime, voto más reciente; repetir reviews/ratings no multiplica personas vistas. Porcentaje del mapa = participación de cada país en el total mundial del anime, no penetración local.
+- Validación de esta auditoría: backend 21/21 pruebas seleccionadas y frontend 17/17. Reproducción aislada confirmó doble conteo regional. No QA visual/teléfono ni suite completa.
+- Próximo bloque solicitado: base pequeña con cuentas que permitan login, actividad coherente y casos para reproducir los hallazgos. Aún no creada. No usar cuentas fixture-no-login como cuentas de demostración.
+
 ## Repositorios y reglas acordadas
 - App: C:/Users/flach/Documents/GitHub/ani-ren-app, rama nueva-integracion-back.
 - Backend: C:/Users/flach/Documents/GitHub/ani-ren-backend, rama implementacion-front.

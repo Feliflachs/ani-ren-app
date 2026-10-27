@@ -8,19 +8,34 @@ const { fixture } = require(path.join(backend, 'tests/fixture.ts'));
 const appRoot = path.resolve(__dirname, '..');
 async function main() {
   process.chdir(backend);
-  const fixtureServer = await fixture({
-    get: async (id, page) => ({
-      animeId: id,
-      source: 'anilist',
-      anilistId: 1,
-      fetchedAt: new Date().toISOString(),
-      nextPage: null,
-      streamingLinks: [],
-      characters: [],
-      voiceActorLanguage: 'JAPANESE',
-      page,
-    }),
-  }, { get: async (_id, _identity, country) => ({ status: 'regional', links: [{ id: country, site: 'Plataforma ' + country, url: 'https://www.themoviedb.org/tv/1/watch', offer: 'Suscripción' }] }) });
+  const fixtureServer = await fixture(
+    {
+      get: async (id, page) => ({
+        animeId: id,
+        source: 'anilist',
+        anilistId: 1,
+        fetchedAt: new Date().toISOString(),
+        nextPage: null,
+        streamingLinks: [],
+        characters: [],
+        voiceActorLanguage: 'JAPANESE',
+        page,
+      }),
+    },
+    {
+      get: async (_id, _identity, country) => ({
+        status: 'regional',
+        links: [
+          {
+            id: country,
+            site: 'Plataforma ' + country,
+            url: 'https://www.themoviedb.org/tv/1/watch',
+            offer: 'Suscripción',
+          },
+        ],
+      }),
+    },
+  );
   const other = await fixtureServer.account('otro_usuario');
   await fixtureServer.request('/reviews', other, {
     method: 'POST',
@@ -103,6 +118,40 @@ async function main() {
     await page.getByLabel('Contraseña', { exact: true }).fill('Password123');
     await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
     await expect(page.getByText('Una historia que merece una buena review.')).toBeVisible();
+    await page.getByRole('button', { name: 'Descubrir', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Ver Anime mal:1', exact: true })).toBeVisible();
+    await page.screenshot({
+      path: path.join(appRoot, 'artifacts/social-discover.png'),
+      fullPage: true,
+    });
+    await go('/crear/posteo');
+    await page
+      .getByLabel('Texto del posteo', { exact: true })
+      .fill('Un posteo para probar respuestas y eliminación.');
+    await page.getByRole('button', { name: 'Publicar', exact: true }).click();
+    await expect(page).toHaveURL(/\/inicio\/review\//);
+    await page.getByLabel('Tu comentario', { exact: true }).fill('Comentario principal de prueba');
+    await page.getByRole('button', { name: 'Enviar comentario', exact: true }).click();
+    await expect(page.getByText('Comentario principal de prueba', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Responder', exact: true }).click();
+    await page.getByLabel('Tu comentario', { exact: true }).fill('Respuesta dentro del hilo');
+    await page.getByRole('button', { name: 'Enviar comentario', exact: true }).click();
+    await expect(page.getByText('Respuesta dentro del hilo', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Ocultar respuestas', exact: true }).click();
+    await expect(page.getByText('Respuesta dentro del hilo', { exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Ver respuestas (1)', exact: true }).click();
+    await expect(page.getByText('Respuesta dentro del hilo', { exact: true })).toBeVisible();
+    await page.screenshot({
+      path: path.join(appRoot, 'artifacts/social-replies.png'),
+      fullPage: true,
+    });
+    await page.getByRole('button', { name: 'Opciones de publicación', exact: true }).click();
+    await page.getByRole('button', { name: 'Eliminar', exact: true }).click();
+    await page.getByRole('button', { name: 'Eliminar', exact: true }).last().click();
+    await expect(page).toHaveURL(/\/inicio$/);
+    await expect(
+      page.getByText('Un posteo para probar respuestas y eliminación.', { exact: true }),
+    ).toHaveCount(0);
     for (const route of [
       '/explorar',
       '/explorar/busqueda?q=Anime',
@@ -132,13 +181,18 @@ async function main() {
     await page.getByRole('button', { name: 'España', exact: true }).click();
     await expect(page.getByText('Plataforma ES', { exact: true })).toBeVisible();
     await expect(page.getByText('Plataforma AR', { exact: true })).toHaveCount(0);
-    const viewingUser = await fixtureServer.db.user.findUniqueOrThrow({ where: { normalizedHandle: 'browser_user' } });
-    if (await fixtureServer.db.ratingEntry.count({ where: { userId: viewingUser.id } }) !== 0) throw Error('Viewing country created a rating');
-    if (await fixtureServer.db.libraryEntry.count({ where: { userId: viewingUser.id } }) !== 0) throw Error('Viewing country created library activity');
+    const viewingUser = await fixtureServer.db.user.findUniqueOrThrow({
+      where: { normalizedHandle: 'browser_user' },
+    });
+    if ((await fixtureServer.db.ratingEntry.count({ where: { userId: viewingUser.id } })) !== 0)
+      throw Error('Viewing country created a rating');
+    if ((await fixtureServer.db.libraryEntry.count({ where: { userId: viewingUser.id } })) !== 0)
+      throw Error('Viewing country created library activity');
     await go('/crear/review/escribir?animeId=mal%3A1');
     await page.getByRole('button', { name: 'Puntuar 4 de 5', exact: true }).click();
     await page.getByRole('button', { name: 'Listo', exact: true }).click();
-    await expect(page.getByText('Actividad guardada', { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/\/explorar\/anime\//);
+    await expect(page.getByText('Actividad guardada', { exact: true })).toHaveCount(0);
     const user = await fixtureServer.db.user.findUniqueOrThrow({
       where: { normalizedHandle: 'browser_user' },
     });

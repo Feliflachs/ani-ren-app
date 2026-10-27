@@ -6,6 +6,55 @@ function deferred() {
   let resolve;
   return { promise: new Promise((r) => (resolve = r)), resolve: (v) => resolve(v) };
 }
+
+test('liking updates the entity without resetting feed pages; deletion removes the cached publication', async () => {
+  const publication = {
+    id: '42',
+    kind: 'post',
+    userId: 'a',
+    author: { id: 'a', name: 'A', handle: 'a' },
+    createdAt: new Date().toISOString(),
+    text: 'Post',
+    animeIds: [],
+    likeCount: 0,
+    commentCount: 0,
+    likedByMe: false,
+  };
+  const store = createRemoteStore({
+    request: async (route) =>
+      route.endsWith('/like')
+        ? { publicationId: '42', likeCount: 1, likedByMe: true }
+        : { deletedPublicationId: '42' },
+  });
+  store.activate();
+  store.ingest(publication);
+  const before = store.pageRevision('/feed');
+  await store.mutate('/publications/42/like', { method: 'PUT' });
+  assert.equal(store.pageRevision('/feed'), before);
+  assert.equal(store.pageRevision('/discover'), before);
+  assert.equal(store.rawPublications.get('42').likeCount, 1);
+  assert.equal(store.rawPublications.get('42').likedByMe, true);
+  await store.mutate('/publications/42', { method: 'DELETE' });
+  assert.equal(store.rawPublications.has('42'), false);
+  assert.ok(store.pageRevision('/feed') > before);
+});
+
+test('repeated taps on a pending social action send only one request', async () => {
+  const pending = deferred();
+  let requests = 0;
+  const store = createRemoteStore({
+    request: () => {
+      requests++;
+      return pending.promise;
+    },
+  });
+  store.activate();
+  const first = store.action('/publications/42/like', { method: 'PUT' });
+  await store.action('/publications/42/like', { method: 'PUT' });
+  assert.equal(requests, 1);
+  pending.resolve({ publicationId: '42', likeCount: 1, likedByMe: true });
+  await first;
+});
 test('a late response from a previous account never enters the next account cache', async () => {
   const pending = deferred();
   const a = createRemoteStore({ request: () => pending.promise });

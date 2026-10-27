@@ -10,7 +10,7 @@ import { useAppState } from '../../../src/context/AppState';
 import { findAnime, getParam } from '../../../src/data';
 import { theme } from '../../../src/theme';
 
-type ReviewDialog = 'confirmed' | 'discard' | null;
+type ReviewDialog = 'discard' | null;
 
 const formatDate = (date: Date) =>
   `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
@@ -53,7 +53,6 @@ function EscribirReviewScreen() {
   const [dialog, setDialog] = useState<ReviewDialog>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [pais, setPais] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
 
   const createsLog = watched || rating !== undefined || reviewOpen;
@@ -98,8 +97,7 @@ function EscribirReviewScreen() {
       if (locationDraft.current?.signature !== signature)
         locationDraft.current = { signature, countryCode: reviewId ? null : await obtenerPais() };
       const countryCode = locationDraft.current.countryCode;
-      setPais(countryCode);
-      await saveActivity(item.id, {
+      const publicationId = await saveActivity(item.id, {
         watched,
         liked,
         watchlist,
@@ -113,7 +111,9 @@ function EscribirReviewScreen() {
         reviewId,
         countryCode,
       });
-      setDialog('confirmed');
+      if (publicationId)
+        router.replace({ pathname: '/inicio/review/[id]', params: { id: publicationId } });
+      else router.replace({ pathname: '/explorar/anime/[id]', params: { id: item.id } });
     } catch {
       setSaveError(
         'No pudimos guardar la review en el servidor. Tu borrador sigue acá; reintentá.',
@@ -268,28 +268,6 @@ function EscribirReviewScreen() {
         onPress={save}
       />
       <Action label="Cancelar" onPress={() => setDialog('discard')} />
-
-      <Dialog
-        visible={dialog === 'confirmed'}
-        title="Actividad guardada"
-        text={
-          createsLog
-            ? `${item.title} ya aparece en tus vistos.`
-            : `Actualizamos tu actividad de ${item.title}.`
-        }
-        onClose={() => setDialog(null)}
-      >
-        {reviewOpen && (
-          <Text style={styles.meta}>
-            {pais
-              ? `País detectado: ${pais}. Guardado con tu puntuación.`
-              : Platform.OS === 'web'
-                ? 'La detección del país está disponible en el teléfono.'
-                : 'No pudimos obtener el país. Tu review se guardó igual.'}
-          </Text>
-        )}
-        <Action label="Volver al anime" onPress={goBack} />
-      </Dialog>
 
       <Dialog
         visible={dialog === 'discard'}

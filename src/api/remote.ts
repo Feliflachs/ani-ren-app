@@ -116,8 +116,10 @@ export function createRemoteStore(api: ApiClient) {
   const identity = {};
   let version = 0,
     revision = 0,
+    feedRevision = 0,
     error = '';
   const listeners = new Set<() => void>();
+  const pendingActions = new Set<string>();
   const cache = new Map<string, Wire>();
   const inflight = new Map<string, Promise<Wire>>();
   const operations = new Map<string, string>();
@@ -205,6 +207,9 @@ export function createRemoteStore(api: ApiClient) {
     get revision() {
       return revision;
     },
+    pageRevision(route?: string) {
+      return route === '/feed' || route === '/discover' ? feedRevision : revision;
+    },
     get error() {
       return error;
     },
@@ -256,17 +261,32 @@ export function createRemoteStore(api: ApiClient) {
       }
       const result = await request(route, options);
       operations.delete(signature);
+      const likeOnly = /^\/publications\/[^/]+\/like$/.test(route);
+      if (likeOnly) {
+        const raw = rawPublications.get(String(result.publicationId));
+        if (raw) ingest({ ...raw, likedByMe: result.likedByMe, likeCount: result.likeCount });
+      }
+      if (result.deletedPublicationId) {
+        rawPublications.delete(result.deletedPublicationId);
+        const index = reviews.findIndex((row) => row.id === result.deletedPublicationId);
+        if (index >= 0) reviews.splice(index, 1);
+      }
       cache.clear();
       revision++;
+      if (!likeOnly) feedRevision++;
       emit();
       return result;
     },
     async action(route: string, options: RequestOptions) {
+      if (pendingActions.has(route)) return undefined;
+      pendingActions.add(route);
       try {
         return await store.mutate(route, options);
       } catch (e) {
         store.report(e);
         return undefined;
+      } finally {
+        pendingActions.delete(route);
       }
     },
   };
