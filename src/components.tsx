@@ -278,11 +278,15 @@ export function AnimeCard({
   width = 112,
   landscape = false,
   rank,
+  unframed = false,
+  showTitle = true,
 }: {
   item: Anime;
   width?: number;
   landscape?: boolean;
   rank?: number;
+  unframed?: boolean;
+  showTitle?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
   return (
@@ -290,13 +294,16 @@ export function AnimeCard({
       onPress={() => router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })}
       accessibilityRole="button"
       accessibilityLabel={`Ver ${item.title}`}
-      style={[styles.animeCard, { width }]}
+      style={[styles.animeCard, unframed && styles.unframedAnime, { width }]}
     >
       <View
-        style={{
-          height: landscape ? width * 0.58 : width * 1.38,
-          backgroundColor: theme.colors.surfaceLight,
-        }}
+        style={[
+          {
+            height: landscape ? width * 0.58 : width * 1.38,
+            backgroundColor: theme.colors.surfaceLight,
+          },
+          unframed && styles.unframedPoster,
+        ]}
       >
         {failed ? (
           <View style={styles.imageFallback}>
@@ -316,14 +323,18 @@ export function AnimeCard({
           </View>
         )}
       </View>
-      <View style={styles.cardCaption}>
-        <Text numberOfLines={1} style={styles.animeTitle}>
-          {item.title}
-        </Text>
-        {landscape && (
-          <Text style={styles.smallRating}>★ {item.rating > 0 ? item.rating.toFixed(1) : '—'}</Text>
-        )}
-      </View>
+      {showTitle && (
+        <View style={[styles.cardCaption, unframed && styles.unframedCaption]}>
+          <Text numberOfLines={1} style={styles.animeTitle}>
+            {item.title}
+          </Text>
+          {landscape && (
+            <Text style={styles.smallRating}>
+              ★ {item.rating > 0 ? item.rating.toFixed(1) : '—'}
+            </Text>
+          )}
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -526,14 +537,14 @@ export function Progress({
 }
 
 // Listas: resumen que recibe siempre la colección actualizada del contexto.
-export function ListCard({ list }: { list: AnimeList }) {
+export function ListCard({ list, separated = false }: { list: AnimeList; separated?: boolean }) {
   const { findUser } = useDirectory();
 
   return (
     <Pressable
       accessibilityRole="button"
       onPress={() => router.push({ pathname: '/perfil/listas/[id]', params: { id: list.id } })}
-      style={styles.review}
+      style={[styles.review, separated && styles.separatedCard]}
     >
       <Text style={styles.reviewAuthor}>{list.title}</Text>
       <Text style={styles.meta}>
@@ -656,9 +667,11 @@ export function PublicationContent({
 export function PublicationCard({
   review: suppliedReview,
   feed = false,
+  separated = false,
 }: {
   review: Publication;
   feed?: boolean;
+  separated?: boolean;
 }) {
   const store = useRemote();
   const current = store.rawPublications.get(suppliedReview.id);
@@ -676,7 +689,7 @@ export function PublicationCard({
   const openReview = () =>
     router.push({ pathname: '/inicio/review/[id]', params: { id: review.id } });
   return (
-    <View style={styles.review}>
+    <View style={[styles.review, (feed || separated) && styles.separatedCard]}>
       <View style={styles.reviewHeader}>
         <Avatar
           user={author}
@@ -756,7 +769,7 @@ export function PublicationCard({
         />
         <SocialAction
           label="Compartir publicación"
-          icon="share-outline"
+          icon="share-social-outline"
           onPress={() => setSharing(true)}
         />
       </View>
@@ -799,6 +812,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   reviewHeader: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  separatedCard: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border,
+    borderRadius: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 16,
+  },
   reviewAuthor: { color: theme.colors.primarySoft, fontSize: 13, fontWeight: '600' },
   reviewContent: { gap: 10 },
   reviewText: { color: theme.colors.text, fontSize: 13, lineHeight: 20 },
@@ -854,6 +876,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   poster: { width: '100%', height: '100%' },
+  unframedAnime: { backgroundColor: 'transparent', borderWidth: 0, borderRadius: 0 },
+  unframedPoster: { borderRadius: 10, overflow: 'hidden' },
+  unframedCaption: { paddingHorizontal: 0 },
   ratingBadge: {
     position: 'absolute',
     top: 5,

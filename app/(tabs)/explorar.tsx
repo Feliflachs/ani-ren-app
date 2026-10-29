@@ -134,7 +134,7 @@ function Explorar() {
         contentContainerStyle={styles.row}
       >
         {trending.map((item, index) => (
-          <AnimeCard key={item.id} item={item} width={trendWidth} rank={index + 1} />
+          <AnimeCard key={item.id} item={item} width={trendWidth} rank={index + 1} unframed />
         ))}
       </ScrollView>
       <Section title="Explorar por temporada" />
@@ -194,12 +194,11 @@ const styles = StyleSheet.create({
   genreText: { color: theme.colors.text, fontSize: 10 },
   mapCard: {
     marginTop: 6,
-    padding: 14,
+    paddingVertical: 14,
     gap: 9,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: theme.colors.border,
-    borderRadius: 14,
   },
   mapHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   mapTitle: { color: theme.colors.text, fontSize: 16, fontWeight: '600' },

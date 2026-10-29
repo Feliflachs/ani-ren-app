@@ -161,6 +161,7 @@ test('feed metadata preserves a previously loaded Spanish synopsis', async () =>
     title: 'Trigun',
     synopsis: 'English [Written by MAL Rewrite]',
     synopsisEs: 'Sinopsis castellana',
+    statistics: { averageRating: null },
     genres: [],
   };
   const store = createRemoteStore({ request: async () => ({ anime: row }) });
@@ -168,4 +169,52 @@ test('feed metadata preserves a previously loaded Spanish synopsis', async () =>
   await store.load('/anime/mal:6');
   assert.equal(adaptAnime({ ...row, synopsisEs: undefined }).synopsis, 'Sinopsis castellana');
   assert.equal(adaptAnime({ ...row, synopsisEs: null }).synopsis, 'English');
+});
+
+test('cold feed batches anime scores before displaying cards, including repeated anime and no votes', async () => {
+  const { adaptAnime } = load('remote');
+  const calls = [];
+  const basic = (id) => ({ id: `mal:${id}`, externalId: id, title: `Anime ${id}`, genres: [] });
+  const store = createRemoteStore({
+    request: async (route, options) => {
+      calls.push(route);
+      if (route === '/anime/statistics') {
+        assert.equal(options.query.ids, 'mal:1,mal:2');
+        return {
+          items: [
+            { id: 'mal:1', statistics: { averageRating: 4.25, ratingUserCount: 2 } },
+            { id: 'mal:2', statistics: { averageRating: null, ratingUserCount: 0 } },
+          ],
+        };
+      }
+      return { items: [{ anime: basic(1) }, { anime: basic(1) }, { anime: basic(2) }] };
+    },
+  });
+  store.activate();
+  const result = await store.load('/feed');
+  assert.deepEqual(calls, ['/feed', '/anime/statistics']);
+  assert.equal(adaptAnime(result.items[0].anime).rating, 4.25);
+  assert.equal(adaptAnime(result.items[1].anime).rating, 4.25);
+  assert.equal(adaptAnime(result.items[2].anime).rating, 0);
+  assert.equal(
+    adaptAnime({ ...result.items[0].anime, statistics: { averageRating: null } }).rating,
+    0,
+  );
+});
+
+test('changing accounts during score hydration discards the old response', async () => {
+  const pending = deferred();
+  const a = createRemoteStore({
+    request: async (route) =>
+      route === '/anime/statistics'
+        ? pending.promise
+        : { anime: { id: 'mal:1', externalId: 1, title: 'Old account anime' } },
+  });
+  a.activate();
+  const old = a.load('/feed');
+  await new Promise((resolve) => setImmediate(resolve));
+  const b = createRemoteStore({ request: async () => ({}) });
+  b.activate();
+  pending.resolve({ items: [{ id: 'mal:1', statistics: { averageRating: 5 } }] });
+  await assert.rejects(old, /sesión cambió/);
 });

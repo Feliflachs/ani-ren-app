@@ -27,30 +27,41 @@ export default function RankingScreen() {
   };
 
   return (
-    <Screen title="Ranking de usuarios" subtitle="Historias vistas, mundos descubiertos." back>
-      <Chips options={['Global', 'Amigos']} value={filter} onChange={setFilter} />
+    <Screen
+      title="Ranking de usuarios"
+      subtitle="Historias vistas, mundos descubiertos."
+      back
+      onRefresh={page.reload}
+      refreshing={page.loading}
+    >
+      <Chips
+        options={['Global', 'Amigos']}
+        value={filter}
+        onChange={setFilter}
+        variant="underline"
+      />
       <View style={styles.summary}>
         <Ionicons name="podium-outline" size={33} color={theme.colors.primarySoft} />
         <View style={styles.flex}>
           <Text style={styles.position}>Tu posición: #{currentPosition}</Text>
           <Text style={styles.meta}>
-            {page.data?.me?.points ?? 0} puntos Aura · {filter.toLowerCase()}
+            {page.data?.me?.points ?? '—'} puntos Aura · {filter.toLowerCase()}
           </Text>
         </View>
       </View>
       <Text style={styles.notice}>La posición depende de los puntos de misiones reclamadas.</Text>
 
-      {ranked.map((user, index) => {
+      {ranked.map((user) => {
         const isCurrentUser = user.id === currentUser.id;
         return (
           <Pressable
             key={user.id}
             onPress={() => openProfile(user.id)}
             accessibilityRole="button"
-            accessibilityLabel={`Posición ${user.position}, ${user.name}, ${user.points} animes vistos`}
-            style={[styles.userRow, isCurrentUser && styles.current]}
+            accessibilityLabel={`Posición ${user.position}, ${user.name}, ${user.points} puntos Aura`}
+            style={styles.userRow}
           >
-            <Text style={styles.number}>#{index + 1}</Text>
+            <Text style={styles.number}>#{user.position}</Text>
             <Avatar user={user} size={42} />
             <View style={styles.flex}>
               <Text style={styles.name}>
@@ -60,7 +71,7 @@ export default function RankingScreen() {
               <Text style={styles.meta}>{user.rank}</Text>
             </View>
             <View style={styles.count}>
-              <Text style={styles.watched}>{user.watched}</Text>
+              <Text style={styles.points}>{user.points}</Text>
               <Text style={styles.meta}>puntos</Text>
             </View>
           </Pressable>
@@ -68,8 +79,10 @@ export default function RankingScreen() {
       })}
 
       <Text style={styles.notice}>
-        Las reglas para contar series, temporadas y películas se definirán al conectar los datos
-        reales.
+        Los usuarios con los mismos puntos comparten posición.
+        {filter === 'Amigos'
+          ? ' Acá participás vos y las personas que se siguen mutuamente con vos.'
+          : ''}
       </Text>
       <QueryFooter query={page} />
     </Screen>
@@ -96,14 +109,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
   },
-  current: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primaryDark },
   number: { color: theme.colors.primarySoft, fontWeight: '700', fontSize: 14, width: 28 },
   name: { color: theme.colors.text, fontWeight: '600', fontSize: 13 },
   count: { alignItems: 'center', minWidth: 36 },
-  watched: { color: theme.colors.primarySoft, fontWeight: '700', fontSize: 18 },
+  points: { color: theme.colors.primarySoft, fontWeight: '700', fontSize: 18 },
 });

@@ -45,7 +45,11 @@ export function adaptAnime(row: Wire): Anime {
     title: row.title,
     japanese: row.japanese ?? '',
     image: image(row.imageUrl),
-    rating: metadata.averageRating ?? row.averageRating ?? previous?.rating ?? 0,
+    rating: Object.hasOwn(metadata, 'averageRating')
+      ? (metadata.averageRating ?? 0)
+      : Object.hasOwn(row, 'averageRating')
+        ? (row.averageRating ?? 0)
+        : (previous?.rating ?? 0),
     year: row.year ?? 0,
     episodes: row.episodes ?? 0,
     duration: row.durationMinutes ?? 0,
@@ -167,6 +171,43 @@ export function createRemoteStore(api: ApiClient) {
     if (owner !== identity) throw new Error('La sesión cambió.');
     if ((!options.method || options.method === 'GET') && startedRevision !== revision)
       return result;
+    // Hydrate card scores in batches, before publishing the first response to the screen.
+    const pendingAnime = new Map<string, Wire[]>();
+    function collect(value: unknown) {
+      if (!value || typeof value !== 'object') return;
+      if (Array.isArray(value)) {
+        value.forEach(collect);
+        return;
+      }
+      const row = value as Wire;
+      if (
+        row.externalId &&
+        row.title &&
+        typeof row.id === 'string' &&
+        !Object.hasOwn(row.statistics ?? {}, 'averageRating') &&
+        !Object.hasOwn(row, 'averageRating')
+      ) {
+        const copies = pendingAnime.get(row.id) ?? [];
+        copies.push(row);
+        pendingAnime.set(row.id, copies);
+      }
+      Object.values(row).forEach(collect);
+    }
+    collect(result);
+    const ids = [...pendingAnime.keys()];
+    for (let start = 0; start < ids.length; start += 100) {
+      const scores = await api.request<Wire>('/anime/statistics', {
+        query: { ids: ids.slice(start, start + 100).join(',') },
+        signal: options.signal,
+      });
+      if (owner !== identity) throw new Error('La sesión cambió.');
+      if (startedRevision !== revision) return result;
+      for (const item of scores.items) {
+        for (const row of pendingAnime.get(item.id) ?? []) {
+          row.statistics = { ...row.statistics, ...item.statistics };
+        }
+      }
+    }
     ingest(result);
     if (route.includes('/activity')) activity.set(decodeURIComponent(route.split('/')[3]), result);
     if (route === '/explore') {

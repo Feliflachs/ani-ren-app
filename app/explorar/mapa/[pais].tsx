@@ -2,6 +2,7 @@ import { useQuery, usePage } from '../../../src/context/RemoteContext';
 import { QueryFooter } from '../../../src/remote-ui';
 import { adaptCountry } from '../../../src/map-data';
 import { adaptAnime, adaptPublication } from '../../../src/api/remote';
+import { countryTop } from '../../../src/api/country-top';
 import { usePublications } from '../../../src/context/PublicationsContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -28,12 +29,9 @@ export default function CountryScreen() {
     animeId?: string | string[];
     origin?: string | string[];
   }>();
-  const detail = useQuery(`/explore/countries/${getParam(params.pais)}`, {
-    animeId: getParam(params.animeId),
-  });
-  const page = usePage(`/explore/countries/${getParam(params.pais)}/reviews`, {
-    animeId: getParam(params.animeId),
-  });
+  const animeId = getParam(params.animeId)?.trim() || undefined;
+  const detail = useQuery(`/explore/countries/${getParam(params.pais)}`, { animeId });
+  const page = usePage(`/explore/countries/${getParam(params.pais)}/reviews`, { animeId });
   const countries = (detail.data?.comparison ?? []).map(
     adaptCountry,
   ) as import('../../../src/data').Country[];
@@ -64,29 +62,31 @@ export default function CountryScreen() {
       : router.replace({ pathname: '/explorar/mapa', params: mapParams });
   if (!country)
     return (
-      <Screen title="País no encontrado" back>
-        <EmptyState
-          title="No encontramos este país"
-          text="Elegí un país del mapa para consultar su actividad."
-          action="Ir al mapa"
-          onPress={() => router.replace({ pathname: '/explorar/mapa', params: mapParams })}
-        />
+      <Screen title="Actividad del país" back>
+        {!detail.loading && !detail.error && (
+          <EmptyState
+            title="No encontramos este país"
+            text="Elegí un país del mapa para consultar su actividad."
+            action="Ir al mapa"
+            onPress={() => router.replace({ pathname: '/explorar/mapa', params: mapParams })}
+          />
+        )}
         <QueryFooter query={detail} />
         <QueryFooter query={page} />
       </Screen>
     );
   const animeViews = (item: (typeof countries)[number]) =>
     getCountryMetric(item, 'anime', selectedAnime?.id);
-  const top = (
-    (metric === 'popularidad' ? detail.data?.trending : detail.data?.topRated) ?? []
-  ).map((row: import('../../../src/api/remote').Wire) =>
-    adaptAnime({
+  const topSelection = countryTop(detail.data, metric);
+  const top = topSelection.items.map((row) => ({
+    ...adaptAnime({
       ...row.anime,
       views: row.views,
       averageRating: row.averageRating,
       popularity: row.popularity,
     }),
-  ) as import('../../../src/data').Anime[];
+    reviewCount: row.reviews as number,
+  }));
   const localReviews = page.items.map(adaptPublication);
   const comparison = countries.slice().sort((a, b) => animeViews(b) - animeViews(a));
   const maxViews = Math.max(1, ...comparison.map(animeViews));
@@ -170,31 +170,43 @@ export default function CountryScreen() {
             <View style={styles.metricCard}>
               <Text style={styles.mainNumber}>{getCountryMetric(country, 'popularidad')}/100</Text>
               <Text style={styles.body}>
-                Índice de popularidad ilustrativo. La fórmula real queda pendiente.
+                Popularidad relativa a las visualizaciones registradas en Ani-Ren por país.
               </Text>
             </View>
           )}
-          <Section title={`Top 5 · ${country.name}`} />
-          <ScrollView
-            horizontal
-            style={{ flexGrow: 0 }}
-            showsHorizontalScrollIndicator={Platform.OS === 'web'}
-            contentContainerStyle={styles.horizontal}
-          >
-            {top.map((item, index) => (
-              <View key={item.id} style={styles.topItem}>
-                <AnimeCard item={item} rank={index + 1} />
-                {metric === 'popularidad' && (
-                  <Text style={styles.meta}>Popularidad: {item.popularity}/100</Text>
-                )}
-                {metric === 'vistos' && (
-                  <Text style={styles.meta}>
-                    {item.watched.toLocaleString('es-AR')} vistos · ejemplo
-                  </Text>
-                )}
-              </View>
-            ))}
-          </ScrollView>
+          {metric !== 'anime' && (
+            <>
+              <Section title={`Top 5 · ${country.name}`} />
+              <Text style={styles.meta}>{topSelection.label}</Text>
+              {top.length === 0 && (
+                <EmptyState
+                  title="Todavía no hay datos para este top"
+                  text="Se necesitan valoraciones o reviews registradas en este país."
+                />
+              )}
+              <ScrollView
+                horizontal
+                style={{ flexGrow: 0 }}
+                showsHorizontalScrollIndicator={Platform.OS === 'web'}
+                contentContainerStyle={styles.horizontal}
+              >
+                {top.map((item, index) => (
+                  <View key={item.id} style={styles.topItem}>
+                    <AnimeCard item={item} rank={index + 1} unframed />
+                    {metric === 'reviews' && (
+                      <Text style={styles.meta}>{item.reviewCount} reviews</Text>
+                    )}
+                    {metric === 'popularidad' && (
+                      <Text style={styles.meta}>Popularidad: {item.popularity}/100</Text>
+                    )}
+                    {metric === 'vistos' && (
+                      <Text style={styles.meta}>{item.watched.toLocaleString('es-AR')} vistos</Text>
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+            </>
+          )}
           <Section title="Reviews del país" />
           {localReviews.map((review) => (
             <PublicationCard key={review.id} review={review} />
@@ -202,6 +214,7 @@ export default function CountryScreen() {
         </>
       )}
       <Action label="Volver al mapa" icon="map-outline" onPress={returnToMap} />
+      <QueryFooter query={page} />
     </Screen>
   );
 }

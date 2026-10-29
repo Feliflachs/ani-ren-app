@@ -2,11 +2,20 @@ import { useQuery } from '../../../src/context/RemoteContext';
 import { useAnimeSearch, QueryFooter } from '../../../src/remote-ui';
 import { adaptCountry, metricCode } from '../../../src/map-data';
 import { adaptAnime } from '../../../src/api/remote';
+import { countryTop as selectCountryTop } from '../../../src/api/country-top';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Action, AnimeCard, Chips, Screen, SearchBar, Section } from '../../../src/components';
+import {
+  Action,
+  AnimeCard,
+  Chips,
+  EmptyState,
+  Screen,
+  SearchBar,
+  Section,
+} from '../../../src/components';
 import {
   anime,
   findAnime,
@@ -55,16 +64,16 @@ export default function MapScreen() {
   const metricValue = (country: (typeof countries)[number]) =>
     getCountryMetric(country, metric, selectedAnime?.id);
   const sorted = countries.slice().sort((a, b) => metricValue(b) - metricValue(a));
-  const countryTop = (
-    (metric === 'popularidad' ? detail.data?.trending : detail.data?.topRated) ?? []
-  ).map((row: import('../../../src/api/remote').Wire) =>
-    adaptAnime({
+  const topSelection = selectCountryTop(detail.data, metric);
+  const countryTop = topSelection.items.map((row) => ({
+    ...adaptAnime({
       ...row.anime,
       views: row.views,
       averageRating: row.averageRating,
       popularity: row.popularity,
     }),
-  ) as import('../../../src/data').Anime[];
+    reviewCount: row.reviews as number,
+  }));
   const valueLabel =
     metric === 'reviews' ? 'reviews' : metric === 'popularidad' ? 'popularidad / 100' : 'vistos';
   if (!selectedCountry)
@@ -188,13 +197,45 @@ export default function MapScreen() {
               params: {
                 pais: selectedCountry.id,
                 metric,
-                animeId: selectedAnime?.id ?? '',
+                ...(metric === 'anime' && selectedAnime ? { animeId: selectedAnime.id } : {}),
                 origin: 'mapa',
               },
             })
           }
         />
       </View>
+      {metric !== 'anime' && (
+        <>
+          <Section title={`Top 5 · ${selectedCountry.name}`} />
+          <Text style={styles.meta}>{topSelection.label}</Text>
+          <QueryFooter query={detail} />
+          {!detail.loading && !detail.error && countryTop.length === 0 && (
+            <EmptyState
+              title="Todavía no hay datos para este top"
+              text="Se necesitan valoraciones o reviews registradas en este país."
+            />
+          )}
+          <ScrollView
+            horizontal
+            style={{ flexGrow: 0 }}
+            showsHorizontalScrollIndicator={Platform.OS === 'web'}
+            contentContainerStyle={styles.horizontal}
+          >
+            {countryTop.map((item, index) => (
+              <View key={item.id} style={{ width: 112, gap: 4 }}>
+                <AnimeCard item={item} rank={index + 1} unframed />
+                <Text style={styles.meta}>
+                  {metric === 'reviews'
+                    ? `${item.reviewCount} reviews`
+                    : metric === 'popularidad'
+                      ? `Popularidad: ${item.popularity}/100`
+                      : `${item.watched} vistos`}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        </>
+      )}
       <Section
         title={metric === 'anime' ? `${searchedTitle} por país` : 'Comparación entre países'}
       />
@@ -207,24 +248,9 @@ export default function MapScreen() {
           <Text style={styles.count}>{metricValue(country).toLocaleString('es-AR')}</Text>
         </View>
       ))}
-      {countryTop.length > 0 && (
-        <>
-          <Section title={`Top 5 · ${selectedCountry.name}`} />
-          <ScrollView
-            horizontal
-            style={{ flexGrow: 0 }}
-            showsHorizontalScrollIndicator={Platform.OS === 'web'}
-            contentContainerStyle={styles.horizontal}
-          >
-            {countryTop.map((item, index) => (
-              <AnimeCard key={item.id} item={item} rank={index + 1} />
-            ))}
-          </ScrollView>
-        </>
-      )}
       <Text style={styles.meta}>
-        La popularidad, los colores y los conteos son ilustrativos; no constituyen estadísticas
-        reales.
+        Actividad registrada en Ani-Ren. La popularidad compara las visualizaciones registradas; no
+        representa estadísticas de toda la población.
       </Text>
       <QueryFooter query={map} />
     </Screen>
@@ -254,12 +280,11 @@ const styles = StyleSheet.create({
   scale: { width: 72, height: 6, borderRadius: 4, overflow: 'hidden', flexDirection: 'row' },
   scalePart: { flex: 1, backgroundColor: theme.colors.primary },
   countryCard: {
-    padding: 16,
+    paddingVertical: 16,
     gap: 10,
-    borderRadius: 14,
-    borderWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
   },
   countryTitle: { color: theme.colors.text, fontSize: 21, fontWeight: '700' },
   metricTitle: { color: theme.colors.primarySoft, fontSize: 23, fontWeight: '700' },

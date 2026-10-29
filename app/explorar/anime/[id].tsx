@@ -154,7 +154,7 @@ function DetalleAnime() {
               )
             }
           >
-            <Ionicons name="share-outline" size={22} color={theme.colors.textSecondary} />
+            <Ionicons name="share-social-outline" size={22} color={theme.colors.textSecondary} />
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -191,7 +191,10 @@ function DetalleAnime() {
             {rating.toFixed(1)}
             <Text style={styles.small}> / 5</Text> <Text style={styles.stars}>★★★★★</Text>
           </Text>
-          <Text style={styles.meta}>{ratingVotes.toLocaleString('es-AR')} votos</Text>
+          <Text style={styles.meta}>
+            {ratingVotes.toLocaleString('es-AR')} votos ·{' '}
+            {(statistics?.watched ?? item.watched).toLocaleString('es-AR')} vistos
+          </Text>
           <View style={styles.distribution}>
             {distribution.map((percent, index) => (
               <View key={index} style={styles.barRow}>

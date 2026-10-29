@@ -104,7 +104,7 @@ export function PerfilView({
           accessibilityLabel="Compartir perfil"
           hitSlop={10}
         >
-          <Ionicons name="share-outline" size={22} color={theme.colors.textSecondary} />
+          <Ionicons name="share-social-outline" size={22} color={theme.colors.textSecondary} />
         </Pressable>
       }
     >
@@ -421,10 +421,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    borderRadius: 11,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
     gap: 10,
   },
   rankBody: { flex: 1, gap: 7 },

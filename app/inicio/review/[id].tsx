@@ -243,7 +243,7 @@ function ReviewScreen() {
           />
           <SocialAction
             label="Compartir publicación"
-            icon="share-outline"
+            icon="share-social-outline"
             onPress={() => setSharing(true)}
           />
         </View>

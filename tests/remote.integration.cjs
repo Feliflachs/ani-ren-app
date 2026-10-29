@@ -55,6 +55,13 @@ async function main() {
       method: 'PATCH',
       body: { rating: 5, text: 'Una review editada desde el cliente.' },
     });
+    const fresh = createRemoteStore(api);
+    fresh.activate();
+    const coldSearch = await fresh.load('/search', { type: 'anime', q: 'Anime', page: 1 });
+    assert.equal(coldSearch.items.find(row => row.id === 'mal:1').statistics.averageRating, 5);
+    const coldReviews = await fresh.load('/publications', { kind: 'review' });
+    assert.equal(coldReviews.items[0].anime.statistics.averageRating, 5);
+    store.activate();
     await store.load('/me/anime/mal:1/activity');
     assert.equal(store.activity.get('mal:1').currentRating.rating, 5);
     const post = await store.mutate('/posts', {

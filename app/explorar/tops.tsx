@@ -35,7 +35,12 @@ function TopsScreen() {
   }));
   return (
     <Screen title="Tops de anime" subtitle="Las historias que más conversación generan." back>
-      <Chips options={criterionOptions} value={criterion} onChange={setCriterion} />
+      <Chips
+        options={criterionOptions}
+        value={criterion}
+        onChange={setCriterion}
+        variant="underline"
+      />
       <Chips
         options={['Esta semana', 'Este mes', 'Todo el tiempo']}
         value={period}
@@ -51,8 +56,10 @@ function TopsScreen() {
       )}
       {results.map((item, index) => (
         <View key={item.id} style={styles.card}>
-          <Text style={[styles.position, index < 3 && styles.podium]}>#{index + 1}</Text>
-          <AnimeCard item={item} width={70} />
+          <Text numberOfLines={1} style={[styles.position, index < 3 && styles.podium]}>
+            #{index + 1}
+          </Text>
+          <AnimeCard item={item} width={70} unframed showTitle={false} />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Ver ${item.title}`}
@@ -86,12 +93,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     padding: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 14,
-    backgroundColor: theme.colors.surface,
   },
-  position: { fontSize: 17, color: theme.colors.textSecondary, fontWeight: '700', width: 28 },
+  position: {
+    fontSize: 17,
+    color: theme.colors.textSecondary,
+    fontWeight: '700',
+    minWidth: 44,
+    flexShrink: 0,
+  },
   podium: { color: theme.colors.primarySoft },
   info: { flex: 1, minWidth: 0, gap: 7 },
   title: { color: theme.colors.text, fontSize: 14, fontWeight: '600' },

@@ -4,7 +4,7 @@ import { adaptAnime, adaptPublication, adaptUser, genreIds } from '../../src/api
 import { useLists } from '../../src/context/ListsContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import {
   AnimeCard,
@@ -92,6 +92,18 @@ function BusquedaScreen() {
           ? matchingUsers.length
           : matchingLists.length;
   const filterCount = selectedGenres.length + (season === 'Todas las temporadas' ? 0 : 1);
+  useEffect(() => {
+    if (
+      category === 'Anime' &&
+      filterCount > 0 &&
+      matchingAnime.length < 6 &&
+      page.hasMore &&
+      !page.loading &&
+      !page.error
+    ) {
+      void page.more();
+    }
+  }, [category, filterCount, matchingAnime.length, page]);
   const filterSummary = [
     ...selectedGenres,
     ...(season === 'Todas las temporadas' ? [] : [season]),
@@ -215,7 +227,7 @@ function BusquedaScreen() {
       ) : status === 'error' ? (
         <EmptyState
           title="No pudimos cargar la búsqueda"
-          text="Probá nuevamente dentro de un momento."
+          text={page.error || 'Probá nuevamente dentro de un momento.'}
           action="Reintentar"
           onPress={() => setStatus('ready')}
         />
@@ -226,12 +238,12 @@ function BusquedaScreen() {
           {category === 'Anime' && (
             <View style={styles.grid}>
               {matchingAnime.map((item) => (
-                <AnimeCard key={item.id} item={item} width={Math.min(180, (width - 44) / 2)} />
+                <AnimeCard key={item.id} item={item} width={(width - 44) / 2} />
               ))}
             </View>
           )}
           {category === 'Publicaciones' &&
-            matchingReviews.map((item) => <PublicationCard key={item.id} review={item} />)}
+            matchingReviews.map((item) => <PublicationCard key={item.id} review={item} separated />)}
           {category === 'Usuarios' &&
             matchingUsers.map((item) => (
               <Pressable
@@ -240,11 +252,11 @@ function BusquedaScreen() {
                 onPress={() =>
                   router.push({ pathname: '/perfil/usuario/[id]', params: { id: item.id } })
                 }
-                style={[styles.card, styles.row]}
+                style={[styles.resultRow, styles.row]}
               >
                 <Avatar user={item} />
                 <View style={styles.grow}>
-                  <Text style={styles.title}>{item.name}</Text>
+                  <Text style={[styles.title, styles.userName]}>{item.name}</Text>
                   <Text style={styles.meta}>
                     @{item.handle} · {item.rank ?? '—'}
                   </Text>
@@ -256,7 +268,7 @@ function BusquedaScreen() {
               </Pressable>
             ))}
           {category === 'Listas' &&
-            matchingLists.map((item) => <ListCard key={item.id} list={item} />)}
+            matchingLists.map((item) => <ListCard key={item.id} list={item} separated />)}
         </>
       )}
       <QueryFooter query={{ ...page, loading: false, error: '' }} />
@@ -336,18 +348,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 14,
-    padding: 13,
-    gap: 10,
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  resultRow: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border,
+    paddingVertical: 16,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   grow: { flex: 1, minWidth: 0, gap: 4 },
   title: { color: theme.colors.text, fontWeight: '600', fontSize: 14 },
+  userName: { color: theme.colors.primarySoft },
   meta: { color: theme.colors.textSecondary, fontSize: 12 },
   body: { color: theme.colors.text, fontSize: 13, lineHeight: 20 },
 });

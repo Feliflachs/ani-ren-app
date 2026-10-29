@@ -4,7 +4,7 @@ import { adaptAnime, adaptPublication } from '../../src/api/remote';
 import { useState } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Action, PublicationCard, Chips, EmptyState, Screen } from '../../src/components';
+import { PublicationCard, Chips, EmptyState, Screen } from '../../src/components';
 import { theme } from '../../src/theme';
 
 export default function Inicio() {
@@ -25,14 +25,6 @@ export default function Inicio() {
     <Screen
       onRefresh={page.reload}
       refreshing={page.loading && page.items.length === 0}
-      actions={
-        <Action
-          label="Actualizar"
-          icon="refresh-outline"
-          disabled={page.loading}
-          onPress={page.reload}
-        />
-      }
       title={
         <>
           Ani-Ren{' '}
