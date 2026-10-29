@@ -1,30 +1,12 @@
+import { useQuery } from './context/RemoteContext';
+import { adaptCountry, countryShape, metricCode } from './map-data';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import shapes from '../assets/paises.json';
-import { countries, getCountryMetric, type MapMetric } from './mock';
+import { getCountryMetric, type MapMetric } from './data';
 import { theme } from './theme';
 
 // Siluetas estáticas Natural Earth 1:110m, dominio público. No se consulta un servicio de mapas.
-const countryCodes: Record<string, string> = {
-  ARG: 'argentina',
-  JPN: 'japon',
-  BRA: 'brasil',
-  ESP: 'espana',
-  USA: 'estados-unidos',
-  ISL: 'islandia',
-};
-// La geometría no cambia: preparar una sola vez el fondo y los seis países con datos.
-const backgroundPath = shapes
-  .filter((shape) => !countryCodes[shape.iso])
-  .map((shape) => shape.path)
-  .join('');
-const activeShapes = shapes
-  .filter((shape) => countryCodes[shape.iso])
-  .map((shape) => ({
-    ...shape,
-    country: countries.find((country) => country.id === countryCodes[shape.iso])!,
-  }));
-
 export function WorldMap({
   selectedId,
   onSelect,
@@ -36,9 +18,27 @@ export function WorldMap({
   metric?: MapMetric;
   animeId?: string;
 }) {
+  const map = useQuery(metric === 'anime' && !animeId ? undefined : '/explore/map', {
+    metric: metricCode(metric),
+    ...(metric === 'anime' ? { animeId } : {}),
+    period: 'all',
+  });
+  const countries = (map.data?.items ?? []).map(adaptCountry) as import('./data').Country[];
+  const rows = map.data?.items ?? [];
+  const activeShapes = shapes.flatMap((shape) => {
+    const row = rows.find(
+      (row: import('./api/remote').Wire) => countryShape(row.code) === shape.iso,
+    );
+    const country = countries.find((country) => country.id === row?.id);
+    return country ? [{ ...shape, country }] : [];
+  });
+  const activeCodes = new Set(activeShapes.map((shape) => shape.iso));
+  const backgroundPath = shapes
+    .filter((shape) => !activeCodes.has(shape.iso))
+    .map((shape) => shape.path)
+    .join('');
   const activity = (country: (typeof countries)[number]) =>
     getCountryMetric(country, metric, animeId);
-  const maximum = Math.max(1, ...countries.map(activity));
   return (
     <View style={styles.map}>
       {[25, 50, 75].map((top) => (
@@ -65,7 +65,7 @@ export function WorldMap({
               key={shape.iso}
               d={shape.path}
               fill={theme.colors.primary}
-              fillOpacity={value > 0 ? 0.3 + (value / maximum) * 0.7 : 0.18}
+              fillOpacity={value > 0 ? 0.3 + (shape.country.intensity ?? 0) * 0.7 : 0.18}
               fillRule="evenodd"
               stroke={selected ? theme.colors.text : theme.colors.primarySoft}
               strokeOpacity={selected ? 1 : 0.25}
@@ -91,7 +91,7 @@ export function WorldMap({
               {
                 left: `${country.x}%`,
                 top: `${country.y}%`,
-                backgroundColor: `rgba(139,92,246,${value > 0 ? 0.2 + (value / maximum) * 0.5 : 0.08})`,
+                backgroundColor: `rgba(139,92,246,${value > 0 ? 0.2 + (country.intensity ?? 0) * 0.5 : 0.08})`,
               },
               selected && styles.pointActive,
             ]}
@@ -117,7 +117,7 @@ export function WorldMap({
           </Pressable>
         );
       })}
-      <Text style={styles.caption}>Datos de ejemplo</Text>
+      <Text style={styles.caption}>Actividad de Ani-Ren</Text>
     </View>
   );
 }

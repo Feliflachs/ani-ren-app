@@ -1,3 +1,4 @@
+import { RemoteProvider } from '../src/context/RemoteContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -20,31 +21,33 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <SessionProvider>
-        <ProfilesProvider>
-          <SocialProvider>
-            <PublicationsProvider>
-              <ListsProvider>
-                <AppStateProvider>
-                  <SessionNavigation />
-                </AppStateProvider>
-              </ListsProvider>
-            </PublicationsProvider>
-          </SocialProvider>
-        </ProfilesProvider>
+        <RemoteProvider>
+          <ProfilesProvider>
+            <SocialProvider>
+              <PublicationsProvider>
+                <ListsProvider>
+                  <AppStateProvider>
+                    <SessionNavigation />
+                  </AppStateProvider>
+                </ListsProvider>
+              </PublicationsProvider>
+            </SocialProvider>
+          </ProfilesProvider>
+        </RemoteProvider>
       </SessionProvider>
     </SafeAreaProvider>
   );
 }
 
 function SessionNavigation() {
-  const { user, ready } = useSession();
+  const { user, ready, error: sessionError, restore } = useSession();
   const { ready: reviewsReady, loadError, loadPublications } = usePublications();
   const [loaded, error] = useFonts(Ionicons.font);
   useEffect(() => {
     if (ready && reviewsReady && (loaded || error)) SplashScreen.hideAsync();
   }, [loaded, error, ready, reviewsReady]);
   if (!ready || !reviewsReady || (!loaded && !error)) return null;
-  if (loadError)
+  if (sessionError || loadError)
     return (
       <View
         style={{
@@ -54,8 +57,11 @@ function SessionNavigation() {
           backgroundColor: theme.colors.background,
         }}
       >
-        <Text style={{ color: theme.colors.text }}>{loadError}</Text>
-        <Button title="Reintentar" onPress={() => void loadPublications()} />
+        <Text style={{ color: theme.colors.text }}>{sessionError || loadError}</Text>
+        <Button
+          title="Reintentar"
+          onPress={() => void (sessionError ? restore() : loadPublications())}
+        />
       </View>
     );
   return (
@@ -65,7 +71,6 @@ function SessionNavigation() {
         {/* El mismo contenedor limita pantallas y tabs en ventanas grandes. */}
         <View style={styles.app}>
           <Stack
-            initialRouteName="index"
             screenOptions={{
               headerShown: false,
               contentStyle: { backgroundColor: theme.colors.background },
@@ -114,3 +119,5 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 });
+
+export const unstable_settings = { initialRouteName: 'index' };

@@ -1,15 +1,16 @@
+import { withResources } from '../../../src/remote-ui';
 import { usePublications } from '../../../src/context/PublicationsContext';
 import { useCurrentUser } from '../../../src/useCurrentUser';
 import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Image, Platform, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { Action, Dialog, EmptyState, Screen, StarRating } from '../../../src/components';
 import { useAppState } from '../../../src/context/AppState';
-import { findAnime, getParam } from '../../../src/mock';
+import { findAnime, getParam } from '../../../src/data';
 import { theme } from '../../../src/theme';
 
-type ReviewDialog = 'confirmed' | 'discard' | null;
+type ReviewDialog = 'discard' | null;
 
 const formatDate = (date: Date) =>
   `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
@@ -26,7 +27,7 @@ const isValidSeenDate = (value: string, today: Date) => {
   );
 };
 
-export default function EscribirReviewScreen() {
+function EscribirReviewScreen() {
   const { reviews } = usePublications();
 
   const currentUser = useCurrentUser();
@@ -34,7 +35,7 @@ export default function EscribirReviewScreen() {
   const params = useLocalSearchParams();
   const reviewId = getParam(params.id) ?? getParam(params.reviewId);
   const existing = reviews.find((review) => review.id === reviewId);
-  const item = findAnime(existing?.animeId ?? getParam(params.animeId) ?? 'frieren');
+  const item = findAnime(existing?.animeId ?? getParam(params.animeId) ?? '');
   const { getActivity, saveActivity } = useAppState();
   const saved = getActivity(item?.id ?? '');
   const today = new Date();
@@ -42,23 +43,22 @@ export default function EscribirReviewScreen() {
   const watched = saved.watched;
   const liked = saved.liked;
   const watchlist = saved.watchlist;
-  const [rating, setRating] = useState<number | undefined>(saved.rating);
-  const [reviewOpen, setReviewOpen] = useState(Boolean(existing || saved.reviewText));
-  const [title, setTitle] = useState(saved.reviewTitle ?? '');
-  const [text, setText] = useState(saved.reviewText ?? '');
-  const [date, setDate] = useState(saved.date ?? formatDate(today));
-  const [spoiler, setSpoiler] = useState(saved.spoiler);
+  const [rating, setRating] = useState<number | undefined>(existing?.rating ?? saved.rating);
+  const [reviewOpen, setReviewOpen] = useState(Boolean(existing));
+  const [title, setTitle] = useState(existing?.title ?? '');
+  const [text, setText] = useState(existing?.text ?? '');
+  const [date, setDate] = useState(existing?.date ?? formatDate(today));
+  const [spoiler, setSpoiler] = useState(existing?.spoiler ?? false);
   const listIds = saved.listIds;
   const [dialog, setDialog] = useState<ReviewDialog>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [pais, setPais] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
 
   const createsLog = watched || rating !== undefined || reviewOpen;
   const validDate = !createsLog || isValidSeenDate(date, today);
   const validText = !reviewOpen || text.trim().length >= 10;
-  const validRating = !reviewOpen || rating !== undefined;
+  const validRating = rating !== undefined;
   const hasActivity = createsLog || liked || watchlist || listIds.length > 0;
   const valid = hasActivity && validDate && validText && validRating;
   const goBack = () =>
@@ -68,34 +68,36 @@ export default function EscribirReviewScreen() {
 
   // Como en el ejemplo de clase, pero guardamos solo el pais.
   const obtenerPais = async () => {
-    if (Platform.OS === 'web') return;
+    if (Platform.OS === 'web') return null;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
-      if (!(await Location.hasServicesEnabledAsync())) return;
+      if (status !== 'granted') return null;
+      if (!(await Location.hasServicesEnabledAsync())) return null;
 
       const p = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Low,
       });
       const [direccion] = await Location.reverseGeocodeAsync(p.coords);
-      setPais(direccion?.country ?? null);
+      return direccion?.isoCountryCode?.toUpperCase() ?? null;
     } catch {
       // Si falla la ubicacion, se puede guardar la review igual.
-      setPais(null);
+      return null;
     }
   };
 
+  const locationDraft = useRef<{ signature: string; countryCode: string | null } | null>(null);
   const save = async () => {
     setTouched(true);
     if (!valid || !item || saving) return;
     setSaving(true);
     setSaveError('');
-    setPais(null);
+
     try {
-      // Por ahora el país solo se muestra en la confirmación, no se persiste.
-      if (reviewOpen) await obtenerPais();
-      // TODO BACKEND [ACTIVIDAD-GUARDAR]: reemplazar esta actualización local por una única operación del usuario y el anime.
-      await saveActivity(item.id, {
+      const signature = JSON.stringify([item.id, rating, date, title, text, spoiler, reviewId]);
+      if (locationDraft.current?.signature !== signature)
+        locationDraft.current = { signature, countryCode: reviewId ? null : await obtenerPais() };
+      const countryCode = locationDraft.current.countryCode;
+      const publicationId = await saveActivity(item.id, {
         watched,
         liked,
         watchlist,
@@ -106,11 +108,15 @@ export default function EscribirReviewScreen() {
         spoiler: reviewOpen && spoiler,
         listIds,
         logged: reviewOpen,
+        reviewId,
+        countryCode,
       });
-      setDialog('confirmed');
+      if (publicationId)
+        router.replace({ pathname: '/inicio/review/[id]', params: { id: publicationId } });
+      else router.replace({ pathname: '/explorar/anime/[id]', params: { id: item.id } });
     } catch {
       setSaveError(
-        'No pudimos guardar la review en el dispositivo. Tu borrador sigue acá; reintentá.',
+        'No pudimos guardar la review en el servidor. Tu borrador sigue acá; reintentá.',
       );
     } finally {
       setSaving(false);
@@ -156,7 +162,7 @@ export default function EscribirReviewScreen() {
             {item.year} · {item.episodes} episodios
           </Text>
           <Text style={styles.meta}>{item.genres.join(' · ')}</Text>
-          <Text style={styles.general}>★ {item.rating.toFixed(1)} / 5</Text>
+          <Text style={styles.general}>★ {item.rating > 0 ? item.rating.toFixed(1) : '—'} / 5</Text>
         </View>
       </View>
 
@@ -264,28 +270,6 @@ export default function EscribirReviewScreen() {
       <Action label="Cancelar" onPress={() => setDialog('discard')} />
 
       <Dialog
-        visible={dialog === 'confirmed'}
-        title="Actividad guardada"
-        text={
-          createsLog
-            ? `${item.title} ya aparece en tus vistos.`
-            : `Actualizamos tu actividad de ${item.title}.`
-        }
-        onClose={() => setDialog(null)}
-      >
-        {reviewOpen && (
-          <Text style={styles.meta}>
-            {pais
-              ? `País detectado: ${pais}. Por ahora solo se muestra acá.`
-              : Platform.OS === 'web'
-                ? 'La detección del país está disponible en el teléfono.'
-                : 'No pudimos obtener el país. Tu review se guardó igual.'}
-          </Text>
-        )}
-        <Action label="Volver al anime" onPress={goBack} />
-      </Dialog>
-
-      <Dialog
         visible={dialog === 'discard'}
         title="¿Descartar los cambios?"
         text="Los cambios de esta pantalla se perderán."
@@ -335,4 +319,11 @@ const styles = StyleSheet.create({
   multiline: { minHeight: 115, textAlignVertical: 'top' },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   error: { color: theme.colors.accentSoft, fontSize: 11, lineHeight: 16 },
+});
+
+export default withResources(EscribirReviewScreen, (p) => {
+  const id = String(p.id ?? p.reviewId ?? '');
+  return id
+    ? [[`/publications/${id}`]]
+    : [[`/anime/${p.animeId}`], [`/me/anime/${p.animeId}/activity`]];
 });

@@ -1,10 +1,10 @@
-import { publicationAnimeIds } from '../../src/publications';
-import { useDirectory } from '../../src/useDirectory';
+import { usePage } from '../../src/context/RemoteContext';
+import { QueryFooter, withResources } from '../../src/remote-ui';
+import { adaptAnime, adaptPublication, adaptUser, genreIds } from '../../src/api/remote';
 import { useLists } from '../../src/context/ListsContext';
-import { usePublications } from '../../src/context/PublicationsContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import {
   AnimeCard,
@@ -17,13 +17,11 @@ import {
   SearchBar,
   Section,
 } from '../../src/components';
-import { anime, findAnime, genres, getParam, getRankProgress, seasons } from '../../src/mock';
+import { genres, getParam, seasons } from '../../src/data';
 import { theme } from '../../src/theme';
 
-export default function BusquedaScreen() {
-  const { findUser, users } = useDirectory();
+function BusquedaScreen() {
   const { lists } = useLists();
-  const { publications } = usePublications();
 
   const params = useLocalSearchParams();
   const { width: windowWidth } = useWindowDimensions();
@@ -44,49 +42,47 @@ export default function BusquedaScreen() {
   const [season, setSeason] = useState(
     requestedSeason && seasons.includes(requestedSeason) ? requestedSeason : 'Todas las temporadas',
   );
-  const [status, setStatus] = useState(getParam(params.state) ?? 'ready');
-  const normalize = (value: string) =>
-    value
-      .toLocaleLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-  const normalizedQuery = normalize(query.trim());
-  const matches = (value: string) => normalize(value).includes(normalizedQuery);
-  // TODO BACKEND [BUSQUEDA]: hoy se filtran datos de ejemplo; consultar texto, categoría, géneros (cualquiera de los elegidos) y una temporada.
-  const matchingAnime = anime.filter(
-    (item) =>
-      matches(`${item.title} ${item.japanese} ${item.genres.join(' ')}`) &&
-      (selectedGenres.length === 0 ||
-        selectedGenres.some((genre) => item.genres.includes(genre))) &&
-      (season === 'Todas las temporadas' || item.season === season),
-  );
-  const matchesContext = (animeId: string | undefined) => {
-    const item = findAnime(animeId);
-    return (
-      (selectedGenres.length === 0 ||
-        selectedGenres.some((genre) => item?.genres.includes(genre))) &&
-      (season === 'Todas las temporadas' || item?.season === season)
-    );
+  const [seasonName, year] = season.split(' ');
+  const seasonCode: Record<string, string> = {
+    Primavera: 'spring',
+    Verano: 'summer',
+    Otoño: 'fall',
+    Invierno: 'winter',
   };
-  const matchingReviews = publications.filter(
-    (item) =>
-      matches(
-        `${item.text} ${item.tags.map((tag) => '#' + tag).join(' ')} ${findUser(item.userId)?.name ?? ''} ${publicationAnimeIds(
-          item,
-        )
-          .map((id) => findAnime(id)?.title ?? '')
-          .join(' ')}`,
-      ) &&
-      ((selectedGenres.length === 0 && season === 'Todas las temporadas') ||
-        publicationAnimeIds(item).some(matchesContext)),
-  );
-  const matchingUsers = users.filter((item) => matches(`${item.name} ${item.handle} ${item.bio}`));
-  const matchingLists = lists.filter(
-    (item) =>
-      matches(`${item.title} ${item.description}`) &&
-      ((selectedGenres.length === 0 && season === 'Todas las temporadas') ||
-        item.animeIds.some(matchesContext)),
-  );
+  const page = usePage('/search', {
+    type:
+      category === 'Anime'
+        ? 'anime'
+        : category === 'Publicaciones'
+          ? 'publications'
+          : category === 'Usuarios'
+            ? 'users'
+            : 'lists',
+    q: query,
+    ...(category === 'Anime' ? { page: 1 } : {}),
+    ...(category === 'Usuarios'
+      ? {}
+      : {
+          genres:
+            selectedGenres
+              .map((name) => genreIds.get(name))
+              .filter(Boolean)
+              .join(',') || undefined,
+          season: seasonCode[seasonName],
+          year: seasonCode[seasonName] ? Number(year) : undefined,
+        }),
+  });
+  const status = page.loading ? 'loading' : page.error ? 'error' : 'ready';
+  const setStatus = (_status: string) => {
+    if (page.error) page.reload();
+  };
+  const matchingAnime = category === 'Anime' ? page.items.map(adaptAnime) : [];
+  const matchingReviews = category === 'Publicaciones' ? page.items.map(adaptPublication) : [];
+  const matchingUsers = category === 'Usuarios' ? page.items.map(adaptUser) : [];
+  const matchingLists =
+    category === 'Listas'
+      ? page.items.map((row) => lists.find((list) => list.id === row.id)!).filter(Boolean)
+      : [];
   const count =
     category === 'Anime'
       ? matchingAnime.length
@@ -96,6 +92,18 @@ export default function BusquedaScreen() {
           ? matchingUsers.length
           : matchingLists.length;
   const filterCount = selectedGenres.length + (season === 'Todas las temporadas' ? 0 : 1);
+  useEffect(() => {
+    if (
+      category === 'Anime' &&
+      filterCount > 0 &&
+      matchingAnime.length < 6 &&
+      page.hasMore &&
+      !page.loading &&
+      !page.error
+    ) {
+      void page.more();
+    }
+  }, [category, filterCount, matchingAnime.length, page]);
   const filterSummary = [
     ...selectedGenres,
     ...(season === 'Todas las temporadas' ? [] : [season]),
@@ -219,7 +227,7 @@ export default function BusquedaScreen() {
       ) : status === 'error' ? (
         <EmptyState
           title="No pudimos cargar la búsqueda"
-          text="Probá nuevamente dentro de un momento."
+          text={page.error || 'Probá nuevamente dentro de un momento.'}
           action="Reintentar"
           onPress={() => setStatus('ready')}
         />
@@ -230,7 +238,7 @@ export default function BusquedaScreen() {
           {category === 'Anime' && (
             <View style={styles.grid}>
               {matchingAnime.map((item) => (
-                <AnimeCard key={item.id} item={item} width={Math.min(180, (width - 44) / 2)} />
+                <AnimeCard key={item.id} item={item} width={(width - 44) / 2} />
               ))}
             </View>
           )}
@@ -244,13 +252,13 @@ export default function BusquedaScreen() {
                 onPress={() =>
                   router.push({ pathname: '/perfil/usuario/[id]', params: { id: item.id } })
                 }
-                style={[styles.card, styles.row]}
+                style={[styles.resultRow, styles.row]}
               >
                 <Avatar user={item} />
                 <View style={styles.grow}>
-                  <Text style={styles.title}>{item.name}</Text>
+                  <Text style={[styles.title, styles.userName]}>{item.name}</Text>
                   <Text style={styles.meta}>
-                    @{item.handle} · {getRankProgress(item.watched).rank}
+                    @{item.handle} · {item.rank ?? '—'}
                   </Text>
                   <Text numberOfLines={2} style={styles.body}>
                     {item.bio}
@@ -263,6 +271,7 @@ export default function BusquedaScreen() {
             matchingLists.map((item) => <ListCard key={item.id} list={item} />)}
         </>
       )}
+      <QueryFooter query={{ ...page, loading: false, error: '' }} />
     </Screen>
   );
 }
@@ -339,18 +348,18 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 14,
-    padding: 13,
-    gap: 10,
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  resultRow: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border,
+    paddingVertical: 16,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   grow: { flex: 1, minWidth: 0, gap: 4 },
   title: { color: theme.colors.text, fontWeight: '600', fontSize: 14 },
+  userName: { color: theme.colors.primarySoft },
   meta: { color: theme.colors.textSecondary, fontSize: 12 },
   body: { color: theme.colors.text, fontSize: 13, lineHeight: 20 },
 });
+
+export default withResources(BusquedaScreen, () => [['/explore']]);

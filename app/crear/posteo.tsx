@@ -1,14 +1,15 @@
+import { useAnimeSearch, QueryFooter, withResources } from '../../src/remote-ui';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { Action, EmptyState, Screen } from '../../src/components';
 import { usePublications } from '../../src/context/PublicationsContext';
 import { useCurrentUser } from '../../src/useCurrentUser';
-import { anime, getParam } from '../../src/mock';
+import { getParam } from '../../src/data';
 import { normalizeTag } from '../../src/publications';
 import { theme } from '../../src/theme';
 
-export default function PosteoScreen() {
+function PosteoScreen() {
   const { publications, savePost } = usePublications();
   const user = useCurrentUser();
   const params = useLocalSearchParams();
@@ -20,11 +21,11 @@ export default function PosteoScreen() {
     existing?.kind === 'post' ? existing.animeIds : [],
   );
   const [query, setQuery] = useState('');
+  const search = useAnimeSearch(query);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   async function publish() {
-    // TODO BACKEND [POSTEO-FORMULARIO]: la conexión va en PublicationsContext.savePost; conservar borrador y errores aquí.
     if (saving || text.trim().length < 3) return;
     setSaving(true);
     setError('');
@@ -42,6 +43,7 @@ export default function PosteoScreen() {
     return (
       <Screen title="Posteo" back>
         <EmptyState text="No encontrás este posteo o no te pertenece." />
+        <QueryFooter query={search} />
       </Screen>
     );
 
@@ -88,7 +90,7 @@ export default function PosteoScreen() {
         style={styles.input}
       />
       {!!query.trim() &&
-        anime
+        search.animes
           .filter(
             (item) =>
               !animeIds.includes(item.id) &&
@@ -145,3 +147,5 @@ const styles = StyleSheet.create({
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   error: { color: theme.colors.accentSoft },
 });
+
+export default withResources(PosteoScreen, (p) => (p.id ? [[`/publications/${p.id}`]] : []));

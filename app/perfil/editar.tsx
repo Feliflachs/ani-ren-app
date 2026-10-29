@@ -1,31 +1,39 @@
-import { useProfiles } from '../../src/context/ProfilesContext';
 import { useActivities } from '../../src/context/AppState';
-import { useDirectory } from '../../src/useDirectory';
+import { useAnimeSearch, QueryFooter } from '../../src/remote-ui';
+import { useQuery } from '../../src/context/RemoteContext';
+import { useProfiles } from '../../src/context/ProfilesContext';
 import { useCurrentUser } from '../../src/useCurrentUser';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Action, Avatar, Dialog, Screen, Section } from '../../src/components';
-import { anime, findAnime } from '../../src/mock';
+import { findAnime } from '../../src/data';
 import { theme } from '../../src/theme';
+import { mediaUrl } from '../../src/api/media';
+type CatalogAvatar = { id: string; name: string; collection: string; imageUrl: string };
 
 type ProfileDialog = 'avatar' | 'favorites' | 'saved' | 'cancel' | null;
 
 export default function EditarPerfilScreen() {
-  const { users } = useDirectory();
-
   const currentUser = useCurrentUser();
 
   // Borrador local: solo Guardar modifica los datos compartidos.
   const [name, setName] = useState(currentUser.name);
+  useQuery(`/users/${currentUser.id}`);
+  const search = useAnimeSearch('');
+  const { setFavorites: saveFavorites } = useActivities();
   const handle = currentUser.handle;
   const { updateProfile } = useProfiles();
-  const { setFavorites: saveFavorites } = useActivities();
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [bio, setBio] = useState(currentUser.bio);
   const [favorites, setFavorites] = useState(currentUser.favorites);
   const [avatar, setAvatar] = useState(currentUser.image);
+  const [avatarId, setAvatarId] = useState<string | null | undefined>(undefined);
   const [dialog, setDialog] = useState<ProfileDialog>(null);
+  const avatarQuery = useQuery(dialog === 'avatar' ? '/avatars' : undefined);
+  const catalog: CatalogAvatar[] = avatarQuery.data?.items ?? [];
   const [avatarNotice, setAvatarNotice] = useState('');
   const [attempted, setAttempted] = useState(false);
   const nameError = name.trim().length === 0;
@@ -39,23 +47,26 @@ export default function EditarPerfilScreen() {
     favorites,
   };
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/perfil'));
-  const save = () => {
+  const save = async () => {
     setAttempted(true);
-    if (!canSave) return;
-    // TODO BACKEND [PERFIL-EDITAR-GUARDAR]: confirmar nombre, bio y avatar mediante ProfilesContext; el handle no se edita.
-    // TODO BACKEND [AVATAR-SUBIR]: subir la imagen seleccionada y guardar su referencia en el perfil después de la respuesta del servidor.
-    setName(name.trim());
-    updateProfile(currentUser.id, { name: name.trim(), bio: bio.trim(), image: avatar });
-    saveFavorites(currentUser.id, favorites);
-    setDialog('saved');
-  };
-  const chooseImage = (source: 'Cámara' | 'Galería') => {
-    // TODO DISPOSITIVO [AVATAR-SELECCIONAR]: solicitar permiso contextual de cámara/galería y obtener la imagen real; hoy elige una imagen mock.
-    setAvatar(users[source === 'Cámara' ? 1 : 3].image);
-    setAvatarNotice(
-      `${source}: vista previa de ejemplo. No se abrió el dispositivo ni se pidió permiso.`,
-    );
-    setDialog(null);
+    if (!canSave || saving) return;
+    setSaveError('');
+    setSaving(true);
+    try {
+      await updateProfile(currentUser.id, {
+        name: name.trim(),
+        bio: bio.trim(),
+        image: avatar,
+        avatarId,
+      });
+      await saveFavorites(currentUser.id, favorites);
+      setName(name.trim());
+      setDialog('saved');
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'No pudimos guardar el perfil.');
+    } finally {
+      setSaving(false);
+    }
   };
   const toggleFavorite = (id: string) => {
     setFavorites((previous) => {
@@ -171,41 +182,91 @@ export default function EditarPerfilScreen() {
         icon="sparkles-outline"
         onPress={() => router.push('/aura/rangos')}
       />
-      <Action label="Guardar cambios" primary icon="checkmark-outline" onPress={save} />
+      {!!saveError && (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {saveError}
+        </Text>
+      )}
+      <Action
+        label={saving ? 'Guardando…' : 'Guardar cambios'}
+        primary
+        icon="checkmark-outline"
+        onPress={save}
+      />
       <Action label="Cancelar" onPress={() => setDialog('cancel')} />
-      <Text style={styles.meta}>
-        Los cambios se comparten entre pantallas y se reinician al recargar la app.
-      </Text>
+      <Text style={styles.meta}>El nombre y la bio se guardan en tu cuenta.</Text>
       <Dialog
         visible={dialog === 'avatar'}
-        title="Cambiar avatar"
-        text="Selector de demostración"
+        title="Elegí tu avatar"
+        text="Elegí un personaje. Se guardará cuando guardes el perfil."
         onClose={() => setDialog(null)}
       >
         <Action
-          label="Tomar foto de ejemplo"
-          icon="camera-outline"
-          onPress={() => chooseImage('Cámara')}
-        />
-        <Action
-          label="Elegir de la galería de ejemplo"
-          icon="images-outline"
-          onPress={() => chooseImage('Galería')}
-        />
-        <Action
-          label="Simular permiso no disponible"
+          label="Usar mascota de Ani-Ren"
+          icon="happy-outline"
           onPress={() => {
+            setAvatar(require('../../assets/mascota.png'));
+            setAvatarId(null);
+            setAvatarNotice('Avatar elegido. Guardá el perfil para confirmar.');
             setDialog(null);
-            setAvatarNotice('Permiso no disponible (simulado). El avatar anterior se conserva.');
           }}
         />
-        <Action
-          label="Cancelar selección"
-          onPress={() => {
-            setDialog(null);
-            setAvatarNotice('Selección cancelada. Conservás la imagen anterior.');
-          }}
-        />
+        <QueryFooter query={avatarQuery} />
+        {!avatarQuery.loading && !avatarQuery.error && catalog.length === 0 && (
+          <Text style={styles.meta}>Todavía no hay avatares disponibles.</Text>
+        )}
+        {[...new Set(catalog.map((item) => item.collection))].map((collection) => (
+          <View key={collection} style={{ gap: 12 }}>
+            <Text style={styles.label}>{collection}</Text>
+            <ScrollView horizontal contentContainerStyle={{ gap: 12 }}>
+              {catalog
+                .filter((item) => item.collection === collection)
+                .map((item) => {
+                  const selected =
+                    (avatarId === undefined ? currentUser.avatarId : avatarId) === item.id;
+                  return (
+                    <Pressable
+                      key={item.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Elegir a ${item.name} de ${collection}`}
+                      accessibilityState={{ selected }}
+                      onPress={() => {
+                        setAvatar({ uri: mediaUrl(item.imageUrl) });
+                        setAvatarId(item.id);
+                        setAvatarNotice(
+                          `${item.name} seleccionado. Guardá el perfil para confirmar.`,
+                        );
+                        setDialog(null);
+                      }}
+                      style={{ width: 78, alignItems: 'center', gap: 6, paddingVertical: 6 }}
+                    >
+                      <View
+                        style={{
+                          padding: 3,
+                          borderRadius: 38,
+                          borderWidth: 2,
+                          borderColor: selected ? theme.colors.primary : 'transparent',
+                        }}
+                      >
+                        <Avatar
+                          user={{
+                            ...currentUser,
+                            name: item.name,
+                            image: { uri: mediaUrl(item.imageUrl) },
+                          }}
+                          size={62}
+                        />
+                      </View>
+                      <Text style={styles.meta}>
+                        {selected ? '✓ ' : ''}
+                        {item.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+            </ScrollView>
+          </View>
+        ))}
       </Dialog>
       <Dialog
         visible={dialog === 'favorites'}
@@ -214,7 +275,7 @@ export default function EditarPerfilScreen() {
         onClose={() => setDialog(null)}
       >
         <ScrollView style={styles.pickerList}>
-          {anime.map((item) => (
+          {search.animes.map((item) => (
             <Pressable
               key={item.id}
               onPress={() => toggleFavorite(item.id)}
@@ -231,11 +292,12 @@ export default function EditarPerfilScreen() {
             </Pressable>
           ))}
         </ScrollView>
+        <QueryFooter query={search} />
       </Dialog>
       <Dialog
         visible={dialog === 'saved'}
-        title="Cambios preparados"
-        text="Tu perfil se actualizó en esta demostración local."
+        title="Cambios guardados"
+        text="Tu perfil y tus favoritos se actualizaron en tu cuenta."
         onClose={() => setDialog(null)}
       />
       <Dialog

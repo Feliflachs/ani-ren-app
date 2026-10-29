@@ -7,13 +7,35 @@
     "scheme": "aniren",
     "userInterfaceStyle": "dark",
     "icon": "./assets/mascota.png",
-    "ios": { "supportsTablet": false },
-    "android": { "predictiveBackGestureEnabled": true },
-    "web": { "bundler": "metro", "output": "single", "favicon": "./assets/mascota.png" },
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "predictiveBackGestureEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/mascota.png"
+    },
     "plugins": [
       "expo-router",
-      ["expo-location", { "locationWhenInUsePermission": "Ani-ren usa tu ubicación para detectar el país al guardar una review." }],
-      ["expo-splash-screen", { "image": "./assets/mascota.png", "imageWidth": 180, "resizeMode": "contain", "backgroundColor": "#0D0D12" }]
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Ani-ren usa tu ubicación para consultar dónde ver anime en tu país y registrar el país al guardar una valoración."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/mascota.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#0D0D12"
+        }
+      ]
     ]
   }
 }

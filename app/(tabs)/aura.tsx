@@ -1,3 +1,4 @@
+import { QueryFooter } from '../../src/remote-ui';
 import { useMissions } from '../../src/useMissions';
 import { useCurrentUser } from '../../src/useCurrentUser';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -6,26 +7,24 @@ import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Action, Dialog, Progress, RankInsignia, Screen, Section } from '../../src/components';
 import { useAppState } from '../../src/context/AppState';
-import { getRankProgress, ranks } from '../../src/mock';
+import { ranks } from '../../src/data';
 import { theme } from '../../src/theme';
-
-// TODO BACKEND [AURA]: consultar rango, progreso, beneficios y misiones mediante el id del usuario.
 
 export default function AuraScreen() {
   const currentUser = useCurrentUser();
-  const { missions: auraMissions } = useMissions();
-  const featuredMissions = auraMissions.slice(0, 3);
+  const query = useMissions();
+  const { featuredMissions, rankProgress, points } = query;
 
-  const { likedIds, watchedCount, watchlistIds } = useAppState();
-  const rankProgress = getRankProgress(watchedCount);
+  const { likedIds, watchedCount } = useAppState();
+
   const currentRankIndex = ranks.indexOf(rankProgress.rank);
   const stats = [
     { label: 'Animes vistos', value: watchedCount, icon: 'eye-outline' as const },
     { label: 'Favoritos', value: likedIds.length, icon: 'star-outline' as const },
     { label: 'Reviews', value: currentUser.reviews, icon: 'chatbox-outline' as const },
-    { label: 'Watchlist', value: watchlistIds.length, icon: 'bookmark-outline' as const },
+    { label: 'Watchlist', value: currentUser.watchlist, icon: 'bookmark-outline' as const },
   ];
-  const [selectedMission, setSelectedMission] = useState<(typeof auraMissions)[number] | null>(
+  const [selectedMission, setSelectedMission] = useState<(typeof featuredMissions)[number] | null>(
     null,
   );
 
@@ -51,6 +50,7 @@ export default function AuraScreen() {
         </Pressable>
       }
     >
+      <QueryFooter query={query} />
       <View style={styles.rankCard}>
         <View style={styles.rankSide}>
           <View style={styles.rankIdentity}>
@@ -61,19 +61,24 @@ export default function AuraScreen() {
               <Text style={styles.pill}>{rankProgress.rank}-kun</Text>
             </View>
           </View>
-          <Progress value={watchedCount} total={rankProgress.total} label="Animes vistos" />
+          <Progress
+            value={points}
+            total={rankProgress.total}
+            progress={rankProgress.progress}
+            label="Puntos Aura"
+          />
           <Text style={styles.meta}>
             {rankProgress.nextRank
-              ? `Próximo rango: ${rankProgress.nextRank} · umbral de ejemplo`
-              : 'Alcanzaste el último rango de ejemplo'}
+              ? `Próximo rango: ${rankProgress.nextRank}`
+              : 'Alcanzaste el último rango'}
           </Text>
         </View>
 
         <View style={styles.benefits}>
           <Text style={styles.meta}>Beneficios del rango</Text>
           <Text style={styles.benefit}>✧ Badge {rankProgress.rank}</Text>
-          <Text style={styles.benefit}>✧ Sufijos y títulos</Text>
-          <Text style={styles.benefit}>✧ Misiones de ejemplo</Text>
+          <Text style={styles.benefit}>✧ Decoradores pendientes</Text>
+          <Text style={styles.benefit}>✧ Misiones por puntos</Text>
           <Pressable onPress={() => router.push('/aura/rangos')} accessibilityRole="button">
             <Text style={styles.link}>Personalizar ›</Text>
           </Pressable>
@@ -154,7 +159,7 @@ export default function AuraScreen() {
         title={selectedMission?.title ?? ''}
         text={
           selectedMission
-            ? `${selectedMission.description} Progreso de ejemplo: ${selectedMission.value}/${selectedMission.total}. Recompensa decorativa: ${selectedMission.reward}.`
+            ? `${selectedMission.description} Progreso: ${selectedMission.value}/${selectedMission.total}. Recompensa: ${selectedMission.reward}.`
             : ''
         }
         onClose={() => setSelectedMission(null)}

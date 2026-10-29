@@ -1,21 +1,24 @@
+import { usePage, useQuery } from '../../src/context/RemoteContext';
+import { QueryFooter } from '../../src/remote-ui';
+import { adaptUser } from '../../src/api/remote';
 import { useDirectory } from '../../src/useDirectory';
 import { useCurrentUser } from '../../src/useCurrentUser';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Action, Avatar, Chips, EmptyState, Screen, SearchBar } from '../../src/components';
+import { FollowButton, Avatar, Chips, EmptyState, Screen, SearchBar } from '../../src/components';
 import { useAppState } from '../../src/context/AppState';
 import { useSocial } from '../../src/context/SocialContext';
-import { getParam, getRankProgress } from '../../src/mock';
+import { getParam } from '../../src/data';
 import { theme } from '../../src/theme';
 
 export default function ComunidadScreen() {
-  const { findUser, users } = useDirectory();
+  const { findUser } = useDirectory();
 
   const currentUser = useCurrentUser();
 
   const { followingIds: ownFollowingIds, toggleFollowing } = useAppState();
-  const { getFollowingIds, getFriendIds, getFollowerIds } = useSocial();
+  useSocial();
   const params = useLocalSearchParams<{ id?: string | string[]; tab?: string | string[] }>();
   const id = getParam(params.id) ?? currentUser.id;
   const isOwn = id === currentUser.id;
@@ -23,33 +26,23 @@ export default function ComunidadScreen() {
   const initialTab = getParam(params.tab) ?? 'Amigos';
   const [tab, setTab] = useState(tabs.includes(initialTab) ? initialTab : 'Amigos');
   const [query, setQuery] = useState('');
-  // TODO BACKEND [COMUNIDAD-CONSULTAR]: consultar seguimientos por id; una amistad es un seguimiento mutuo.
+  useQuery(`/users/${id}`);
+  const page = usePage(
+    `/users/${id}/${tab === 'Amigos' ? 'friends' : tab === 'Seguidores' ? 'followers' : 'following'}`,
+  );
   const profile = findUser(id);
   if (!profile)
     return (
       <Screen title="Comunidad" back>
-        <EmptyState
-          title="Usuario no encontrado"
-          text="No hay conexiones para este identificador de ejemplo."
-        />
+        <EmptyState title="Usuario no encontrado" text="No encontramos este perfil." />
+        <QueryFooter query={page} />
       </Screen>
     );
-  const followingIds = getFollowingIds(profile.id);
-  const followerIds = getFollowerIds(profile.id);
-  const friendIds = getFriendIds(profile.id);
-  const otherUsers = users.filter((user) => user.id !== profile.id);
-  const connections = otherUsers.filter((user) => {
-    const searchMatches = `${user.name} ${user.handle}`
-      .toLowerCase()
-      .includes(query.trim().toLowerCase());
-    const tabMatches =
-      tab === 'Amigos'
-        ? friendIds.includes(user.id)
-        : tab === 'Siguiendo'
-          ? followingIds.includes(user.id)
-          : followerIds.includes(user.id);
-    return searchMatches && tabMatches;
-  });
+  const connections = page.items
+    .map(adaptUser)
+    .filter((user) =>
+      `${user.name} ${user.handle}`.toLowerCase().includes(query.trim().toLowerCase()),
+    );
   const openProfile = (userId: string) =>
     userId === currentUser.id
       ? router.push('/perfil')
@@ -57,13 +50,13 @@ export default function ComunidadScreen() {
   return (
     <Screen
       title={isOwn ? 'Comunidad' : `Conexiones de ${profile.name}`}
-      subtitle={isOwn ? 'Seguimientos y amistades mutuas.' : 'Conexiones públicas de ejemplo.'}
+      subtitle={isOwn ? 'Seguimientos y amistades mutuas.' : 'Conexiones públicas.'}
       back
     >
       <Chips options={tabs} value={tab} onChange={setTab} variant="underline" />
       <SearchBar value={query} onChangeText={setQuery} placeholder="Buscar por nombre o usuario…" />
       <Text style={styles.meta}>
-        {connections.length} {tab.toLowerCase()} de ejemplo
+        {connections.length} {tab.toLowerCase()} cargados
       </Text>
       {connections.map((user) => (
         <View key={user.id} style={styles.card}>
@@ -76,14 +69,13 @@ export default function ComunidadScreen() {
             >
               <Text style={styles.name}>{user.name}</Text>
               <Text style={styles.meta}>@{user.handle}</Text>
-              <Text style={styles.rank}>✧ {getRankProgress(user.watched).rank}</Text>
+              <Text style={styles.rank}>✧ {user.rank ?? '—'}</Text>
             </Pressable>
           </View>
           {isOwn ? (
             <View style={styles.actions}>
-              <Action
-                label={ownFollowingIds.includes(user.id) ? 'Siguiendo' : 'Seguir'}
-                active={ownFollowingIds.includes(user.id)}
+              <FollowButton
+                following={ownFollowingIds.includes(user.id)}
                 onPress={() => toggleFollowing(user.id)}
               />
               {tab === 'Amigos' && <Text style={styles.friend}>Seguimiento mutuo</Text>}
@@ -103,16 +95,14 @@ export default function ComunidadScreen() {
         <EmptyState
           title="Sin conexiones en este filtro"
           text={
-            query.trim()
-              ? 'Probá con otro nombre.'
-              : 'Elegí otra pestaña para explorar los ejemplos.'
+            query.trim() ? 'Probá con otro nombre.' : 'Elegí otra pestaña para ver sus conexiones.'
           }
         />
       )}
       <Text style={styles.meta}>
         {isOwn
           ? 'Los amigos aparecen automáticamente cuando ambos usuarios se siguen.'
-          : 'Estas conexiones públicas son datos de ejemplo.'}
+          : 'Seguimientos públicos registrados en Ani-Ren.'}
       </Text>
     </Screen>
   );
@@ -120,11 +110,11 @@ export default function ComunidadScreen() {
 
 const styles = StyleSheet.create({
   card: {
-    padding: 14,
+    paddingVertical: 16,
     gap: 12,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    borderBottomWidth: 1,
     borderColor: theme.colors.border,
   },
   row: { flexDirection: 'row', gap: 12, alignItems: 'center' },

@@ -1,18 +1,29 @@
+import { useQuery } from '../../../src/context/RemoteContext';
+import { useAnimeSearch, QueryFooter } from '../../../src/remote-ui';
+import { adaptCountry, metricCode } from '../../../src/map-data';
+import { adaptAnime } from '../../../src/api/remote';
+import { countryTop as selectCountryTop } from '../../../src/api/country-top';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Action, AnimeCard, Chips, Screen, SearchBar, Section } from '../../../src/components';
+import {
+  Action,
+  AnimeCard,
+  Chips,
+  EmptyState,
+  Screen,
+  SearchBar,
+  Section,
+} from '../../../src/components';
 import {
   anime,
-  countries,
   findAnime,
   getCountryMetric,
-  getCountryTop,
   getMapMetric,
   getParam,
   mapMetrics,
-} from '../../../src/mock';
+} from '../../../src/data';
 import { theme } from '../../../src/theme';
 import { WorldMap } from '../../../src/WorldMap';
 
@@ -23,31 +34,65 @@ export default function MapScreen() {
     pais?: string | string[];
   }>();
   const incomingMetric = getParam(params.metric);
-  const initialAnime = findAnime(getParam(params.animeId)) ?? anime[0];
+  const initialAnime = findAnime(getParam(params.animeId));
   const [metric, setMetric] = useState(
     getMapMetric(incomingMetric, getParam(params.animeId) ? 'anime' : 'reviews'),
   );
-  const [selectedAnimeId, setSelectedAnimeId] = useState(initialAnime.id);
-  const [animeQuery, setAnimeQuery] = useState(initialAnime.title);
-  const [selectedCountryId, setSelectedCountryId] = useState(
-    countries.find((item) => item.id === getParam(params.pais))?.id ?? countries[0].id,
+  const [selectedAnimeId, setSelectedAnimeId] = useState(
+    initialAnime?.id ?? getParam(params.animeId) ?? '',
   );
+  const [animeQuery, setAnimeQuery] = useState(initialAnime?.title ?? '');
+  const map = useQuery(metric === 'anime' && !selectedAnimeId ? undefined : '/explore/map', {
+    metric: metricCode(metric),
+    ...(metric === 'anime' ? { animeId: selectedAnimeId } : {}),
+    period: 'all',
+  });
+  const countries = (map.data?.items ?? []).map(
+    adaptCountry,
+  ) as import('../../../src/data').Country[];
+  const [selectedCountryId, setSelectedCountryId] = useState(getParam(params.pais) ?? 'argentina');
   const selectedCountry = countries.find((item) => item.id === selectedCountryId) ?? countries[0];
+  const detail = useQuery(
+    selectedCountry ? `/explore/countries/${selectedCountry.id}` : undefined,
+    { ...(metric === 'anime' && selectedAnimeId ? { animeId: selectedAnimeId } : {}) },
+  );
+  useQuery(selectedAnimeId ? `/anime/${selectedAnimeId}` : undefined);
+  const search = useAnimeSearch(animeQuery);
   const selectedAnime = findAnime(selectedAnimeId);
   const searchedTitle = selectedAnime?.title ?? (animeQuery.trim() || 'Anime');
-  const animeMatches = anime
-    .filter((item) => item.title.toLowerCase().includes(animeQuery.trim().toLowerCase()))
-    .slice(0, 4);
+  const animeMatches = search.animes;
   const metricValue = (country: (typeof countries)[number]) =>
     getCountryMetric(country, metric, selectedAnime?.id);
   const sorted = countries.slice().sort((a, b) => metricValue(b) - metricValue(a));
-  const countryTop = getCountryTop(selectedCountry, metric);
+  const topSelection = selectCountryTop(detail.data, metric);
+  const countryTop = topSelection.items.map((row) => ({
+    ...adaptAnime({
+      ...row.anime,
+      views: row.views,
+      averageRating: row.averageRating,
+      popularity: row.popularity,
+    }),
+    reviewCount: row.reviews as number,
+  }));
   const valueLabel =
-    metric === 'reviews'
-      ? 'reviews'
-      : metric === 'popularidad'
-        ? 'índice ilustrativo / 100'
-        : 'vistos';
+    metric === 'reviews' ? 'reviews' : metric === 'popularidad' ? 'popularidad / 100' : 'vistos';
+  if (!selectedCountry)
+    return (
+      <Screen title="Mapa anime mundial" back>
+        <QueryFooter query={map} />
+        <SearchBar value={animeQuery} onChangeText={setAnimeQuery} />
+        {animeMatches.map((item) => (
+          <Action
+            key={item.id}
+            label={item.title}
+            onPress={() => {
+              setSelectedAnimeId(item.id);
+              setAnimeQuery(item.title);
+            }}
+          />
+        ))}
+      </Screen>
+    );
   return (
     <Screen
       title="Mapa anime mundial"
@@ -56,7 +101,7 @@ export default function MapScreen() {
     >
       <View style={styles.notice}>
         <Ionicons name="information-circle-outline" size={19} color={theme.colors.primarySoft} />
-        <Text style={styles.noticeText}>Datos de ejemplo · sin geolocalización</Text>
+        <Text style={styles.noticeText}>Visualizaciones registradas por país</Text>
       </View>
       <Chips
         options={Object.values(mapMetrics)}
@@ -103,9 +148,7 @@ export default function MapScreen() {
         </>
       )}
       {getParam(params.animeId) && !findAnime(getParam(params.animeId)) && (
-        <Text style={styles.meta}>
-          El anime solicitado no está disponible. Podés elegir uno de los ejemplos.
-        </Text>
+        <Text style={styles.meta}>El anime solicitado no está disponible. Buscá otro título.</Text>
       )}
       <View style={styles.mapCard}>
         <WorldMap
@@ -154,13 +197,45 @@ export default function MapScreen() {
               params: {
                 pais: selectedCountry.id,
                 metric,
-                animeId: selectedAnime?.id ?? '',
+                ...(metric === 'anime' && selectedAnime ? { animeId: selectedAnime.id } : {}),
                 origin: 'mapa',
               },
             })
           }
         />
       </View>
+      {metric !== 'anime' && (
+        <>
+          <Section title={`Top 5 · ${selectedCountry.name}`} />
+          <Text style={styles.meta}>{topSelection.label}</Text>
+          <QueryFooter query={detail} />
+          {!detail.loading && !detail.error && countryTop.length === 0 && (
+            <EmptyState
+              title="Todavía no hay datos para este top"
+              text="Se necesitan valoraciones o reviews registradas en este país."
+            />
+          )}
+          <ScrollView
+            horizontal
+            style={{ flexGrow: 0 }}
+            showsHorizontalScrollIndicator={Platform.OS === 'web'}
+            contentContainerStyle={styles.horizontal}
+          >
+            {countryTop.map((item, index) => (
+              <View key={item.id} style={{ width: 112, gap: 4 }}>
+                <AnimeCard item={item} rank={index + 1} unframed />
+                <Text style={styles.meta}>
+                  {metric === 'reviews'
+                    ? `${item.reviewCount} reviews`
+                    : metric === 'popularidad'
+                      ? `Popularidad: ${item.popularity}/100`
+                      : `${item.watched} vistos`}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        </>
+      )}
       <Section
         title={metric === 'anime' ? `${searchedTitle} por país` : 'Comparación entre países'}
       />
@@ -173,25 +248,11 @@ export default function MapScreen() {
           <Text style={styles.count}>{metricValue(country).toLocaleString('es-AR')}</Text>
         </View>
       ))}
-      {countryTop.length > 0 && (
-        <>
-          <Section title={`Top 5 · ${selectedCountry.name}`} />
-          <ScrollView
-            horizontal
-            style={{ flexGrow: 0 }}
-            showsHorizontalScrollIndicator={Platform.OS === 'web'}
-            contentContainerStyle={styles.horizontal}
-          >
-            {countryTop.map((item, index) => (
-              <AnimeCard key={item.id} item={item} rank={index + 1} />
-            ))}
-          </ScrollView>
-        </>
-      )}
       <Text style={styles.meta}>
-        La popularidad, los colores y los conteos son ilustrativos; no constituyen estadísticas
-        reales.
+        Actividad registrada en Ani-Ren. La popularidad compara las visualizaciones registradas; no
+        representa estadísticas de toda la población.
       </Text>
+      <QueryFooter query={map} />
     </Screen>
   );
 }
@@ -219,12 +280,11 @@ const styles = StyleSheet.create({
   scale: { width: 72, height: 6, borderRadius: 4, overflow: 'hidden', flexDirection: 'row' },
   scalePart: { flex: 1, backgroundColor: theme.colors.primary },
   countryCard: {
-    padding: 16,
+    paddingVertical: 16,
     gap: 10,
-    borderRadius: 14,
-    borderWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
   },
   countryTitle: { color: theme.colors.text, fontSize: 21, fontWeight: '700' },
   metricTitle: { color: theme.colors.primarySoft, fontSize: 23, fontWeight: '700' },

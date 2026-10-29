@@ -1,3 +1,4 @@
+import { withResources } from '../../../src/remote-ui';
 import { useDirectory } from '../../../src/useDirectory';
 import { useLists } from '../../../src/context/ListsContext';
 import { useCurrentUser } from '../../../src/useCurrentUser';
@@ -6,10 +7,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Action, AnimeCard, Avatar, EmptyState, Screen, Section } from '../../../src/components';
 
-import { findAnime, getParam } from '../../../src/mock';
+import { findAnime, getParam } from '../../../src/data';
 import { theme } from '../../../src/theme';
 
-export default function ListaScreen() {
+function ListaScreen() {
   const { findUser } = useDirectory();
   const { lists, toggleLike: toggleListLike, isLiked } = useLists();
 
@@ -17,7 +18,6 @@ export default function ListaScreen() {
 
   const params = useLocalSearchParams();
 
-  // TODO BACKEND [LISTA-DETALLE]: consultar lista por id, autor, pertenencia y orden de animeIds.
   const list = lists.find((item) => item.id === getParam(params.id));
   const liked = isLiked(currentUser.id, getParam(params.id) ?? '');
   if (!list)
@@ -38,7 +38,6 @@ export default function ListaScreen() {
   const animeIds = list.animeIds;
   const items = animeIds.map(findAnime).filter((item) => item !== undefined);
   const toggleLike = () => {
-    // TODO BACKEND [LISTA-LIKE]: hoy cambia un contador local; guardar like de currentUser.id a list.id.
     toggleListLike(currentUser.id, list.id);
   };
   return (
@@ -99,7 +98,7 @@ export default function ListaScreen() {
       {items.map((item, index) => (
         <View key={item.id} style={styles.card}>
           {list.ordered && <Text style={styles.position}>#{index + 1}</Text>}
-          <AnimeCard item={item} width={74} />
+          <AnimeCard item={item} width={74} showTitle={false} showRating={false} />
           <Pressable
             accessibilityRole="button"
             onPress={() =>
@@ -116,7 +115,7 @@ export default function ListaScreen() {
           </Pressable>
         </View>
       ))}
-      <Text style={styles.meta}>Lista de ejemplo. Los likes de esta vista son temporales.</Text>
+      <Text style={styles.meta}>Los likes se guardan en tu cuenta.</Text>
     </Screen>
   );
 }
@@ -141,12 +140,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
-    padding: 12,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
+    paddingVertical: 16,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: 14,
+    borderRadius: 0,
   },
   position: { color: theme.colors.primarySoft, fontSize: 18, fontWeight: '700', width: 29 },
   rating: { color: theme.colors.primarySoft, fontSize: 15, fontWeight: '600' },
 });
+
+export default withResources(ListaScreen, (p) => [[`/lists/${p.id}`]]);

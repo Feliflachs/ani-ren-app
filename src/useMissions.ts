@@ -1,24 +1,50 @@
-import { useSession } from './context/SessionContext';
-import { useActivities } from './context/AppState';
-import { usePublications } from './context/PublicationsContext';
-import { calculateMissions } from './missions';
-
+import type { ComponentProps } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useQuery } from './context/RemoteContext';
 export function useMissions() {
-  // TODO BACKEND [MISIONES-PROGRESO]: consultar progreso global del usuario; no calcularlo desde páginas incompletas de actividad.
-  const { user } = useSession();
-  const { getCollection, claimedByUser, claimReward } = useActivities();
-  const { reviews } = usePublications();
-  const userId = user?.id ?? '';
-  const missions = calculateMissions(
-    getCollection(userId).watchedIds,
-    reviews.filter((review) => review.userId === userId),
-  );
+  const query = useQuery('/me/aura');
+  const data = query.data;
+  const missions: {
+    id: string;
+    title: string;
+    description: string;
+    reward: string;
+    icon: ComponentProps<typeof Ionicons>['name'];
+    state: string;
+    claimed: boolean;
+    value: number;
+    total: number;
+    points: number;
+  }[] = (data?.missions ?? []).map((mission: any) => ({
+    ...mission,
+    id: mission.id as string,
+    title: mission.title as string,
+    description: mission.description as string,
+    reward: `${mission.points} puntos`,
+    icon: mission.icon as ComponentProps<typeof Ionicons>['name'],
+    state:
+      mission.state === 'completed'
+        ? 'Completada'
+        : mission.state === 'in_progress'
+          ? 'En curso'
+          : 'Pendiente',
+  }));
   return {
+    ...query,
     missions,
-    claimedIds: claimedByUser[userId] ?? [],
-    claimReward: (id: string) => {
-      if (user && missions.some((mission) => mission.id === id && mission.state === 'Completada'))
-        claimReward(userId, id);
+    claimedIds: missions
+      .filter((item: any) => item.claimed)
+      .map((item: any) => item.id) as string[],
+    featuredMissions: ((data?.featuredMissionIds ?? []) as string[]).flatMap((id: string) => {
+      const mission = missions.find((item) => item.id === id);
+      return mission ? [mission] : [];
+    }),
+    rankProgress: {
+      rank: data?.rank?.name ?? 'Novato',
+      progress: data?.rank?.progress ?? 0,
+      nextRank: data?.rank?.nextRank as string | undefined,
+      total: data?.rank?.nextThreshold ?? data?.points ?? 1,
     },
+    points: data?.points ?? 0,
   };
 }

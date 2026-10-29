@@ -1,36 +1,31 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import { followingByUser } from '../mock';
-
-// Una sola definición de las relaciones para perfiles, feed, comunidad y ranking.
-export function friendIdsFor(id: string, following: Record<string, string[]>) {
-  return (following[id] ?? []).filter((other) => (following[other] ?? []).includes(id));
-}
-function useSocialState() {
-  // TODO BACKEND [RELACIONES-CARGAR]: consultar seguidos/seguidores/amigos y totales; el grafo completo local es solo de demo.
-  const [following, setFollowing] = useState(followingByUser);
-  const getFollowingIds = (id: string) => following[id] ?? [];
-  const getFollowerIds = (id: string) =>
-    Object.keys(following).filter((other) => getFollowingIds(other).includes(id));
-  const getFriendIds = (id: string) => friendIdsFor(id, following);
-  function toggleFollowing(userId: string, otherId: string) {
-    // TODO BACKEND [RELACION-SEGUIR]: seguir/dejar de seguir en servidor y actualizar relaciones y feeds.
-    if (userId === otherId) return;
-    setFollowing((previous) => {
-      const ids = previous[userId] ?? [];
-      return {
-        ...previous,
-        [userId]: ids.includes(otherId) ? ids.filter((id) => id !== otherId) : [...ids, otherId],
-      };
-    });
-  }
-  return { getFollowingIds, getFollowerIds, getFriendIds, toggleFollowing };
-}
-const SocialContext = createContext<ReturnType<typeof useSocialState> | null>(null);
+import { users } from '../data';
+import { Fragment, type ReactNode } from 'react';
+import { useRemote } from './RemoteContext';
 export function SocialProvider({ children }: { children: ReactNode }) {
-  return <SocialContext.Provider value={useSocialState()}>{children}</SocialContext.Provider>;
+  return <Fragment>{children}</Fragment>;
 }
 export function useSocial() {
-  const value = useContext(SocialContext);
-  if (!value) throw new Error('Falta SocialProvider');
-  return value;
+  const store = useRemote();
+  const ids = (id: string, collection: string) =>
+    (store.get(JSON.stringify([`/users/${id}/${collection}`, {}]))?.items ?? []).map(
+      (row: any) => row.id ?? row.user?.id,
+    ) as string[];
+  return {
+    getFollowingIds: (_id: string) =>
+      users.filter((user) => user.isFollowing).map((user) => user.id),
+    getFollowerIds: (id: string) => ids(id, 'followers'),
+    getFriendIds: (_id: string) => users.filter((user) => user.isFriend).map((user) => user.id),
+    toggleFollowing: async (_userId: string, id: string) => {
+      try {
+        const raw = (await store.load(`/users/${id}`, {}, true)).user;
+        const result = await store.action(`/me/following/${id}`, {
+          method: raw?.isFollowing ? 'DELETE' : 'PUT',
+        });
+        if (result && raw)
+          store.ingest({ ...raw, isFollowing: result.isFollowing, isFriend: result.isFriend });
+      } catch (e) {
+        store.report(e);
+      }
+    },
+  };
 }

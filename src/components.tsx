@@ -1,3 +1,5 @@
+import { useQuery, useRemote, RemoteNotice } from './context/RemoteContext';
+import { adaptPublication } from './api/remote';
 import { publicationAnimeIds, type Publication } from './publications';
 import { usePublications } from './context/PublicationsContext';
 import { useDirectory } from './useDirectory';
@@ -11,6 +13,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,7 +21,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { findAnime, type Anime, type AnimeList, type User } from './mock';
+import { findAnime, type Anime, type AnimeList, type User } from './data';
 import { theme } from './theme';
 import { useSession } from './context/SessionContext';
 import { useSocial } from './context/SocialContext';
@@ -134,6 +137,8 @@ export function Screen({
   actions,
   avatar = true,
   headerCentered = false,
+  onRefresh,
+  refreshing = false,
 }: {
   title: ReactNode;
   subtitle?: string;
@@ -142,6 +147,8 @@ export function Screen({
   actions?: ReactNode;
   avatar?: boolean;
   headerCentered?: boolean;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }) {
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/inicio'));
   return (
@@ -154,6 +161,15 @@ export function Screen({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
+          refreshControl={
+            onRefresh ? (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={theme.colors.primarySoft}
+              />
+            ) : undefined
+          }
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
@@ -177,6 +193,7 @@ export function Screen({
             {actions ??
               (avatar && !back ? <Avatar onPress={() => router.push('/perfil')} /> : null)}
           </View>
+          <RemoteNotice />
           {children}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -261,11 +278,17 @@ export function AnimeCard({
   width = 112,
   landscape = false,
   rank,
+  unframed = true,
+  showTitle = true,
+  showRating = true,
 }: {
   item: Anime;
   width?: number;
   landscape?: boolean;
   rank?: number;
+  unframed?: boolean;
+  showTitle?: boolean;
+  showRating?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
   return (
@@ -273,13 +296,16 @@ export function AnimeCard({
       onPress={() => router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })}
       accessibilityRole="button"
       accessibilityLabel={`Ver ${item.title}`}
-      style={[styles.animeCard, { width }]}
+      style={[styles.animeCard, unframed && styles.unframedAnime, { width }]}
     >
       <View
-        style={{
-          height: landscape ? width * 0.58 : width * 1.38,
-          backgroundColor: theme.colors.surfaceLight,
-        }}
+        style={[
+          {
+            height: landscape ? width * 0.58 : width * 1.38,
+            backgroundColor: theme.colors.surfaceLight,
+          },
+          unframed && styles.unframedPoster,
+        ]}
       >
         {failed ? (
           <View style={styles.imageFallback}>
@@ -289,22 +315,30 @@ export function AnimeCard({
         ) : (
           <Image source={item.image} style={styles.poster} onError={() => setFailed(true)} />
         )}
-        <View style={styles.ratingBadge}>
-          <Ionicons name="star" size={11} color={theme.colors.primarySoft} />
-          <Text style={styles.badgeText}>{item.rating.toFixed(1)}</Text>
-        </View>
+        {showRating && (
+          <View style={styles.ratingBadge}>
+            <Ionicons name="star" size={11} color={theme.colors.primarySoft} />
+            <Text style={styles.badgeText}>{item.rating > 0 ? item.rating.toFixed(1) : '—'}</Text>
+          </View>
+        )}
         {rank !== undefined && (
           <View style={styles.rankBadge}>
             <Text style={styles.badgeText}>#{rank}</Text>
           </View>
         )}
       </View>
-      <View style={styles.cardCaption}>
-        <Text numberOfLines={1} style={styles.animeTitle}>
-          {item.title}
-        </Text>
-        {landscape && <Text style={styles.smallRating}>★ {item.rating.toFixed(1)}</Text>}
-      </View>
+      {showTitle && (
+        <View style={[styles.cardCaption, unframed && styles.unframedCaption]}>
+          <Text numberOfLines={1} style={styles.animeTitle}>
+            {item.title}
+          </Text>
+          {landscape && (
+            <Text style={styles.smallRating}>
+              ★ {item.rating > 0 ? item.rating.toFixed(1) : '—'}
+            </Text>
+          )}
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -349,6 +383,23 @@ export function Action({
       )}
       <Text style={[styles.actionText, (active || primary) && styles.actionTextActive]}>
         {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+export function FollowButton({ following, onPress }: { following: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={following ? 'Dejar de seguir' : 'Seguir'}
+      accessibilityState={{ selected: following }}
+      onPress={onPress}
+      style={({ pressed }) => [styles.followButton, { opacity: pressed ? 0.6 : 1 }]}
+    >
+      {following && <Ionicons name="checkmark" size={16} color={theme.colors.textSecondary} />}
+      <Text style={[styles.followText, following && styles.followingText]}>
+        {following ? 'Siguiendo' : 'Seguir'}
       </Text>
     </Pressable>
   );
@@ -477,15 +528,17 @@ export function Dialog({
 
 // Indicadores: representación visual de un progreso ya calculado.
 export function Progress({
+  progress,
   value,
   total,
   label,
 }: {
   value: number;
   total: number;
+  progress?: number;
   label?: string;
 }) {
-  const percent = Math.min(100, Math.max(0, total > 0 ? (value / total) * 100 : 0));
+  const percent = Math.min(100, Math.max(0, (progress ?? (total > 0 ? value / total : 0)) * 100));
   return (
     <View style={styles.progressWrap}>
       {label && (
@@ -512,9 +565,33 @@ export function ListCard({ list }: { list: AnimeList }) {
     <Pressable
       accessibilityRole="button"
       onPress={() => router.push({ pathname: '/perfil/listas/[id]', params: { id: list.id } })}
-      style={styles.review}
+      style={[styles.separatedCard, { gap: 12 }]}
     >
-      <Text style={styles.reviewAuthor}>{list.title}</Text>
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        {list.animeIds.slice(0, 4).map((id) => {
+          const anime = findAnime(id);
+          return anime ? (
+            <Image
+              key={id}
+              source={anime.image}
+              style={{
+                width: 48,
+                height: 68,
+                borderRadius: 6,
+                backgroundColor: theme.colors.surfaceLight,
+              }}
+            />
+          ) : null;
+        })}
+        <View style={{ justifyContent: 'center', paddingHorizontal: 8 }}>
+          <Ionicons
+            name={list.ordered ? 'podium-outline' : 'albums-outline'}
+            size={24}
+            color={theme.colors.primarySoft}
+          />
+        </View>
+      </View>
+      <Text style={styles.reviewCardTitle}>{list.title}</Text>
       <Text style={styles.meta}>
         Por {findUser(list.userId)?.name} · {list.animeIds.length} animes ·{' '}
         {list.ordered ? 'Top personal' : 'Colección'}
@@ -583,31 +660,34 @@ export function PublicationContent({
   numberOfLines,
   revealed,
   onReveal,
+  hiddenAnimeId,
 }: {
   review: Publication;
   numberOfLines?: number;
   revealed?: boolean;
   onReveal?: () => void;
+  hiddenAnimeId?: string;
 }) {
   const [visible, setVisible] = useState(false);
+  const mentionedAnimeIds = publicationAnimeIds(review).filter((id) => id !== hiddenAnimeId);
   if (review.spoiler && !(revealed ?? visible))
     return <SpoilerCover onReveal={onReveal ?? (() => setVisible(true))} />;
   return (
     <View style={styles.reviewContent}>
-      {publicationAnimeIds(review).map((id) => (
-        <Pressable
-          key={id}
-          accessibilityRole="link"
-          onPress={(event) => {
-            event.stopPropagation();
-            router.push({ pathname: '/explorar/anime/[id]', params: { id } });
-          }}
-        >
-          <Text style={{ color: theme.colors.primarySoft }}>#{findAnime(id)?.title}</Text>
-        </Pressable>
-      ))}
-      {!!review.tags.length && (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {(mentionedAnimeIds.length > 0 || review.tags.length > 0) && (
+        <View style={styles.publicationTags}>
+          {mentionedAnimeIds.map((id) => (
+            <Pressable
+              key={id}
+              accessibilityRole="link"
+              onPress={(event) => {
+                event.stopPropagation();
+                router.push({ pathname: '/explorar/anime/[id]', params: { id } });
+              }}
+            >
+              <Text style={{ color: theme.colors.primarySoft }}>#{findAnime(id)?.title}</Text>
+            </Pressable>
+          ))}
           {review.tags.map((tag) => (
             <Pressable
               key={tag}
@@ -632,7 +712,18 @@ export function PublicationContent({
     </View>
   );
 }
-export function PublicationCard({ review, feed = false }: { review: Publication; feed?: boolean }) {
+export function PublicationCard({
+  review: suppliedReview,
+  feed = false,
+  contextAnimeId,
+}: {
+  review: Publication;
+  feed?: boolean;
+  contextAnimeId?: string;
+}) {
+  const store = useRemote();
+  const current = store.rawPublications.get(suppliedReview.id);
+  const review = current ? adaptPublication(current) : suppliedReview;
   const [sharing, setSharing] = useState(false);
   const { findUser } = useDirectory();
   const { user } = useSession();
@@ -641,15 +732,16 @@ export function PublicationCard({ review, feed = false }: { review: Publication;
   const author = findUser(review.userId);
   const item = findAnime(review.animeId);
   const liked = user ? getLikedIds(user.id).includes(review.id) : false;
+  useQuery(user && user.id !== review.userId ? `/users/${review.userId}` : undefined);
   const following = user ? getFollowingIds(user.id).includes(review.userId) : false;
   const openReview = () =>
     router.push({ pathname: '/inicio/review/[id]', params: { id: review.id } });
   return (
-    <View style={styles.review}>
+    <View style={[styles.review, styles.separatedCard]}>
       <View style={styles.reviewHeader}>
         <Avatar
           user={author}
-          size={feed ? 48 : 34}
+          size={42}
           onPress={() =>
             router.push({ pathname: '/perfil/usuario/[id]', params: { id: review.userId } })
           }
@@ -663,15 +755,15 @@ export function PublicationCard({ review, feed = false }: { review: Publication;
         >
           <Text style={styles.reviewAuthor}>{author?.name ?? 'Usuario'}</Text>
           <Text style={styles.meta}>
-            {item?.title ?? 'Publicación'} · {review.time}
+            {review.kind === 'review' ? 'Review' : 'Publicación'} · {review.time}
           </Text>
         </Pressable>
         {review.rating !== undefined && (
           <Text style={styles.reviewRating}>★ {review.rating.toFixed(1)}</Text>
         )}
         {feed && user && user.id !== review.userId && (
-          <Action
-            label={following ? 'Siguiendo' : 'Seguir'}
+          <FollowButton
+            following={following}
             onPress={() => toggleFollowing(user.id, review.userId)}
           />
         )}
@@ -686,9 +778,10 @@ export function PublicationCard({ review, feed = false }: { review: Publication;
           key={review.id + String(review.spoiler)}
           review={review}
           numberOfLines={feed ? undefined : 3}
+          hiddenAnimeId={item?.id ?? contextAnimeId}
         />
       </Pressable>
-      {feed && item && (
+      {item && item.id !== contextAnimeId && (
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push({ pathname: '/explorar/anime/[id]', params: { id: item.id } })}
@@ -698,10 +791,7 @@ export function PublicationCard({ review, feed = false }: { review: Publication;
           <View style={styles.heading}>
             <Text style={styles.reviewAuthor}>{item.title}</Text>
             <Text style={styles.meta}>
-              {item.year} · ★ {item.rating.toFixed(1)}
-            </Text>
-            <Text style={styles.meta} numberOfLines={3}>
-              {item.synopsis}
+              {item.year} · ★ {item.rating > 0 ? item.rating.toFixed(1) : '—'}
             </Text>
           </View>
         </Pressable>
@@ -725,7 +815,7 @@ export function PublicationCard({ review, feed = false }: { review: Publication;
         />
         <SocialAction
           label="Compartir publicación"
-          icon="share-outline"
+          icon="share-social-outline"
           onPress={() => setSharing(true)}
         />
       </View>
@@ -740,6 +830,19 @@ export function PublicationCard({ review, feed = false }: { review: Publication;
 }
 
 const styles = StyleSheet.create({
+  publicationTags: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 12, rowGap: 6 },
+  followButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    minHeight: 44,
+    minWidth: 88,
+    paddingHorizontal: 8,
+    flexShrink: 0,
+  },
+  followText: { color: theme.colors.primarySoft, fontSize: 12, fontWeight: '600' },
+  followingText: { color: theme.colors.textSecondary },
   socialAction: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -768,6 +871,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   reviewHeader: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  separatedCard: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border,
+    borderRadius: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 16,
+  },
   reviewAuthor: { color: theme.colors.primarySoft, fontSize: 13, fontWeight: '600' },
   reviewContent: { gap: 10 },
   reviewText: { color: theme.colors.text, fontSize: 13, lineHeight: 20 },
@@ -823,6 +935,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   poster: { width: '100%', height: '100%' },
+  unframedAnime: { backgroundColor: 'transparent', borderWidth: 0, borderRadius: 0 },
+  unframedPoster: { borderRadius: 10, overflow: 'hidden' },
+  unframedCaption: { paddingHorizontal: 0 },
   ratingBadge: {
     position: 'absolute',
     top: 5,

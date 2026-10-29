@@ -1,5 +1,4 @@
 // Datos comunes a los dos tipos de publicación. No son clases ni otro contexto.
-// TODO BACKEND [PUBLICACION-CONTRATO]: acordar estos campos con la API; adaptar respuestas en PublicationsContext sin atar la UI al esquema de la base.
 export type PublicationBase = {
   id: string;
   userId: string;

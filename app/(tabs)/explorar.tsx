@@ -1,3 +1,6 @@
+import { useQuery } from '../../src/context/RemoteContext';
+import { adaptAnime } from '../../src/api/remote';
+import { withResources } from '../../src/remote-ui';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState, type ComponentProps } from 'react';
@@ -12,7 +15,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { AnimeCard, Action, Screen, SearchBar, Section } from '../../src/components';
-import { anime, genres, seasons } from '../../src/mock';
+import { genres, seasons } from '../../src/data';
 import { WorldMap } from '../../src/WorldMap';
 import { theme } from '../../src/theme';
 
@@ -33,12 +36,24 @@ const seasonImages = [
   require('../../assets/seasons/invierno.jpg'),
 ];
 
-export default function Explorar() {
+function Explorar() {
+  const explore = useQuery('/explore');
+  const trending: import('../../src/data').Anime[] = (explore.data?.trending ?? []).map(
+    (row: import('../../src/api/remote').Wire) => adaptAnime(row.anime),
+  );
+  const genreImages = [
+    require('../../assets/solo-leveling.jpg'),
+    require('../../assets/spy-family.jpg'),
+    require('../../assets/frieren.jpg'),
+    require('../../assets/spy-family.jpg'),
+    require('../../assets/mob-psycho.jpg'),
+    require('../../assets/haikyuu.jpg'),
+    require('../../assets/blue-lock.jpg'),
+  ];
   const [query, setQuery] = useState('');
   const [showAllGenres, setShowAllGenres] = useState(false);
   const { width: windowWidth } = useWindowDimensions();
   const width = Math.min(windowWidth, theme.layout.maxWidth);
-  // TODO BACKEND [EXPLORAR]: consultar tendencias, géneros y temporadas; por ahora catálogo local.
   const trendWidth = Math.max(82, Math.min(110, (width - 56) / 4));
   const genreLabels = showAllGenres ? genres : genres.slice(0, 4);
   const search = () => router.push({ pathname: '/explorar/busqueda', params: { q: query } });
@@ -50,7 +65,7 @@ export default function Explorar() {
       style={styles.genre}
     >
       <ImageBackground
-        source={anime[[1, 7, 0, 7, 4, 5, 2][index]].image}
+        source={genreImages[index % genreImages.length]}
         style={styles.genreImage}
         imageStyle={styles.imageRadius}
       >
@@ -118,8 +133,8 @@ export default function Explorar() {
         showsHorizontalScrollIndicator={Platform.OS === 'web'}
         contentContainerStyle={styles.row}
       >
-        {[anime[0], anime[1], anime[2], anime[5]].map((item, index) => (
-          <AnimeCard key={item.id} item={item} width={trendWidth} rank={index + 1} />
+        {trending.map((item, index) => (
+          <AnimeCard key={item.id} item={item} width={trendWidth} rank={index + 1} unframed />
         ))}
       </ScrollView>
       <Section title="Explorar por temporada" />
@@ -179,12 +194,11 @@ const styles = StyleSheet.create({
   genreText: { color: theme.colors.text, fontSize: 10 },
   mapCard: {
     marginTop: 6,
-    padding: 14,
+    paddingVertical: 14,
     gap: 9,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: theme.colors.border,
-    borderRadius: 14,
   },
   mapHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   mapTitle: { color: theme.colors.text, fontSize: 16, fontWeight: '600' },
@@ -209,3 +223,5 @@ const styles = StyleSheet.create({
   seasonShade: { flex: 1, gap: 10, backgroundColor: 'rgba(13,13,18,0.5)', padding: 8 },
   seasonText: { color: theme.colors.text, fontSize: 11, lineHeight: 15 },
 });
+
+export default withResources(Explorar, () => [['/explore']]);

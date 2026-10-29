@@ -5,13 +5,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../src/theme';
 import { Image } from 'react-native';
 
+export const unstable_settings = { initialRouteName: 'inicio' };
+
 export default function TabLayout() {
   const currentUser = useCurrentUser();
 
   const insets = useSafeAreaInsets();
   return (
     <Tabs
-      initialRouteName="inicio"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primarySoft,
@@ -34,8 +35,12 @@ export default function TabLayout() {
         name="inicio"
         options={{
           title: 'Inicio',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+          tabBarIcon: ({ focused, size }) => (
+            <Ionicons
+              name="home-outline"
+              size={size}
+              color={focused ? theme.colors.primarySoft : theme.colors.textSecondary}
+            />
           ),
         }}
       />
@@ -43,8 +48,12 @@ export default function TabLayout() {
         name="explorar"
         options={{
           title: 'Explorar',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search-outline" size={size} color={color} />
+          tabBarIcon: ({ focused, size }) => (
+            <Ionicons
+              name="search-outline"
+              size={size}
+              color={focused ? theme.colors.primarySoft : theme.colors.textSecondary}
+            />
           ),
         }}
       />
@@ -52,15 +61,25 @@ export default function TabLayout() {
         name="crear"
         options={{
           title: 'Crear',
-          tabBarIcon: ({ color, size }) => <Ionicons name="add" size={size} color={color} />,
+          tabBarIcon: ({ focused, size }) => (
+            <Ionicons
+              name="add"
+              size={size}
+              color={focused ? theme.colors.primarySoft : theme.colors.textSecondary}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="aura"
         options={{
           title: 'Aura',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="flame-outline" size={size} color={color} />
+          tabBarIcon: ({ focused, size }) => (
+            <Ionicons
+              name="flame-outline"
+              size={size}
+              color={focused ? theme.colors.primarySoft : theme.colors.textSecondary}
+            />
           ),
         }}
       />
