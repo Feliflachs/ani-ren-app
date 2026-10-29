@@ -353,28 +353,7 @@ function DetalleAnime() {
           ))}
         </View>
       </View>
-      <Section title="Actores de voz" />
-      <View style={styles.infoCard}>
-        {cast.map(({ actor, character }) => (
-          <Pressable
-            key={character}
-            accessibilityRole="button"
-            onPress={() =>
-              setMessage(
-                `${actor} interpreta a ${character} en la versión japonesa de ${item.title}.`,
-              )
-            }
-            style={styles.voice}
-          >
-            <Ionicons name="mic-outline" size={20} color={theme.colors.primarySoft} />
-            <View style={styles.flex}>
-              <Text style={styles.body}>{character}</Text>
-              <Text style={styles.meta}>{actor} · Japonés</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
-          </Pressable>
-        ))}
-      </View>
+      
       <Section title="Puntuaciones de amigos" />
       {friendReviews.length ? (
         <ScrollView
