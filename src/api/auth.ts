@@ -6,6 +6,7 @@ export type SessionUser = {
   name: string;
   bio: string;
   avatarUrl: string | null;
+  avatarId?: string | null;
   createdAt: string;
 };
 

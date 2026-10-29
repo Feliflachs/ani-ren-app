@@ -20,6 +20,7 @@ export type Anime = {
   popularity: number;
 };
 export type User = {
+  avatarId?: string | null;
   id: string;
   name: string;
   handle: string;

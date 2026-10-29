@@ -243,7 +243,7 @@ function BusquedaScreen() {
             </View>
           )}
           {category === 'Publicaciones' &&
-            matchingReviews.map((item) => <PublicationCard key={item.id} review={item} separated />)}
+            matchingReviews.map((item) => <PublicationCard key={item.id} review={item} />)}
           {category === 'Usuarios' &&
             matchingUsers.map((item) => (
               <Pressable
@@ -268,7 +268,7 @@ function BusquedaScreen() {
               </Pressable>
             ))}
           {category === 'Listas' &&
-            matchingLists.map((item) => <ListCard key={item.id} list={item} separated />)}
+            matchingLists.map((item) => <ListCard key={item.id} list={item} />)}
         </>
       )}
       <QueryFooter query={{ ...page, loading: false, error: '' }} />

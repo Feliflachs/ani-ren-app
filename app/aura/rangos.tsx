@@ -124,7 +124,7 @@ export default function RanksScreen() {
       <Text style={styles.notice}>
         Vista previa local. El sufijo modifica el nombre visible; tu handle permanece igual.
       </Text>
-      <Chips options={tabs} value={tab} onChange={setTab} />
+      <Chips options={tabs} value={tab} onChange={setTab} variant="underline" />
       {tab === 'Rangos' ? (
         <>
           <Section title="Tu camino" />

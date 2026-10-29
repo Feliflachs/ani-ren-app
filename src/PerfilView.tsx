@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   Action,
+  FollowButton,
   AnimeCard,
   Avatar,
   Chips,
@@ -147,12 +148,7 @@ export function PerfilView({
           <Action label="Ir a mi perfil" onPress={() => router.push('/perfil')} />
         ) : (
           <>
-            <Action
-              label={following ? 'Siguiendo' : 'Seguir'}
-              active={following}
-              icon={following ? 'checkmark-outline' : 'add-outline'}
-              onPress={() => toggleFollowing(user.id)}
-            />
+            <FollowButton following={following} onPress={() => toggleFollowing(user.id)} />
             <Action
               label="Amigos"
               icon="people-outline"

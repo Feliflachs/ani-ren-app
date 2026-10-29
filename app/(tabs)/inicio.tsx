@@ -49,18 +49,29 @@ export default function Inicio() {
         page.items.map((row) => {
           const anime = adaptAnime(row.anime);
           return (
-            <View key={row.id} style={{ gap: 12, paddingVertical: 12 }}>
+            <View key={row.id} style={{ gap: 4, paddingTop: 20, paddingBottom: 12 }}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Ver ${anime.title}`}
                 onPress={() =>
                   router.push({ pathname: '/explorar/anime/[id]', params: { id: anime.id } })
                 }
-                style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}
+                style={{
+                  flexDirection: 'row',
+                  gap: 14,
+                  alignItems: 'center',
+                  backgroundColor: theme.colors.surface,
+                  borderRadius: 12,
+                  padding: 14,
+                  borderLeftWidth: 3,
+                  borderLeftColor: theme.colors.primary,
+                }}
               >
-                <Image source={anime.image} style={{ width: 64, height: 90, borderRadius: 8 }} />
+                <Image source={anime.image} style={{ width: 72, height: 102, borderRadius: 8 }} />
                 <View style={{ flex: 1, gap: 6 }}>
-                  <Text style={{ color: theme.colors.text, fontWeight: '600' }}>{anime.title}</Text>
+                  <Text style={{ color: theme.colors.text, fontWeight: '700', fontSize: 17 }}>
+                    {anime.title}
+                  </Text>
                   <Text style={{ color: theme.colors.textSecondary }}>
                     {anime.genres.join(' · ')}
                   </Text>
@@ -69,10 +80,15 @@ export default function Inicio() {
                       ? `★ ${row.anime.statistics.averageRating.toFixed(1)} · ${row.anime.statistics.ratingUserCount} ${row.anime.statistics.ratingUserCount === 1 ? 'persona' : 'personas'}`
                       : 'Una historia por descubrir'}
                   </Text>
+                  <Text style={{ color: theme.colors.primarySoft, fontSize: 12 }}>Ver anime</Text>
                 </View>
               </Pressable>
               {row.reviews.map((review: import('../../src/api/remote').Wire) => (
-                <PublicationCard key={review.id} review={adaptPublication(review)} />
+                <PublicationCard
+                  key={review.id}
+                  review={adaptPublication(review)}
+                  contextAnimeId={anime.id}
+                />
               ))}
             </View>
           );

@@ -133,7 +133,7 @@ export function createSession(
         }
         await clear();
       }),
-    updateProfile: async (changes: { name: string; bio: string }) => {
+    updateProfile: async (changes: { name: string; bio: string; avatarId?: string | null }) => {
       const startedToken = token;
       const { user } = await api.request<{ user: SessionUser }>('/me/profile', {
         method: 'PATCH',

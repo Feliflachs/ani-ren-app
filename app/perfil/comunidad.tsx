@@ -6,7 +6,7 @@ import { useCurrentUser } from '../../src/useCurrentUser';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Action, Avatar, Chips, EmptyState, Screen, SearchBar } from '../../src/components';
+import { FollowButton, Avatar, Chips, EmptyState, Screen, SearchBar } from '../../src/components';
 import { useAppState } from '../../src/context/AppState';
 import { useSocial } from '../../src/context/SocialContext';
 import { getParam } from '../../src/data';
@@ -74,9 +74,8 @@ export default function ComunidadScreen() {
           </View>
           {isOwn ? (
             <View style={styles.actions}>
-              <Action
-                label={ownFollowingIds.includes(user.id) ? 'Siguiendo' : 'Seguir'}
-                active={ownFollowingIds.includes(user.id)}
+              <FollowButton
+                following={ownFollowingIds.includes(user.id)}
                 onPress={() => toggleFollowing(user.id)}
               />
               {tab === 'Amigos' && <Text style={styles.friend}>Seguimiento mutuo</Text>}
@@ -111,11 +110,11 @@ export default function ComunidadScreen() {
 
 const styles = StyleSheet.create({
   card: {
-    padding: 14,
+    paddingVertical: 16,
     gap: 12,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    borderBottomWidth: 1,
     borderColor: theme.colors.border,
   },
   row: { flexDirection: 'row', gap: 12, alignItems: 'center' },

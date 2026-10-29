@@ -98,7 +98,7 @@ function ListaScreen() {
       {items.map((item, index) => (
         <View key={item.id} style={styles.card}>
           {list.ordered && <Text style={styles.position}>#{index + 1}</Text>}
-          <AnimeCard item={item} width={74} />
+          <AnimeCard item={item} width={74} showTitle={false} showRating={false} />
           <Pressable
             accessibilityRole="button"
             onPress={() =>
@@ -140,11 +140,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
-    padding: 12,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
+    paddingVertical: 16,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: 14,
+    borderRadius: 0,
   },
   position: { color: theme.colors.primarySoft, fontSize: 18, fontWeight: '700', width: 29 },
   rating: { color: theme.colors.primarySoft, fontSize: 15, fontWeight: '600' },

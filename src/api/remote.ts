@@ -1,4 +1,5 @@
 import type { ApiClient, RequestOptions } from './client';
+import { mediaUrl } from './media';
 import { ApiError } from './client';
 import {
   anime,
@@ -16,7 +17,8 @@ import type { Publication } from '../publications';
 
 // DTO boundary: transport fields are adapted here, never used as application rules.
 export type Wire = Record<string, any>;
-const image = (url?: string) => (url ? { uri: url } : require('../../assets/mascota.png'));
+const image = (url?: string) =>
+  url ? { uri: mediaUrl(url) } : require('../../assets/mascota.png');
 const seasonNames: Record<string, string> = {
   spring: 'Primavera',
   summer: 'Verano',
@@ -79,6 +81,7 @@ export function adaptUser(row: Wire): User {
     handle: row.handle,
     bio: row.bio ?? '',
     image: image(row.avatarUrl),
+    avatarId: row.avatarId === undefined ? previous?.avatarId : row.avatarId,
     watched: row.statistics?.watched ?? previous?.watched ?? 0,
     watchlist: row.statistics?.watchlist ?? previous?.watchlist ?? 0,
     reviews: row.statistics?.reviews ?? previous?.reviews ?? 0,

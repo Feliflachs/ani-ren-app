@@ -20,6 +20,39 @@ import {
 import { findAnime, getParam } from '../../../src/data';
 import { theme } from '../../../src/theme';
 
+function CommentRow({
+  comment,
+  children,
+}: {
+  comment: import('../../../src/api/remote').Wire;
+  children?: React.ReactNode;
+}) {
+  const { findUser } = useDirectory();
+  const profile = findUser(comment.userId);
+  const openProfile = () =>
+    router.push({ pathname: '/perfil/usuario/[id]', params: { id: comment.userId } });
+  return (
+    <View style={styles.comment}>
+      {profile && <Avatar user={profile} size={32} onPress={openProfile} />}
+      <View style={styles.commentBody}>
+        <View style={styles.commentHeading}>
+          <Pressable accessibilityRole="button" onPress={openProfile} style={styles.commentAuthor}>
+            <Text style={styles.name}>{comment.author?.name ?? 'Usuario'}</Text>
+          </Pressable>
+          <Text style={styles.meta}>
+            {new Date(comment.createdAt).toLocaleDateString('es-AR', {
+              day: 'numeric',
+              month: 'short',
+            })}
+          </Text>
+        </View>
+        <Text style={styles.commentText}>{comment.text}</Text>
+        {children}
+      </View>
+    </View>
+  );
+}
+
 function CommentThread({
   publicationId,
   comment,
@@ -35,49 +68,45 @@ function CommentThread({
   });
   const name = comment.author?.name ?? 'Usuario';
   return (
-    <View style={{ gap: 8, paddingVertical: 10 }}>
-      <Pressable
-        onPress={() =>
-          router.push({ pathname: '/perfil/usuario/[id]', params: { id: comment.userId } })
-        }
-      >
-        <Text style={styles.name}>{name}</Text>
-      </Pressable>
-      <Text style={styles.commentText}>{comment.text}</Text>
-      <Text style={styles.meta}>{new Date(comment.createdAt).toLocaleDateString('es-AR')}</Text>
-      <View style={styles.actions}>
-        <Action
-          label="Responder"
+    <View style={styles.commentThread}>
+      <CommentRow comment={comment}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Responder a ${name}`}
+          style={styles.textAction}
           onPress={() => {
             setExpanded(true);
             onReply(comment.id, name);
           }}
-        />
-        {comment.replyCount > 0 && (
-          <Action
-            label={expanded ? 'Ocultar respuestas' : `Ver respuestas (${comment.replyCount})`}
-            onPress={() => setExpanded((value) => !value)}
-          />
-        )}
-      </View>
-      {expanded && (
-        <View
-          style={{ paddingLeft: 18, borderLeftWidth: 1, borderColor: theme.colors.border, gap: 12 }}
         >
+          <Text style={styles.replyLabel}>Responder</Text>
+        </Pressable>
+        {comment.replyCount > 0 && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded }}
+            accessibilityLabel={
+              expanded ? 'Ocultar respuestas' : `Ver respuestas (${comment.replyCount})`
+            }
+            style={styles.replyToggle}
+            onPress={() => setExpanded((value) => !value)}
+          >
+            <View style={styles.replyRule} />
+            <Text style={styles.replyLink}>
+              {expanded ? 'Ocultar respuestas' : `Ver respuestas (${comment.replyCount})`}
+            </Text>
+            <Ionicons
+              name={expanded ? 'chevron-up' : 'chevron-down'}
+              size={14}
+              color={theme.colors.primarySoft}
+            />
+          </Pressable>
+        )}
+      </CommentRow>
+      {expanded && (
+        <View style={styles.replies}>
           {replies.items.map((reply) => (
-            <View key={reply.id} style={{ gap: 5 }}>
-              <Pressable
-                onPress={() =>
-                  router.push({ pathname: '/perfil/usuario/[id]', params: { id: reply.userId } })
-                }
-              >
-                <Text style={styles.name}>{reply.author?.name ?? 'Usuario'}</Text>
-              </Pressable>
-              <Text style={styles.commentText}>{reply.text}</Text>
-              <Text style={styles.meta}>
-                {new Date(reply.createdAt).toLocaleDateString('es-AR')}
-              </Text>
-            </View>
+            <CommentRow key={reply.id} comment={reply} />
           ))}
           <QueryFooter query={replies} />
         </View>
@@ -220,6 +249,7 @@ function ReviewScreen() {
         <PublicationContent
           key={reviewId}
           review={review}
+          hiddenAnimeId={item?.id}
           revealed={revealed}
           onReveal={() => setRevealed(true)}
         />
@@ -300,18 +330,6 @@ function ReviewScreen() {
       <Section title={`Comentarios · ${review.comments}`} />
       {!hidden ? (
         <>
-          {comments.map((comment) => (
-            <CommentThread
-              key={comment.id}
-              publicationId={reviewId}
-              comment={comment}
-              onReply={(id, name) => {
-                setReplyTo({ id, name });
-                commentInput.current?.focus();
-              }}
-            />
-          ))}
-          <QueryFooter query={commentsPage} />
           {replyTo && (
             <View style={styles.actions}>
               <Text style={styles.meta}>Respondiendo a {replyTo.name}</Text>
@@ -345,6 +363,18 @@ function ReviewScreen() {
             </Pressable>
           </View>
           {draft.length >= 400 && <Text style={styles.characterCount}>{draft.length} / 500</Text>}
+          {comments.map((comment) => (
+            <CommentThread
+              key={comment.id}
+              publicationId={reviewId}
+              comment={comment}
+              onReply={(id, name) => {
+                setReplyTo({ id, name });
+                commentInput.current?.focus();
+              }}
+            />
+          ))}
+          <QueryFooter query={commentsPage} />
         </>
       ) : (
         <Text style={styles.meta}>Revelá la review para leer también sus comentarios.</Text>
@@ -383,6 +413,36 @@ function ReviewScreen() {
 }
 
 const styles = StyleSheet.create({
+  commentThread: {
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.border,
+  },
+  commentBody: { flex: 1, minWidth: 0, gap: 4 },
+  commentHeading: { flexDirection: 'row', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' },
+  commentAuthor: { flexShrink: 1 },
+  textAction: {
+    alignSelf: 'flex-start',
+    minHeight: 32,
+    justifyContent: 'center',
+    paddingRight: 12,
+  },
+  replyLabel: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600' },
+  replyLink: { color: theme.colors.primarySoft, fontSize: 12, fontWeight: '600' },
+  replyToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 36,
+    alignSelf: 'flex-start',
+  },
+  replyRule: { width: 20, height: 1, backgroundColor: theme.colors.border },
+  replies: {
+    marginLeft: 16,
+    paddingLeft: 16,
+    borderLeftWidth: 1,
+    borderColor: theme.colors.border,
+  },
   menuTrigger: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   optionsBackdrop: {
     flex: 1,
@@ -468,8 +528,8 @@ const styles = StyleSheet.create({
   },
   commentText: {
     color: theme.colors.text,
-    fontSize: 12,
-    lineHeight: 19,
+    fontSize: 13,
+    lineHeight: 20,
   },
 });
 

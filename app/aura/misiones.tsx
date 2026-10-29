@@ -38,7 +38,12 @@ export default function MissionsScreen() {
       subtitle="Pequeños objetivos para seguir descubriendo anime."
       back
     >
-      <Chips options={['Misiones', 'Logros']} value={tab} onChange={changeTab} />
+      <Chips
+        options={['Misiones', 'Logros']}
+        value={tab}
+        onChange={changeTab}
+        variant="underline"
+      />
       <Chips
         options={showingAchievements ? achievementFilters : missionFilters}
         value={filter}
@@ -134,11 +139,11 @@ const styles = StyleSheet.create({
   notice: { color: theme.colors.textSecondary, fontSize: 11, lineHeight: 17 },
   card: {
     gap: 11,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
+    paddingVertical: 16,
+    borderRadius: 0,
+    borderBottomWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: 'transparent',
   },
   top: { flexDirection: 'row', gap: 11, alignItems: 'center' },
   icon: {

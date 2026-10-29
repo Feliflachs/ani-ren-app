@@ -50,7 +50,6 @@ function DetalleAnime() {
   const country = useViewingCountry();
   const [countryPicker, setCountryPicker] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
-  const [credits, setCredits] = useState(false);
   const streaming = useQuery(country.loading ? undefined : `/anime/${id}/streaming`, {
     country: country.code ?? undefined,
   });
@@ -317,9 +316,7 @@ function DetalleAnime() {
       {streaming.data?.status === 'unavailable' && (
         <Action label="Reintentar opciones" onPress={streaming.reload} />
       )}
-      <Pressable accessibilityRole="button" onPress={() => setCredits(true)}>
-        <Text style={styles.note}>Créditos</Text>
-      </Pressable>
+
       <View style={[styles.infoColumns, width < 360 && styles.stack]}>
         <View style={[styles.infoCard, width >= 360 && styles.infoColumn]}>
           <Text style={styles.cardTitle}>Sinopsis</Text>
@@ -415,7 +412,9 @@ function DetalleAnime() {
         onPress={() => router.push('/perfil/comunidad')}
       />
       {animeReviews.length ? (
-        animeReviews.map((review) => <PublicationCard key={review.id} review={review} />)
+        animeReviews.map((review) => (
+          <PublicationCard key={review.id} review={review} contextAnimeId={item.id} />
+        ))
       ) : (
         <EmptyState
           title="La primera review puede ser tuya"
@@ -489,29 +488,6 @@ function DetalleAnime() {
               }}
             />
           ))}
-      </Dialog>
-      <Dialog visible={credits} title="Créditos" onClose={() => setCredits(false)}>
-        <SvgUri
-          width={120}
-          height={20}
-          uri="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"
-        />
-        <Text style={styles.note}>
-          This product uses the TMDB API but is not endorsed or certified by TMDB.
-        </Text>
-        <Text style={styles.note}>
-          Disponibilidad proporcionada por JustWatch a través de TMDB. Los enlaces abren las
-          opciones de reproducción en TMDB.
-        </Text>
-        <Text style={styles.note}>
-          Sinopsis en castellano: TMDB. Texto original del catálogo: MyAnimeList; algunas sinopsis
-          fueron redactadas por MAL Rewrite.
-        </Text>
-        <Action label="TMDB" onPress={() => openStreamingPlatform('https://www.themoviedb.org/')} />
-        <Action
-          label="JustWatch"
-          onPress={() => openStreamingPlatform('https://www.justwatch.com/')}
-        />
       </Dialog>
       <Dialog
         visible={listPicker}

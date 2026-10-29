@@ -168,7 +168,7 @@ function EditarListaScreen() {
       {selected.map((item, index) => (
         <View key={item.id} style={styles.selected}>
           <View style={styles.row}>
-            <AnimeCard item={item} width={60} />
+            <AnimeCard item={item} width={60} showTitle={false} showRating={false} />
             <View style={styles.grow}>
               <Text style={styles.title}>
                 {ordered ? `#${index + 1} · ` : ''}
@@ -303,11 +303,11 @@ const styles = StyleSheet.create({
   rating: { color: theme.colors.primarySoft, fontSize: 13 },
   error: { color: theme.colors.accentSoft, fontSize: 12 },
   selected: {
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: 0,
+    paddingVertical: 16,
     gap: 10,
   },
   controls: { flexDirection: 'row', gap: 8 },

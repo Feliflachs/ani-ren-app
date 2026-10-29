@@ -11,9 +11,12 @@ export function useProfiles() {
   return {
     profiles: users,
     current: users.find((item) => item.id === user?.id),
-    updateProfile: async (id: string, changes: { name: string; bio: string; image: unknown }) => {
+    updateProfile: async (
+      id: string,
+      changes: { name: string; bio: string; image: unknown; avatarId?: string | null },
+    ) => {
       if (id !== user?.id) throw new Error('Solo podés editar tu perfil.');
-      await updateProfile({ name: changes.name, bio: changes.bio });
+      await updateProfile({ name: changes.name, bio: changes.bio, avatarId: changes.avatarId });
       await store.load(`/users/${id}`, {}, true);
     },
   };
